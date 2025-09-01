@@ -2,18 +2,18 @@
  * @fileoverview Type definitions for Resortable library
  * @author Resortable Team
  * @since 2.0.0
- * 
+ *
  * This file contains all the TypeScript type definitions used throughout
  * the Resortable library, providing excellent IntelliSense support.
  */
 
 /**
  * Configuration options for Sortable instances
- * 
+ *
  * @remarks
  * These options control the behavior and appearance of sortable lists.
  * Most options have sensible defaults and can be omitted for basic usage.
- * 
+ *
  * @example Basic configuration
  * ```typescript
  * const options: SortableOptions = {
@@ -21,7 +21,7 @@
  *   ghostClass: 'my-ghost-class'
  * };
  * ```
- * 
+ *
  * @example Advanced configuration
  * ```typescript
  * const options: SortableOptions = {
@@ -35,19 +35,19 @@
  *   onEnd: (evt) => console.log('Drag ended', evt)
  * };
  * ```
- * 
+ *
  * @public
  */
 export interface SortableOptions {
   /**
    * Animation duration in milliseconds when sorting
    * @defaultValue 150
-   * 
+   *
    * @example
    * ```typescript
    * // Smooth 300ms animation
    * { animation: 300 }
-   * 
+   *
    * // No animation
    * { animation: 0 }
    * ```
@@ -57,7 +57,7 @@ export interface SortableOptions {
   /**
    * CSS class applied to the ghost element during drag
    * @defaultValue 'sortable-ghost'
-   * 
+   *
    * @example
    * ```typescript
    * { ghostClass: 'my-ghost-style' }
@@ -80,15 +80,15 @@ export interface SortableOptions {
   /**
    * Group name or configuration for sharing items between lists
    * @defaultValue 'default'
-   * 
+   *
    * @example Simple group name
    * ```typescript
    * { group: 'my-group' }
    * ```
-   * 
+   *
    * @example Advanced group configuration
    * ```typescript
-   * { 
+   * {
    *   group: {
    *     name: 'shared',
    *     pull: 'clone',
@@ -126,9 +126,9 @@ export interface SortableOptions {
 
   /**
    * Callback fired when drag operation ends
-   * 
+   *
    * @param event - The sortable event containing drag details
-   * 
+   *
    * @example
    * ```typescript
    * {
@@ -168,12 +168,12 @@ export interface SortableOptions {
 
 /**
  * Group configuration for sharing items between sortable lists
- * 
+ *
  * @remarks
  * Groups allow you to drag items between different sortable lists.
  * You can control which lists can give/receive items and whether
  * items are moved or cloned.
- * 
+ *
  * @example
  * ```typescript
  * const group: SortableGroup = {
@@ -182,7 +182,7 @@ export interface SortableOptions {
  *   put: true       // Accept items from other lists
  * };
  * ```
- * 
+ *
  * @public
  */
 export interface SortableGroup {
@@ -217,11 +217,11 @@ export interface SortableGroup {
 
 /**
  * Event object passed to Sortable event callbacks
- * 
+ *
  * @remarks
  * This object contains information about the drag operation,
  * including the affected elements and their positions.
- * 
+ *
  * @public
  */
 export interface SortableEvent {
@@ -288,27 +288,27 @@ export interface SortableEvent {
 
 /**
  * Plugin interface for extending Sortable functionality
- * 
+ *
  * @remarks
  * Plugins allow you to extend Sortable with additional features
  * like auto-scroll, swap mode, or custom behaviors.
- * 
+ *
  * @example
  * ```typescript
  * class MyPlugin implements SortablePlugin {
  *   name = 'my-plugin';
  *   version = '1.0.0';
- *   
+ *
  *   install(sortable: Sortable): void {
  *     // Plugin initialization code
  *   }
- *   
+ *
  *   uninstall(sortable: Sortable): void {
  *     // Plugin cleanup code
  *   }
  * }
  * ```
- * 
+ *
  * @public
  * @beta Plugin system is experimental
  */
@@ -327,13 +327,13 @@ export interface SortablePlugin {
    * Install the plugin on a Sortable instance
    * @param sortable - The sortable instance to install on
    */
-  install(sortable: any): void; // Using any to avoid circular dependency
+  install(sortable: unknown): void; // Using unknown to avoid circular dependency
 
   /**
    * Uninstall the plugin from a Sortable instance
    * @param sortable - The sortable instance to uninstall from
    */
-  uninstall(sortable: any): void; // Using any to avoid circular dependency
+  uninstall(sortable: unknown): void; // Using unknown to avoid circular dependency
 }
 
 /**

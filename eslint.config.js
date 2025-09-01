@@ -14,6 +14,12 @@ export default [
         sourceType: 'module',
         project: './tsconfig.json',
       },
+      globals: {
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tseslint,
@@ -29,7 +35,6 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
-      '@typescript-eslint/prefer-const': 'error',
       
       // General rules
       'no-console': 'warn',
@@ -40,7 +45,24 @@ export default [
       'prefer-template': 'error',
       
       // TSDoc rules
-      'tsdoc/syntax': 'warn',
+      'tsdoc/syntax': 'off', // Allow custom TSDoc tags for TypeDoc
+    },
+  },
+  {
+    files: ['tests/**/*.ts'],
+    languageOptions: {
+      globals: {
+        // Node.js test globals
+        global: 'writable',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        // Browser globals for jsdom
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+      },
     },
   },
   {

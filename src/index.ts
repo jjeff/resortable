@@ -3,22 +3,22 @@
  * @author Resortable Team
  * @version 2.0.0-alpha.1
  * @since 2.0.0
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * import { Sortable } from 'resortable';
- * 
+ *
  * const sortable = new Sortable(document.getElementById('my-list'), {
  *   animation: 150,
  *   ghostClass: 'sortable-ghost',
  *   chosenClass: 'sortable-chosen'
  * });
  * ```
- * 
+ *
  * @example Advanced Configuration
  * ```typescript
  * import { Sortable, SortableOptions } from 'resortable';
- * 
+ *
  * const options: SortableOptions = {
  *   group: 'shared',
  *   animation: 300,
@@ -27,7 +27,7 @@
  *     console.log('Drag ended:', event);
  *   }
  * };
- * 
+ *
  * const sortable = new Sortable(element, options);
  * ```
  */
@@ -37,17 +37,17 @@ export * from './types/index.js';
 /**
  * @beta
  * Main Sortable class for creating drag-and-drop sortable lists
- * 
+ *
  * @remarks
  * This is the main entry point for the Resortable library. It provides a modern,
  * TypeScript-first approach to creating sortable drag-and-drop interfaces.
- * 
+ *
  * Unlike the original Sortable.js, this version:
  * - Uses modern ES modules
  * - Provides full TypeScript support
  * - Implements a plugin-based architecture
  * - Uses modern DOM APIs
- * 
+ *
  * @example Creating a basic sortable list
  * ```typescript
  * const sortable = new Sortable(document.getElementById('items'), {
@@ -57,7 +57,7 @@ export * from './types/index.js';
  *   }
  * });
  * ```
- * 
+ *
  * @public
  */
 export class Sortable {
@@ -75,18 +75,18 @@ export class Sortable {
 
   /**
    * Creates a new Sortable instance
-   * 
+   *
    * @param element - The DOM element to make sortable
    * @param options - Configuration options for the sortable behavior
-   * 
+   *
    * @throws {@link SortableError}
    * When the provided element is invalid or options are malformed
-   * 
+   *
    * @example
    * ```typescript
    * // Basic usage
    * const sortable = new Sortable(document.getElementById('list'));
-   * 
+   *
    * // With options
    * const sortable = new Sortable(element, {
    *   animation: 150,
@@ -97,53 +97,53 @@ export class Sortable {
    */
   constructor(element: HTMLElement, options: Partial<SortableOptions> = {}) {
     if (!element || !(element instanceof HTMLElement)) {
-      throw new SortableError('Invalid element provided to Sortable constructor');
+      throw new SortableError(
+        'Invalid element provided to Sortable constructor'
+      );
     }
 
     this.element = element;
     this.options = { ...defaultOptions, ...options };
-    
+
     // TODO: Initialize sortable functionality
-    console.log('Sortable instance created', { element, options: this.options });
   }
 
   /**
    * Destroys the Sortable instance and removes all event listeners
-   * 
+   *
    * @remarks
    * After calling this method, the Sortable instance should not be used.
    * All event listeners will be removed and the element will no longer be sortable.
-   * 
+   *
    * @example
    * ```typescript
    * const sortable = new Sortable(element);
    * // ... use sortable ...
    * sortable.destroy(); // Clean up when done
    * ```
-   * 
+   *
    * @public
    */
   public destroy(): void {
     // TODO: Implement destroy functionality
-    console.log('Sortable instance destroyed');
   }
 
   /**
    * Gets the current order of elements as an array of data-id attributes
-   * 
+   *
    * @returns Array of string IDs representing the current order
-   * 
+   *
    * @remarks
    * This method reads the `data-id` attribute from each sortable item.
    * If an item doesn't have a `data-id` attribute, its index will be used.
-   * 
+   *
    * @example
    * ```typescript
    * const sortable = new Sortable(element);
    * const order = sortable.toArray();
    * console.log('Current order:', order); // ['item-1', 'item-2', 'item-3']
    * ```
-   * 
+   *
    * @public
    */
   public toArray(): string[] {
@@ -154,7 +154,7 @@ export class Sortable {
 
 /**
  * Custom error class for Sortable-specific errors
- * 
+ *
  * @public
  */
 export class SortableError extends Error {
