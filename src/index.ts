@@ -32,8 +32,8 @@
  * ```
  */
 
-export * from './types/index.js';
-import { SortableOptions } from './types/index.js';
+export * from './types/index.js'
+import { SortableOptions } from './types/index.js'
 
 /**
  * @beta
@@ -66,13 +66,13 @@ export class Sortable {
    * The DOM element that this Sortable instance is bound to
    * @readonly
    */
-  public readonly element: HTMLElement;
+  public readonly element: HTMLElement
 
   /**
    * Current configuration options for this Sortable instance
    * @readonly
    */
-  public readonly options: SortableOptions;
+  public readonly options: SortableOptions
 
   /**
    * Creates a new Sortable instance
@@ -100,11 +100,11 @@ export class Sortable {
     if (!element || !(element instanceof HTMLElement)) {
       throw new SortableError(
         'Invalid element provided to Sortable constructor'
-      );
+      )
     }
 
-    this.element = element;
-    this.options = { ...defaultOptions, ...options };
+    this.element = element
+    this.options = { ...defaultOptions, ...options }
 
     // TODO: Initialize sortable functionality
   }
@@ -149,7 +149,7 @@ export class Sortable {
    */
   public toArray(): string[] {
     // TODO: Implement toArray functionality
-    return [];
+    return []
   }
 }
 
@@ -162,7 +162,7 @@ export class SortableError extends Error {
   /**
    * Optional underlying cause of the error
    */
-  public cause?: Error;
+  public cause?: Error
 
   /**
    * Creates a new SortableError
@@ -170,9 +170,9 @@ export class SortableError extends Error {
    * @param cause - Optional underlying cause of the error
    */
   constructor(message: string, cause?: Error) {
-    super(message);
-    this.name = 'SortableError';
-    this.cause = cause;
+    super(message)
+    this.name = 'SortableError'
+    this.cause = cause
   }
 }
 
@@ -189,4 +189,4 @@ const defaultOptions: SortableOptions = {
   sort: true,
   disabled: false,
   multiDrag: false,
-};
+}

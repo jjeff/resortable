@@ -52,7 +52,7 @@ export interface SortableOptions {
    * { animation: 0 }
    * ```
    */
-  animation?: number;
+  animation?: number
 
   /**
    * CSS class applied to the ghost element during drag
@@ -63,19 +63,19 @@ export interface SortableOptions {
    * { ghostClass: 'my-ghost-style' }
    * ```
    */
-  ghostClass?: string;
+  ghostClass?: string
 
   /**
    * CSS class applied to the chosen element when drag starts
    * @defaultValue 'sortable-chosen'
    */
-  chosenClass?: string;
+  chosenClass?: string
 
   /**
    * CSS class applied to the dragging element
    * @defaultValue 'sortable-drag'
    */
-  dragClass?: string;
+  dragClass?: string
 
   /**
    * Group name or configuration for sharing items between lists
@@ -97,32 +97,32 @@ export interface SortableOptions {
    * }
    * ```
    */
-  group?: string | SortableGroup;
+  group?: string | SortableGroup
 
   /**
    * Whether sorting is enabled within the list
    * @defaultValue true
    */
-  sort?: boolean;
+  sort?: boolean
 
   /**
    * Whether the sortable is disabled
    * @defaultValue false
    */
-  disabled?: boolean;
+  disabled?: boolean
 
   /**
    * Enable multi-drag functionality
    * @defaultValue false
    * @beta This feature is experimental
    */
-  multiDrag?: boolean;
+  multiDrag?: boolean
 
   /**
    * CSS class for selected items in multi-drag mode
    * @defaultValue 'sortable-selected'
    */
-  selectedClass?: string;
+  selectedClass?: string
 
   /**
    * Callback fired when drag operation ends
@@ -139,31 +139,31 @@ export interface SortableOptions {
    * }
    * ```
    */
-  onEnd?: (event: SortableEvent) => void;
+  onEnd?: (event: SortableEvent) => void
 
   /**
    * Callback fired when drag operation starts
    * @param event - The sortable event
    */
-  onStart?: (event: SortableEvent) => void;
+  onStart?: (event: SortableEvent) => void
 
   /**
    * Callback fired when an item is added from another list
    * @param event - The sortable event
    */
-  onAdd?: (event: SortableEvent) => void;
+  onAdd?: (event: SortableEvent) => void
 
   /**
    * Callback fired when sorting changes within the same list
    * @param event - The sortable event
    */
-  onUpdate?: (event: SortableEvent) => void;
+  onUpdate?: (event: SortableEvent) => void
 
   /**
    * Callback fired when an item is removed to another list
    * @param event - The sortable event
    */
-  onRemove?: (event: SortableEvent) => void;
+  onRemove?: (event: SortableEvent) => void
 }
 
 /**
@@ -189,7 +189,7 @@ export interface SortableGroup {
   /**
    * Name of the group
    */
-  name: string;
+  name: string
 
   /**
    * Whether items can be dragged out of this list
@@ -198,7 +198,7 @@ export interface SortableGroup {
    * - `'clone'`: Items are cloned when dragged out
    * - `string[]`: Array of group names that can receive items
    */
-  pull?: boolean | 'clone' | string[];
+  pull?: boolean | 'clone' | string[]
 
   /**
    * Whether items can be dragged into this list
@@ -206,13 +206,13 @@ export interface SortableGroup {
    * - `false`: Don't accept items from other lists
    * - `string[]`: Array of group names to accept items from
    */
-  put?: boolean | string[];
+  put?: boolean | string[]
 
   /**
    * Revert cloned element to initial position after moving to another list
    * @defaultValue false
    */
-  revertClone?: boolean;
+  revertClone?: boolean
 }
 
 /**
@@ -228,47 +228,47 @@ export interface SortableEvent {
   /**
    * The dragged element
    */
-  item: HTMLElement;
+  item: HTMLElement
 
   /**
    * The list that the element was dragged to
    */
-  to: HTMLElement;
+  to: HTMLElement
 
   /**
    * The list that the element was dragged from
    */
-  from: HTMLElement;
+  from: HTMLElement
 
   /**
    * Old index of the element (before drag)
    * @remarks May be undefined for add/remove operations
    */
-  oldIndex?: number;
+  oldIndex?: number
 
   /**
    * New index of the element (after drag)
    * @remarks May be undefined for add/remove operations
    */
-  newIndex?: number;
+  newIndex?: number
 
   /**
    * Old index among draggable elements only
    * @remarks Excludes non-draggable items from count
    */
-  oldDraggableIndex?: number;
+  oldDraggableIndex?: number
 
   /**
    * New index among draggable elements only
    * @remarks Excludes non-draggable items from count
    */
-  newDraggableIndex?: number;
+  newDraggableIndex?: number
 
   /**
    * Cloned element (when using group.pull: 'clone')
    * @remarks Only present in clone operations
    */
-  clone?: HTMLElement;
+  clone?: HTMLElement
 
   /**
    * Pull mode used for this operation
@@ -277,13 +277,13 @@ export interface SortableEvent {
    * - `true` when moving
    * - `false` or undefined for same-list operations
    */
-  pullMode?: boolean | 'clone';
+  pullMode?: boolean | 'clone'
 
   /**
    * Array of selected elements (multi-drag mode)
    * @beta Multi-drag is experimental
    */
-  items?: HTMLElement[];
+  items?: HTMLElement[]
 }
 
 /**
@@ -316,24 +316,24 @@ export interface SortablePlugin {
   /**
    * Plugin name (must be unique)
    */
-  readonly name: string;
+  readonly name: string
 
   /**
    * Plugin version
    */
-  readonly version: string;
+  readonly version: string
 
   /**
    * Install the plugin on a Sortable instance
    * @param sortable - The sortable instance to install on
    */
-  install(sortable: unknown): void; // Using unknown to avoid circular dependency
+  install(sortable: unknown): void // Using unknown to avoid circular dependency
 
   /**
    * Uninstall the plugin from a Sortable instance
    * @param sortable - The sortable instance to uninstall from
    */
-  uninstall(sortable: unknown): void; // Using unknown to avoid circular dependency
+  uninstall(sortable: unknown): void // Using unknown to avoid circular dependency
 }
 
 /**
@@ -341,11 +341,11 @@ export interface SortablePlugin {
  * @internal
  */
 export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+}
 
 /**
  * Element selector type - can be string selector or HTMLElement
  * @public
  */
-export type ElementSelector = string | HTMLElement;
+export type ElementSelector = string | HTMLElement
