@@ -1,0 +1,6 @@
+dist/
+node_modules/
+legacy-sortable/
+*.min.js
+*.lock
+CHANGELOG.md

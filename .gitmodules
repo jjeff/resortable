@@ -1,0 +1,3 @@
+[submodule "legacy-sortable"]
+	path = legacy-sortable
+	url = https://github.com/SortableJS/Sortable.git
