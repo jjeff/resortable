@@ -4,27 +4,33 @@ import { beforeEach, vi } from 'vitest'
 beforeEach(() => {
   // Mock requestAnimationFrame
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-    return setTimeout(cb, 16) // ~60fps
+    return globalThis.setTimeout(cb, 16) // ~60fps
   })
 
   // Mock cancelAnimationFrame
   vi.stubGlobal('cancelAnimationFrame', (id: number) => {
-    clearTimeout(id)
+    globalThis.clearTimeout(id)
   })
 
   // Mock ResizeObserver
-  global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }))
+  vi.stubGlobal(
+    'ResizeObserver',
+    vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }))
+  )
 
   // Mock IntersectionObserver
-  global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }))
+  vi.stubGlobal(
+    'IntersectionObserver',
+    vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }))
+  )
 
   // Mock getBoundingClientRect
   Element.prototype.getBoundingClientRect = vi.fn(() => ({

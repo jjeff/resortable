@@ -1,9 +1,9 @@
 import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
-import tsdoc from 'eslint-plugin-tsdoc';
-import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
+import prettier from 'eslint-plugin-prettier';
+import tsdoc from 'eslint-plugin-tsdoc';
 
 export default [
   js.configs.recommended,
@@ -53,23 +53,6 @@ export default [
 
       // Prettier integration
       'prettier/prettier': 'error',
-    },
-  },
-  {
-    files: ['tests/**/*.ts'],
-    languageOptions: {
-      globals: {
-        // Node.js test globals
-        global: 'writable',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        // Browser globals for jsdom
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
-      },
     },
   },
   {

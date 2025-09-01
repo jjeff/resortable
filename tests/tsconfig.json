@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Test-specific settings */
+    "types": ["@playwright/test", "node"],
+    
+    /* More lenient for tests */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowImportingTsExtensions": false
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.spec.ts", 
+    "**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
