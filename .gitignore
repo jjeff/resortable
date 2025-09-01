@@ -2,3 +2,5 @@ node_modules
 dist/
 docs/
 build/
+test-results/
+playwright-report/
