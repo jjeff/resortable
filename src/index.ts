@@ -33,6 +33,7 @@
  */
 
 export * from './types/index.js';
+import { SortableOptions } from './types/index.js';
 
 /**
  * @beta
@@ -189,24 +190,3 @@ const defaultOptions: SortableOptions = {
   disabled: false,
   multiDrag: false,
 };
-
-// Placeholder interfaces - will be moved to types/index.ts
-interface SortableOptions {
-  animation?: number;
-  ghostClass?: string;
-  chosenClass?: string;
-  dragClass?: string;
-  group?: string;
-  sort?: boolean;
-  disabled?: boolean;
-  multiDrag?: boolean;
-  onEnd?: (event: SortableEvent) => void;
-}
-
-interface SortableEvent {
-  oldIndex?: number;
-  newIndex?: number;
-  item: HTMLElement;
-  to: HTMLElement;
-  from: HTMLElement;
-}
