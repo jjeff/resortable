@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Resortable Library', () => {
   test('should load the development page', async ({ page }) => {
@@ -8,7 +8,7 @@ test.describe('Resortable Library', () => {
     await page.waitForLoadState('networkidle')
 
     // Check if the page title contains expected content
-    await expect(page).toHaveTitle(/Vite/)
+    await expect(page).toHaveTitle(/Resortable/)
   })
 
   test('should handle basic drag and drop', async ({ page }) => {
