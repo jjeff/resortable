@@ -77,7 +77,11 @@
     "@internal",
     "@beta",
     "@alpha",
-    "@experimental"
+    "@experimental",
+    "@fileoverview",
+    "@public",
+    "@readonly",
+    "@defaultValue"
   ],
   "inlineTags": [
     "@link",
