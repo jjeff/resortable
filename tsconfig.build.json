@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /* Override conflicting options for build */
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "dist",
+    
+    /* Ensure ES modules work correctly */
+    "moduleResolution": "node",
+    "module": "ESNext"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "tests/**/*",
+    "node_modules",
+    "dist",
+    "legacy-sortable"
+  ]
+}
