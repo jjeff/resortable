@@ -85,7 +85,77 @@
 <body>
   <div class="container">
     <h1>Resortable Development Environment</h1>
-    
+
+    <!-- Basic: Sort within a single list -->
+    <h2>Basic Sortable List</h2>
+    <div class="demo-container">
+      <div class="sortable-list" id="basic-list">
+        <h3>Basic</h3>
+        <div class="sortable-item" data-id="basic-1">Basic 1</div>
+        <div class="sortable-item" data-id="basic-2">Basic 2</div>
+        <div class="sortable-item" data-id="basic-3">Basic 3</div>
+        <div class="sortable-item" data-id="basic-4">Basic 4</div>
+      </div>
+    </div>
+
+    <!-- Shared: Drag between two lists -->
+    <h2>Shared Group (A)</h2>
+    <div class="demo-container">
+      <div class="sortable-list" id="shared-a-1">
+        <h3>Group A - List 1</h3>
+        <div class="sortable-item" data-id="a-1">A1</div>
+        <div class="sortable-item" data-id="a-2">A2</div>
+        <div class="sortable-item" data-id="a-3">A3</div>
+        <div class="sortable-item" data-id="a-4">A4</div>
+      </div>
+
+      <div class="sortable-list" id="shared-a-2">
+        <h3>Group A - List 2</h3>
+        <div class="sortable-item" data-id="a-5">A5</div>
+        <div class="sortable-item" data-id="a-6">A6</div>
+        <div class="sortable-item" data-id="a-7">A7</div>
+        <div class="sortable-item" data-id="a-8">A8</div>
+      </div>
+    </div>
+
+    <!-- Independent groups: A and B don't mix -->
+    <h2>Independent Groups (A vs B)</h2>
+    <div class="demo-container">
+      <div class="sortable-list" id="group-a-1">
+        <h3>Group A</h3>
+        <div class="sortable-item" data-id="ga-1">GA1</div>
+        <div class="sortable-item" data-id="ga-2">GA2</div>
+        <div class="sortable-item" data-id="ga-3">GA3</div>
+      </div>
+      <div class="sortable-list" id="group-b-1">
+        <h3>Group B</h3>
+        <div class="sortable-item" data-id="gb-1">GB1</div>
+        <div class="sortable-item" data-id="gb-2">GB2</div>
+        <div class="sortable-item" data-id="gb-3">GB3</div>
+      </div>
+    </div>
+
+    <!-- Grid example: same group across grid containers -->
+    <h2>Grid Layout (Shared)</h2>
+    <div class="demo-container">
+      <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        <h3 style="grid-column:1 / -1;">Grid 1</h3>
+        <div class="sortable-item" data-id="g1-1">G1-1</div>
+        <div class="sortable-item" data-id="g1-2">G1-2</div>
+        <div class="sortable-item" data-id="g1-3">G1-3</div>
+        <div class="sortable-item" data-id="g1-4">G1-4</div>
+      </div>
+      <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        <h3 style="grid-column:1 / -1;">Grid 2</h3>
+        <div class="sortable-item" data-id="g2-1">G2-1</div>
+        <div class="sortable-item" data-id="g2-2">G2-2</div>
+        <div class="sortable-item" data-id="g2-3">G2-3</div>
+        <div class="sortable-item" data-id="g2-4">G2-4</div>
+      </div>
+    </div>
+
+    <!-- Legacy IDs for E2E tests -->
+    <h2>Legacy E2E Sandbox</h2>
     <div class="demo-container">
       <div class="sortable-list" id="list1">
         <h3>List 1</h3>
@@ -120,34 +190,71 @@
     try {
       // Try to import and initialize Resortable
       const { Sortable } = await import('/src/index.ts');
-      
-      // Initialize sortable instances
-      const sortable1 = new Sortable(document.getElementById('list1'), {
+
+      const log = (label) => (evt) => {
+        const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from.id || 'unknown'} to ${evt.to.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
+        console.log(msg, evt);
+        document.getElementById('status').innerHTML = `Last action: ${msg}`;
+      };
+
+      // Basic list (sort only)
+      new Sortable(document.getElementById('basic-list'), {
+        group: 'basic',
+        animation: 150,
+        onEnd: log('Basic end'),
+        onUpdate: log('Basic update'),
+      });
+
+      // Shared Group A
+      const sharedOpts = {
+        group: 'group-a',
+        animation: 150,
+        onAdd: log('Group A add'),
+        onRemove: log('Group A remove'),
+        onEnd: log('Group A end'),
+      };
+      new Sortable(document.getElementById('shared-a-1'), sharedOpts);
+      new Sortable(document.getElementById('shared-a-2'), sharedOpts);
+
+      // Independent groups A and B
+      new Sortable(document.getElementById('group-a-1'), {
+        group: 'independent-a',
+        animation: 150,
+        onEnd: log('Independent A end'),
+        onAdd: log('Independent A add'),
+        onRemove: log('Independent A remove'),
+      });
+      new Sortable(document.getElementById('group-b-1'), {
+        group: 'independent-b',
+        animation: 150,
+        onEnd: log('Independent B end'),
+        onAdd: log('Independent B add'),
+        onRemove: log('Independent B remove'),
+      });
+
+      // Grid shared
+      const gridOpts = {
+        group: 'grid-shared',
+        animation: 150,
+        onAdd: log('Grid add'),
+        onRemove: log('Grid remove'),
+        onEnd: log('Grid end'),
+      };
+      new Sortable(document.getElementById('grid-1'), gridOpts);
+      new Sortable(document.getElementById('grid-2'), gridOpts);
+
+      // Legacy E2E lists
+      const e2eOpts = {
         group: 'shared',
         animation: 150,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        dragClass: 'sortable-drag',
-        onEnd: (evt) => {
-          console.log('Drag ended:', evt);
-          document.getElementById('status').innerHTML = 
-            `Last action: Moved item from index ${evt.oldIndex} to ${evt.newIndex}`;
-        }
-      });
-      
-      const sortable2 = new Sortable(document.getElementById('list2'), {
-        group: 'shared',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        dragClass: 'sortable-drag',
-        onEnd: (evt) => {
-          console.log('Drag ended:', evt);
-          document.getElementById('status').innerHTML = 
-            `Last action: Moved item from index ${evt.oldIndex} to ${evt.newIndex}`;
-        }
-      });
-      
+        onEnd: log('E2E end'),
+        onUpdate: log('E2E update'),
+        onAdd: log('E2E add'),
+        onRemove: log('E2E remove'),
+      };
+      new Sortable(document.getElementById('list1'), e2eOpts);
+      new Sortable(document.getElementById('list2'), e2eOpts);
+
       document.getElementById('library-status').textContent = 'Resortable Library Loaded';
       
     } catch (error) {
