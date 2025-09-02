@@ -33,7 +33,11 @@
  */
 
 export * from './types/index.js'
-import { SortableOptions } from './types/index.js'
+import { DragManager } from './core/DragManager.js'
+import { DropZone } from './core/DropZone.js'
+import { EventSystem } from './core/EventSystem.js'
+import { SortableOptions, type SortableEvents } from './types/index.js'
+import { toArray as domToArray } from './utils/dom.js'
 
 /**
  * @beta
@@ -74,6 +78,10 @@ export class Sortable {
    */
   public readonly options: SortableOptions
 
+  private dropZone: DropZone
+  private dragManager: DragManager
+  private eventSystem: EventSystem<SortableEvents>
+
   /**
    * Creates a new Sortable instance
    *
@@ -106,7 +114,20 @@ export class Sortable {
     this.element = element
     this.options = { ...defaultOptions, ...options }
 
-    // TODO: Initialize sortable functionality
+    this.dropZone = new DropZone(this.element)
+    this.eventSystem = new EventSystem<SortableEvents>()
+    this.dragManager = new DragManager(this.dropZone, this.eventSystem)
+    this.dragManager.attach()
+
+    if (this.options.onStart) {
+      this.eventSystem.on('start', this.options.onStart)
+    }
+    if (this.options.onUpdate) {
+      this.eventSystem.on('update', this.options.onUpdate)
+    }
+    if (this.options.onEnd) {
+      this.eventSystem.on('end', this.options.onEnd)
+    }
   }
 
   /**
@@ -126,7 +147,7 @@ export class Sortable {
    * @public
    */
   public destroy(): void {
-    // TODO: Implement destroy functionality
+    this.dragManager.detach()
   }
 
   /**
@@ -148,8 +169,7 @@ export class Sortable {
    * @public
    */
   public toArray(): string[] {
-    // TODO: Implement toArray functionality
-    return []
+    return domToArray(this.element)
   }
 }
 
