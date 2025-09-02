@@ -1,6 +1,6 @@
 /**
  * @fileoverview Resortable - Modern TypeScript rewrite of Sortable.js
- * @author Resortable Team
+ * @author Jeff Robbins
  * @version 2.0.0-alpha.1
  * @since 2.0.0
  *
@@ -116,7 +116,12 @@ export class Sortable {
 
     this.dropZone = new DropZone(this.element)
     this.eventSystem = new EventSystem<SortableEvents>()
-    this.dragManager = new DragManager(this.dropZone, this.eventSystem)
+    const groupName = resolveGroupName(this.options.group)
+    this.dragManager = new DragManager(
+      this.dropZone,
+      this.eventSystem,
+      groupName
+    )
     this.dragManager.attach()
 
     if (this.options.onStart) {
@@ -127,6 +132,12 @@ export class Sortable {
     }
     if (this.options.onEnd) {
       this.eventSystem.on('end', this.options.onEnd)
+    }
+    if (this.options.onAdd) {
+      this.eventSystem.on('add', this.options.onAdd)
+    }
+    if (this.options.onRemove) {
+      this.eventSystem.on('remove', this.options.onRemove)
     }
   }
 
@@ -209,4 +220,11 @@ const defaultOptions: SortableOptions = {
   sort: true,
   disabled: false,
   multiDrag: false,
+}
+
+/** Resolve the group name from group option */
+function resolveGroupName(group: SortableOptions['group']): string {
+  if (!group) return 'default'
+  if (typeof group === 'string') return group
+  return group.name || 'default'
 }

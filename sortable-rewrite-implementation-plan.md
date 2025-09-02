@@ -249,46 +249,97 @@ Notes and constraints for Phase 1
   allowing targeted `any` or `@ts-expect-error` during initial conversions; progressively remove those as modules are
   hardened.
 
-### Phase 2: Core Functionality (Weeks 4-8)
+### Phase 2: Core Functionality (Weeks 4-8) ✅ COMPLETED
 
 **Goal**: Implement core drag-and-drop functionality
 
 #### Tasks:
 
 - [x] Implement DragManager class
-- [x] Create DropZone management system
+- [x] Create DropZone management system  
 - [x] Build EventSystem with proper TypeScript events
 - [x] Implement basic sorting algorithms
 - [x] Add DOM utilities with modern APIs
 - [x] Create performance monitoring utilities
+- [x] Implement GlobalDragState for cross-zone operations
 - [x] Unit tests for core functionality
 - [x] E2E tests for drag-and-drop interactions
 - [x] Documentation for core API and functionality
 
-#### Deliverables:
+#### Plural-first drag model (added)
 
-- Working basic drag-and-drop
-- Event system with type safety
-- Core DOM manipulation utilities
-- Performance benchmarks
+- Adopt a plural-first drag model across core APIs to support multi-drag natively.
+  - Global active drag context stores `items: HTMLElement[]` rather than a single element.
+  - Events already expose `items: HTMLElement[]`; `item` remains the primary/anchor.
+  - Drop operations assume all dragged items land in the same `DropZone` at the same index.
+  - `DropZone.move(items: HTMLElement[], toIndex: number)` inserts items in-order at the computed index,
+    excluding the dragged items from the target’s current children to avoid index shifts.
+  - Within-list reorders emit `update` continuously; cross-list moves emit `remove` (origin), `add` (destination),
+    and `end` (origin), with `oldIndex/newIndex` referring to the primary item.
 
-### Phase 3: Animation System (Weeks 9-11)
+Rationale: Makes multi-drag a first-class concern and avoids retrofitting single-item code paths later. The
+assumption that all dragged items go to the same place simplifies index math and DOM ops and mirrors Sortable v1’s
+MultiDrag behavior.
+
+#### Deliverables: ✅ COMPLETED
+
+- ✅ Working basic drag-and-drop with HTML5 API
+- ✅ Event system with full TypeScript type safety
+- ✅ Core DOM manipulation utilities (dom.ts, performance.ts)
+- ✅ GlobalDragState for managing cross-zone drag operations
+- ✅ Comprehensive test coverage (unit + e2e)
+- ✅ Cross-browser compatibility verified with Playwright
+
+#### Implementation Highlights:
+
+- **DragManager**: Handles HTML5 drag events with proper lifecycle management
+- **DropZone**: Manages sortable containers with DOM operations
+- **EventSystem**: Type-safe event emitter with proper cleanup
+- **GlobalDragState**: Singleton state manager for cross-zone operations
+- **Cross-zone dragging**: Full support for dragging between different sortable lists
+- **Modern APIs**: Uses WeakMap for element tracking, avoiding DOM pollution
+
+### Phase 3: Animation System (Weeks 9-11) 🔄 IN PROGRESS
 
 **Goal**: Modern animation system with smooth transitions
 
-#### Tasks:
+#### High Priority Tasks (Next Sprint):
 
-- [ ] Implement AnimationManager
-- [ ] Create CSS transition engine
-- [ ] Add physics-based animations (optional)
-- [ ] Implement FLIP animations for complex reorderings
-- [ ] Add animation performance optimizations
+- [ ] Implement AnimationManager class
+- [ ] Create CSS transition engine with requestAnimationFrame coordination
+- [ ] Add basic FLIP animations for element reordering
+- [ ] Integrate animations with existing DragManager operations
+- [ ] Add animation configuration to SortableOptions interface
+
+#### Medium Priority Tasks:
+
+- [ ] Add physics-based animations (spring/easing functions)
+- [ ] Implement performance optimizations (will-change, transform layers)
+- [ ] Add animation event callbacks (onAnimationStart, onAnimationComplete)
+- [ ] Create animation utilities (duration calculation, easing presets)
+
+#### Low Priority Tasks:
+
+- [ ] Advanced FLIP animations for complex reorderings
+- [ ] Animation timeline coordination for multiple simultaneous operations
+- [ ] Custom animation plugin architecture
+- [ ] Performance monitoring and metrics for animations
 
 #### Deliverables:
 
-- Smooth animations for all operations
-- Configurable animation system
-- Performance-optimized transitions
+- Smooth 60fps animations for all drag-and-drop operations
+- Configurable animation system with presets
+- FLIP animation support for seamless reordering
+- Performance-optimized transitions using modern CSS properties
+- Animation API integrated with existing event system
+
+#### Next Steps:
+
+1. **AnimationManager Implementation**: Create core animation coordination class
+2. **FLIP Animation**: Implement First-Last-Invert-Play pattern for smooth reordering
+3. **CSS Integration**: Use modern CSS properties (transform, transition) with proper GPU acceleration
+4. **Performance**: Ensure animations don't block main thread or cause layout thrashing
+5. **Configuration**: Add animation options to SortableOptions with sensible defaults
 
 ### Phase 4: Plugin Architecture (Weeks 12-14)
 
@@ -427,7 +478,7 @@ tests/
 
 - Unit test coverage: >80% (configured)
 - E2E test coverage: Cross-browser validation
-- Browser coverage: Chrome, Firefox, Safari, Edge + Mobile viewports
+- Browser coverage: Chrome, Firefox, Safari, Edge + Mobile view ports
 
 ### Test Configuration Features
 
@@ -606,6 +657,26 @@ sortable.use(AutoScrollPlugin, {
 
 ## Current Status & Next Steps
 
+### Recent Development Progress (Last 3 Commits)
+
+**Latest Commit: `ded508c - refactor: tests, DragManager, GlobalDragState`**
+- Refactored DragManager with improved event handling
+- Introduced GlobalDragState singleton for cross-zone drag operations  
+- Enhanced test coverage for drag-and-drop scenarios
+- Improved TypeScript types and documentation
+
+**Commit: `59a203a - feat(core): implement basic drag-and-drop system`**
+- Complete implementation of core drag-and-drop functionality
+- Working DragManager, DropZone, and EventSystem classes
+- Full cross-browser compatibility with HTML5 drag API
+- Comprehensive test suite with Playwright e2e tests
+
+**Commit: `e17ea00 - test(e2e): Get Playwright working`**
+- Full Playwright test infrastructure setup
+- Cross-browser testing (Chrome, Firefox, Safari)
+- E2E tests covering drag-and-drop, events, and UI interactions
+- Test automation integrated with CI/CD pipeline
+
 ### ✅ Phase 1 Complete: Foundation Established
 
 The Resortable project now has a complete modern development foundation with:
@@ -633,15 +704,25 @@ The Resortable project now has a complete modern development foundation with:
 - Automated API documentation generation and GitHub Pages deployment
 - Documentation quality validation through ESLint TSDoc plugin
 
-### 🔄 Ready for Phase 2: Core Implementation
+### ✅ Phase 2 Complete: Core Implementation
 
-With the foundation complete, development can now focus on implementing the core Sortable functionality:
+Phase 2 has been successfully completed with a fully functional basic drag-and-drop system:
 
-1. **DragManager Implementation** - Modern drag-and-drop using pointer events
-2. **Event System** - Type-safe event handling with proper lifecycle management
-3. **DOM Utilities** - Modern DOM manipulation with performance optimizations
-4. **State Management** - Immutable state patterns with WeakMap element tracking
-5. **Animation System** - FLIP animations with requestAnimationFrame coordination
+1. ✅ **DragManager Implementation** - Modern drag-and-drop using HTML5 API
+2. ✅ **Event System** - Type-safe event handling with proper lifecycle management
+3. ✅ **DOM Utilities** - Modern DOM manipulation with performance optimizations
+4. ✅ **State Management** - GlobalDragState with WeakMap element tracking
+5. ✅ **Cross-zone Operations** - Support for dragging between different lists
+
+### 🔄 Ready for Phase 3: Animation System
+
+With core functionality complete, the next focus is implementing smooth animations:
+
+1. **AnimationManager** - Coordinate all animation operations
+2. **TransitionEngine** - CSS transition-based animations
+3. **FLIP Animations** - First-Last-Invert-Play for smooth reordering
+4. **requestAnimationFrame** - Proper frame-based animation timing
+5. **Performance Optimization** - Efficient animation with minimal reflows
 
 The robust tooling foundation ensures that all new code will have:
 
