@@ -358,6 +358,10 @@ export interface SortableEvents {
   update: SortableEvent
   /** Fired when drag ends */
   end: SortableEvent
+  /** Fired on the list receiving an item from another list */
+  add: SortableEvent
+  /** Fired on the list an item is dragged from when moved to another list */
+  remove: SortableEvent
   /** Allow additional custom events */
   [key: string]: unknown
 }
