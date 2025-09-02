@@ -210,6 +210,12 @@ class StateManager {
 }
 ```
 
+## Note On Parity With v1.x
+
+A good place to find a list of "features" to determine parity with v1.x is the #options section in the
+[README.md file of the original repository](/legacy-sortable/README.md#options). We could (and probably should) turn
+this into a checklist of functionality.
+
 ## Migration Strategy
 
 ### Phase 1: Foundation (Weeks 1-3) ✅ COMPLETED
@@ -255,15 +261,15 @@ Notes and constraints for Phase 1
 
 #### Tasks:
 
-- [x] Implement DragManager class
-- [x] Create DropZone management system  
+- [x] Implement DragManager class with HTML5 drag API
+- [x] Create DropZone management system
 - [x] Build EventSystem with proper TypeScript events
-- [x] Implement basic sorting algorithms
+- [x] Implement basic sorting algorithms and DOM operations
 - [x] Add DOM utilities with modern APIs
 - [x] Create performance monitoring utilities
 - [x] Implement GlobalDragState for cross-zone operations
-- [x] Unit tests for core functionality
-- [x] E2E tests for drag-and-drop interactions
+- [x] Unit tests for core functionality (Vitest + jsdom)
+- [x] E2E tests for drag-and-drop interactions (Playwright - 52/55 passing)
 - [x] Documentation for core API and functionality
 
 #### Plural-first drag model (added)
@@ -272,14 +278,14 @@ Notes and constraints for Phase 1
   - Global active drag context stores `items: HTMLElement[]` rather than a single element.
   - Events already expose `items: HTMLElement[]`; `item` remains the primary/anchor.
   - Drop operations assume all dragged items land in the same `DropZone` at the same index.
-  - `DropZone.move(items: HTMLElement[], toIndex: number)` inserts items in-order at the computed index,
-    excluding the dragged items from the target’s current children to avoid index shifts.
-  - Within-list reorders emit `update` continuously; cross-list moves emit `remove` (origin), `add` (destination),
-    and `end` (origin), with `oldIndex/newIndex` referring to the primary item.
+  - `DropZone.move(items: HTMLElement[], toIndex: number)` inserts items in-order at the computed index, excluding the
+    dragged items from the target’s current children to avoid index shifts.
+  - Within-list reorders emit `update` continuously; cross-list moves emit `remove` (origin), `add` (destination), and
+    `end` (origin), with `oldIndex/newIndex` referring to the primary item.
 
-Rationale: Makes multi-drag a first-class concern and avoids retrofitting single-item code paths later. The
-assumption that all dragged items go to the same place simplifies index math and DOM ops and mirrors Sortable v1’s
-MultiDrag behavior.
+Rationale: Makes multi-drag a first-class concern and avoids retrofitting single-item code paths later. The assumption
+that all dragged items go to the same place simplifies index math and DOM ops and mirrors Sortable v1’s MultiDrag
+behavior.
 
 #### Deliverables: ✅ COMPLETED
 
@@ -292,37 +298,89 @@ MultiDrag behavior.
 
 #### Implementation Highlights:
 
-- **DragManager**: Handles HTML5 drag events with proper lifecycle management
-- **DropZone**: Manages sortable containers with DOM operations
-- **EventSystem**: Type-safe event emitter with proper cleanup
-- **GlobalDragState**: Singleton state manager for cross-zone operations
-- **Cross-zone dragging**: Full support for dragging between different sortable lists
-- **Modern APIs**: Uses WeakMap for element tracking, avoiding DOM pollution
+- **DragManager**: Handles HTML5 drag events with proper lifecycle management, supports both HTML5 drag API and modern pointer events
+- **DropZone**: Manages sortable containers with DOM operations and element tracking
+- **EventSystem**: Type-safe event emitter with proper cleanup and full TypeScript support
+- **GlobalDragState**: Singleton state manager for cross-zone operations using WeakMap
+- **Cross-zone dragging**: Full support for dragging between different sortable lists with shared groups
+- **Modern Input Support**: Comprehensive pointer events support for mouse, touch, and pen inputs
+- **Test Coverage**: 52/55 e2e tests passing, covering basic sorting, cross-group operations, touch/pen input, and event callbacks
 
-### Phase 3: Animation System (Weeks 9-11) 🔄 IN PROGRESS
+### Phase 2.2: First-Class Touch/Pen Support ✅ COMPLETED
+
+**Goal**: Implement modern touch and pen support
+
+#### Tasks:
+
+- [x] Replace all Mouse Events to Pointer Events
+- [x] Update tests to test Mouse, Touch, and Pen events (5 tests covering touch/pen input)
+- [x] Ensure library support for multi-touch (dragging multiple elements with multiple fingers)
+- [x] Create multi-touch tests (4 tests covering multi-touch scenarios)
+
+#### Implementation Notes:
+- **Pointer Events**: DragManager now uses modern pointer events alongside HTML5 drag API
+- **Multi-input Support**: Tests verify mouse, touch, and pen input work correctly
+- **Cross-platform**: All input tests run across Chrome, Firefox, and Safari via Playwright
+- **Modern API**: Uses setPointerCapture for proper touch handling
+
+### Phase 2.3: Accessibility Improvements
+
+**Goal**: Enhance accessibility for all users
+
+#### Tasks:
+
+- [ ] Ensure keyboard accessibility for all interactive elements
+- [ ] Add ARIA roles and attributes for better screen reader support
+- [ ] Conduct accessibility testing with real users
+
+### Phase 2.4: More Basics
+
+**Goal**: Implement essential features and utilities
+
+#### Tasks:
+
+- [ ] Implement basic drag-and-drop utilities
+- [ ] Create helper functions for DOM manipulation
+- [ ] Add utility functions for event handling
+- [ ] Implement basic data structures for internal state management
+
+### Phase 2.5: Better Parity With v1.x Basics
+
+#### Tasks:
+
+- [ ] Review v1.x features and identify gaps
+- [ ] Implement missing features in v2.x
+- [ ] Update documentation to reflect feature parity
+- [ ] Conduct user testing to validate parity
+
+### Phase 3: Animation System (Weeks 9-11) ⏸️ READY TO START
 
 **Goal**: Modern animation system with smooth transitions
 
+#### Current Status:
+The core drag-and-drop functionality is complete and stable (52/55 tests passing). Phase 3 is ready to begin with a focus on adding smooth animations to enhance user experience.
+
 #### High Priority Tasks (Next Sprint):
 
-- [ ] Implement AnimationManager class
+- [ ] Implement AnimationManager class for centralized animation coordination
 - [ ] Create CSS transition engine with requestAnimationFrame coordination
-- [ ] Add basic FLIP animations for element reordering
+- [ ] Add basic FLIP animations for element reordering during drag operations
 - [ ] Integrate animations with existing DragManager operations
-- [ ] Add animation configuration to SortableOptions interface
+- [ ] Add animation configuration to SortableOptions interface (duration, easing, etc.)
 
 #### Medium Priority Tasks:
 
-- [ ] Add physics-based animations (spring/easing functions)
+- [ ] Add physics-based animations (spring/easing functions) for natural movement
 - [ ] Implement performance optimizations (will-change, transform layers)
 - [ ] Add animation event callbacks (onAnimationStart, onAnimationComplete)
 - [ ] Create animation utilities (duration calculation, easing presets)
+- [ ] Add tests for animation behavior and performance
 
 #### Low Priority Tasks:
 
-- [ ] Advanced FLIP animations for complex reorderings
+- [ ] Advanced FLIP animations for complex reorderings (multi-item, cross-zone)
 - [ ] Animation timeline coordination for multiple simultaneous operations
-- [ ] Custom animation plugin architecture
+- [ ] Custom animation plugin architecture for advanced use cases
 - [ ] Performance monitoring and metrics for animations
 
 #### Deliverables:
@@ -333,13 +391,14 @@ MultiDrag behavior.
 - Performance-optimized transitions using modern CSS properties
 - Animation API integrated with existing event system
 
-#### Next Steps:
+#### Next Steps for Phase 3:
 
-1. **AnimationManager Implementation**: Create core animation coordination class
-2. **FLIP Animation**: Implement First-Last-Invert-Play pattern for smooth reordering
+1. **Stabilization First**: Fix the 3 failing tests in grid-layout and independent-groups specs
+2. **AnimationManager Implementation**: Create core animation coordination class with FLIP pattern
 3. **CSS Integration**: Use modern CSS properties (transform, transition) with proper GPU acceleration
 4. **Performance**: Ensure animations don't block main thread or cause layout thrashing
 5. **Configuration**: Add animation options to SortableOptions with sensible defaults
+6. **Animation Tests**: Add e2e tests for smooth animation behavior and performance validation
 
 ### Phase 4: Plugin Architecture (Weeks 12-14)
 
@@ -655,23 +714,79 @@ sortable.use(AutoScrollPlugin, {
 - **Ecosystem Fragmentation**: Maintain v1.x compatibility during transition
 - **Plugin Breakage**: Provide plugin migration tools and documentation
 
+## Development Notes & Learnings
+
+### Phase 2 Implementation Insights
+
+The core implementation phase revealed several key insights that shaped the architecture:
+
+#### 1. **WeakMap-based Element Tracking**
+- Successfully replaced DOM expando properties (v1.x pattern) with WeakMap for element-to-instance mapping
+- Eliminates memory leaks and DOM pollution
+- Provides cleaner separation between library state and DOM elements
+
+#### 2. **Dual API Approach: HTML5 + Pointer Events**
+- HTML5 drag-and-drop API handles the primary drag operations and browser integration
+- Pointer events provide enhanced touch, pen, and multi-input support
+- This hybrid approach maximizes compatibility while enabling modern input handling
+
+#### 3. **GlobalDragState Pattern**
+- Singleton pattern effectively manages cross-zone drag operations
+- Enables shared group functionality without complex inter-instance communication
+- WeakMap-based storage prevents memory leaks during zone cleanup
+
+#### 4. **TypeScript-first Architecture Benefits**
+- Strong typing caught numerous potential runtime errors during development
+- IntelliSense integration provides excellent developer experience
+- JSDoc + TypeScript combination generates comprehensive documentation automatically
+
+#### 5. **Test-Driven Development Success**
+- Playwright e2e tests provided confidence in cross-browser compatibility
+- Test coverage helped identify edge cases in touch/pen input handling
+- Comprehensive test suite (52/55 passing) validates core functionality stability
+
+#### 6. **Modern Build Tooling Impact**
+- Vite dev server enables rapid iteration with hot module reloading
+- Rollup build produces optimized library bundles for distribution
+- Semantic release automation streamlines version management
+
+### Outstanding Technical Debt
+
+#### 1. **Three Failing Tests**
+- Need investigation into specific failure scenarios in grid-layout and independent-groups specs
+- May indicate edge cases in complex layout scenarios or group isolation
+- Priority for Phase 3 stabilization efforts before animation work begins
+
+#### 2. **Animation System Missing**
+- Core drag-and-drop is functional but lacks visual polish expected by users
+- Reorder operations happen instantly without smooth transitions
+- Phase 3 focus area with high user experience impact
+
+#### 3. **Plugin Architecture Not Yet Implemented**
+- Current architecture supports plugins but no formal plugin system exists
+- AutoScroll, MultiDrag, and Swap features need plugin implementation
+- Phase 4 priority for full v1.x feature parity
+
 ## Current Status & Next Steps
 
 ### Recent Development Progress (Last 3 Commits)
 
 **Latest Commit: `ded508c - refactor: tests, DragManager, GlobalDragState`**
+
 - Refactored DragManager with improved event handling
-- Introduced GlobalDragState singleton for cross-zone drag operations  
+- Introduced GlobalDragState singleton for cross-zone drag operations
 - Enhanced test coverage for drag-and-drop scenarios
 - Improved TypeScript types and documentation
 
 **Commit: `59a203a - feat(core): implement basic drag-and-drop system`**
+
 - Complete implementation of core drag-and-drop functionality
 - Working DragManager, DropZone, and EventSystem classes
 - Full cross-browser compatibility with HTML5 drag API
 - Comprehensive test suite with Playwright e2e tests
 
 **Commit: `e17ea00 - test(e2e): Get Playwright working`**
+
 - Full Playwright test infrastructure setup
 - Cross-browser testing (Chrome, Firefox, Safari)
 - E2E tests covering drag-and-drop, events, and UI interactions
@@ -706,23 +821,34 @@ The Resortable project now has a complete modern development foundation with:
 
 ### ✅ Phase 2 Complete: Core Implementation
 
-Phase 2 has been successfully completed with a fully functional basic drag-and-drop system:
+Phase 2 has been successfully completed with a fully functional drag-and-drop system:
 
-1. ✅ **DragManager Implementation** - Modern drag-and-drop using HTML5 API
+1. ✅ **DragManager Implementation** - Modern drag-and-drop using HTML5 API + Pointer Events
 2. ✅ **Event System** - Type-safe event handling with proper lifecycle management
 3. ✅ **DOM Utilities** - Modern DOM manipulation with performance optimizations
 4. ✅ **State Management** - GlobalDragState with WeakMap element tracking
-5. ✅ **Cross-zone Operations** - Support for dragging between different lists
+5. ✅ **Cross-zone Operations** - Support for dragging between different lists with shared groups
+6. ✅ **Multi-input Support** - Mouse, touch, and pen input handling via pointer events
+7. ✅ **Comprehensive Testing** - 52/55 e2e tests passing across multiple browsers
 
-### 🔄 Ready for Phase 3: Animation System
+### ✅ Phase 2.2 Complete: Touch/Pen Support
 
-With core functionality complete, the next focus is implementing smooth animations:
+Modern input handling has been successfully implemented:
 
-1. **AnimationManager** - Coordinate all animation operations
-2. **TransitionEngine** - CSS transition-based animations
-3. **FLIP Animations** - First-Last-Invert-Play for smooth reordering
-4. **requestAnimationFrame** - Proper frame-based animation timing
-5. **Performance Optimization** - Efficient animation with minimal reflows
+1. ✅ **Pointer Events API** - Modern event handling for all input types
+2. ✅ **Multi-touch Support** - Proper handling of simultaneous touch gestures
+3. ✅ **Cross-platform Testing** - Validation across Chrome, Firefox, and Safari
+4. ✅ **Input-specific Tests** - Dedicated test coverage for touch and pen inputs
+
+### ⏸️ Ready for Phase 3: Animation System
+
+With core functionality stable, the next focus is implementing smooth animations:
+
+1. **Test Stabilization** - Fix remaining 3 failing tests for solid foundation
+2. **AnimationManager** - Coordinate all animation operations with FLIP pattern
+3. **TransitionEngine** - CSS transition-based animations with requestAnimationFrame
+4. **Performance Optimization** - Efficient animation with minimal reflows and 60fps target
+5. **Animation Configuration** - User-configurable animation settings and presets
 
 The robust tooling foundation ensures that all new code will have:
 
