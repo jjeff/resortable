@@ -22,11 +22,24 @@ export function insertAt(
   el: HTMLElement,
   index: number
 ): void {
-  const children = Array.from(parent.children).filter((c) => c !== el)
-  if (index >= children.length) {
+  const children = Array.from(parent.children)
+  const currentIndex = children.indexOf(el)
+
+  // If element is already at the target index, do nothing
+  if (currentIndex === index) return
+
+  // Remove element from current position
+  if (el.parentElement === parent) {
+    parent.removeChild(el)
+  }
+
+  // Get children after removal
+  const updatedChildren = Array.from(parent.children)
+
+  if (index >= updatedChildren.length) {
     parent.appendChild(el)
   } else {
-    parent.insertBefore(el, children[index])
+    parent.insertBefore(el, updatedChildren[index])
   }
 }
 
