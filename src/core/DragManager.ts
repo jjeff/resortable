@@ -12,7 +12,8 @@ const dragManagerRegistry = new Map<HTMLElement, DragManager>()
  */
 export class DragManager {
   private startIndex = -1
-  private isMouseDragging = false
+  private isPointerDragging = false
+  private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
 
   constructor(
@@ -35,9 +36,9 @@ export class DragManager {
     el.addEventListener('dragenter', this.onDragEnter)
     el.addEventListener('dragleave', this.onDragLeave)
 
-    // Mouse events for fallback/testing compatibility
-    el.addEventListener('mousedown', this.onMouseDown)
-    // Note: mousemove and mouseup are attached to document in onMouseDown
+    // Pointer events for modern touch/pen/mouse support
+    el.addEventListener('pointerdown', this.onPointerDown)
+    // Note: pointermove and pointerup are attached to document in onPointerDown
 
     for (const child of this.zone.getItems()) {
       child.draggable = true
@@ -54,9 +55,9 @@ export class DragManager {
     el.removeEventListener('dragenter', this.onDragEnter)
     el.removeEventListener('dragleave', this.onDragLeave)
 
-    // Remove mouse events
-    el.removeEventListener('mousedown', this.onMouseDown)
-    // Document listeners are removed in onMouseUp
+    // Remove pointer events
+    el.removeEventListener('pointerdown', this.onPointerDown)
+    // Document listeners are removed in onPointerUp
 
     // Unregister from global registry
     dragManagerRegistry.delete(this.zone.element)
@@ -67,8 +68,10 @@ export class DragManager {
     if (!target || target.parentElement !== this.zone.element) return
     this.startIndex = this.zone.getIndex(target)
 
-    // Register with global drag state
+    // Register with global drag state using HTML5 drag API as ID
+    const dragId = 'html5-drag'
     globalDragState.startDrag(
+      dragId,
       target,
       this.zone.element,
       this,
@@ -95,12 +98,13 @@ export class DragManager {
   private onDragOver = (e: DragEvent): void => {
     e.preventDefault()
 
-    // Check if we can accept the current drag
-    if (!globalDragState.canAcceptDrop(this.groupName)) {
+    // Check if we can accept the current drag (HTML5 drag events don't have pointer IDs)
+    const dragId = 'html5-drag'
+    if (!globalDragState.canAcceptDrop(dragId, this.groupName)) {
       return
     }
 
-    const activeDrag = globalDragState.getActiveDrag()
+    const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
     const dragItem = activeDrag.item
@@ -125,8 +129,18 @@ export class DragManager {
     if (overIndex === dragIndex) return
 
     // Determine the correct insertion index based on drag direction
-    // We want to insert at the position of the target we're hovering over
-    this.zone.move(dragItem, overIndex)
+    // We want to insert the dragged item before the item we're hovering over
+    let targetIndex = overIndex
+    if (dragIndex < overIndex) {
+      // Dragging downwards: insert at the position that will be before the target
+      // After removing the dragged item, target shifts down by 1, so we insert at overIndex - 1
+      targetIndex = overIndex - 1
+    } else {
+      // Dragging upwards: insert before the target (overIndex stays the same)
+      targetIndex = overIndex
+    }
+
+    this.zone.move(dragItem, targetIndex)
 
     // Only emit update if it's within the same zone originally
     if (activeDrag.fromZone === this.zone.element) {
@@ -147,42 +161,80 @@ export class DragManager {
 
   private onDragEnd = (): void => {
     // Global drag state handles the end event and cleanup
-    globalDragState.endDrag()
+    const dragId = 'html5-drag'
+    globalDragState.endDrag(dragId)
     this.startIndex = -1
   }
 
   private onDragEnter = (e: DragEvent): void => {
     e.preventDefault()
-    if (globalDragState.canAcceptDrop(this.groupName)) {
-      globalDragState.setPutTarget(this.zone.element, this, this.groupName)
+    const dragId = 'html5-drag'
+    if (globalDragState.canAcceptDrop(dragId, this.groupName)) {
+      globalDragState.setPutTarget(
+        dragId,
+        this.zone.element,
+        this,
+        this.groupName
+      )
     }
   }
 
   private onDragLeave = (e: DragEvent): void => {
     // Only clear if we're leaving the zone entirely
     if (!this.zone.element.contains(e.relatedTarget as Node)) {
-      globalDragState.clearPutTarget()
+      const dragId = 'html5-drag'
+      globalDragState.clearPutTarget(dragId)
     }
   }
 
-  // Mouse-based drag and drop for testing compatibility
-  private onMouseDown = (e: MouseEvent): void => {
+  // Pointer-based drag and drop for modern touch/pen/mouse support
+  private onPointerDown = (e: PointerEvent): void => {
     const target = e.target as HTMLElement
     if (!target || target.parentElement !== this.zone.element) return
 
-    // Only start drag on left button
+    // Only start drag on primary button (left mouse or primary touch)
     if (e.button !== 0) return
 
+    // Ignore pen input - pen should use native drag API or be explicitly handled
+    if (e.pointerType === 'pen') return
+
+    // If there's already an active drag, cancel it if this is a touch event
+    // This handles multi-touch scenarios where dragging should be cancelled
+    if (this.isPointerDragging && this.activePointerId !== null) {
+      if (e.pointerType === 'touch') {
+        // Cancel the existing drag when a second touch is detected
+        // Revert any moves that may have happened
+        this.cleanupPointerDrag(true)
+        return
+      }
+      // For non-touch events, just ignore the new pointer
+      return
+    }
+
+    // Only handle primary pointers for multi-touch scenarios
+    if (!e.isPrimary) return
+
+    // Capture the pointer to ensure we receive all subsequent events
+    // Firefox throws an error for synthetic events, so we need to handle this gracefully
+    try {
+      target.setPointerCapture(e.pointerId)
+    } catch (_err) {
+      // This is expected for synthetic pointer events in Firefox - continue without capture
+    }
     this.dragElement = target
-    this.isMouseDragging = true
+    this.isPointerDragging = true
+    this.activePointerId = e.pointerId
     this.startIndex = this.zone.getIndex(target)
 
-    // Attach global mouse events
-    document.addEventListener('mousemove', this.onMouseMove)
-    document.addEventListener('mouseup', this.onMouseUp)
+    // Attach global pointer events
+    document.addEventListener('pointermove', this.onPointerMove)
+    document.addEventListener('pointerup', this.onPointerUp)
+    document.addEventListener('pointercancel', this.onPointerCancel)
 
-    // Register with global drag state
+    // Register with global drag state using pointer ID
+    const dragId = `pointer-${this.activePointerId}`
     globalDragState.startDrag(
+      dragId,
       target,
       this.zone.element,
       this,
@@ -205,12 +257,21 @@ export class DragManager {
     e.preventDefault()
   }
 
-  private onMouseMove = (e: MouseEvent): void => {
-    if (!this.isMouseDragging || !this.dragElement) return
+  private onPointerMove = (e: PointerEvent): void => {
+    if (
+      !this.isPointerDragging ||
+      !this.dragElement ||
+      e.pointerId !== this.activePointerId
+    )
+      return
+
+    // Only process primary pointer events during drag
+    if (!e.isPrimary) return
 
     e.preventDefault()
 
-    const activeDrag = globalDragState.getActiveDrag()
+    const dragId = `pointer-${this.activePointerId}`
+    const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
     // Find the element under the mouse cursor
@@ -241,15 +302,22 @@ export class DragManager {
         // We need to find the actual DragManager instance for the target zone
         // For now, create a minimal put target that will trigger the events
         const targetDragManager = this.findDragManagerForZone(targetZoneElement)
+        const dragId = `pointer-${this.activePointerId}`
         if (targetDragManager) {
           globalDragState.setPutTarget(
+            dragId,
             targetZoneElement,
             targetDragManager,
             targetDragManager.groupName
           )
         } else {
           // Fallback: use current drag manager but with target zone
-          globalDragState.setPutTarget(targetZoneElement, this, this.groupName)
+          globalDragState.setPutTarget(
+            dragId,
+            targetZoneElement,
+            this,
+            this.groupName
+          )
         }
       }
     } else if (over !== this.dragElement) {
@@ -273,17 +341,66 @@ export class DragManager {
     }
   }
 
-  private onMouseUp = (): void => {
-    if (!this.isMouseDragging) return
+  private onPointerUp = (e: PointerEvent): void => {
+    if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 
-    // Remove global mouse event listeners
-    document.removeEventListener('mousemove', this.onMouseMove)
-    document.removeEventListener('mouseup', this.onMouseUp)
+    this.cleanupPointerDrag()
+  }
+
+  private onPointerCancel = (e: PointerEvent): void => {
+    if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
+
+    this.cleanupPointerDrag()
+  }
+
+  private cleanupPointerDrag(revert = false): void {
+    // Remove global pointer event listeners
+    document.removeEventListener('pointermove', this.onPointerMove)
+    document.removeEventListener('pointerup', this.onPointerUp)
+    document.removeEventListener('pointercancel', this.onPointerCancel)
+
+    // If reverting (cancelled drag), restore original position
+    if (revert && this.dragElement && this.startIndex >= 0) {
+      const dragId =
+        this.activePointerId !== null ? `pointer-${this.activePointerId}` : null
+      const activeDrag = dragId ? globalDragState.getActiveDrag(dragId) : null
+
+      if (activeDrag && activeDrag.fromZone) {
+        // Move the element back to its original position
+        const fromZone = activeDrag.fromZone
+        const items = Array.from(fromZone.children)
+        const currentIndex = items.indexOf(this.dragElement)
+
+        if (currentIndex !== this.startIndex) {
+          // Remove from current position
+          if (this.dragElement.parentElement) {
+            this.dragElement.parentElement.removeChild(this.dragElement)
+          }
+
+          // Insert at original position
+          if (this.startIndex >= items.length - 1) {
+            fromZone.appendChild(this.dragElement)
+          } else {
+            const beforeElement =
+              items[this.startIndex] || items[this.startIndex + 1]
+            if (beforeElement) {
+              fromZone.insertBefore(this.dragElement, beforeElement)
+            } else {
+              fromZone.appendChild(this.dragElement)
+            }
+          }
+        }
+      }
+    }
 
     // Global drag state handles the end event and cleanup
-    globalDragState.endDrag()
+    if (this.activePointerId !== null) {
+      const dragId = `pointer-${this.activePointerId}`
+      globalDragState.endDrag(dragId)
+    }
     this.startIndex = -1
-    this.isMouseDragging = false
+    this.isPointerDragging = false
+    this.activePointerId = null
     this.dragElement = null
   }
 
@@ -301,12 +418,19 @@ export class DragManager {
     }
 
     // Use proper group compatibility check
-    return globalDragState.canAcceptDrop(targetDragManager.groupName)
+    if (this.activePointerId !== null) {
+      const dragId = `pointer-${this.activePointerId}`
+      return globalDragState.canAcceptDrop(dragId, targetDragManager.groupName)
+    }
+    return false
   }
 
   /** Fallback heuristic for group compatibility when no DragManager is found */
   private canDropInZoneHeuristic(targetZone: HTMLElement): boolean {
-    const activeDrag = globalDragState.getActiveDrag()
+    if (this.activePointerId === null) return false
+
+    const dragId = `pointer-${this.activePointerId}`
+    const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return false
 
     // Check if this is the current group
