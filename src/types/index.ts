@@ -114,7 +114,6 @@ export interface SortableOptions {
   /**
    * Enable multi-drag functionality
    * @defaultValue false
-   * @beta This feature is experimental
    */
   multiDrag?: boolean
 
@@ -281,9 +280,8 @@ export interface SortableEvent {
 
   /**
    * Array of selected elements (multi-drag mode)
-   * @beta Multi-drag is experimental
    */
-  items?: HTMLElement[]
+  items: HTMLElement[]
 }
 
 /**
@@ -310,7 +308,6 @@ export interface SortableEvent {
  * ```
  *
  * @public
- * @beta Plugin system is experimental
  */
 export interface SortablePlugin {
   /**
@@ -349,3 +346,18 @@ export type DeepPartial<T> = {
  * @public
  */
 export type ElementSelector = string | HTMLElement
+
+/**
+ * Mapping of event names to event payloads
+ * @public
+ */
+export interface SortableEvents {
+  /** Fired when drag starts */
+  start: SortableEvent
+  /** Fired when an item is moved during drag */
+  update: SortableEvent
+  /** Fired when drag ends */
+  end: SortableEvent
+  /** Allow additional custom events */
+  [key: string]: unknown
+}

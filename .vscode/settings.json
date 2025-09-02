@@ -34,5 +34,15 @@
   "editor.insertSpaces": true,
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "testing.automaticallyOpenPeekView": "never",
+  "testing.defaultGutterClickAction": "run",
+  // Playwright VS Code extension settings
+  "playwright.testExplorer.enabled": true,
+  "playwright.testExplorer.showOnlyProjects": false,
+  "playwright.testExplorer.projectNames": [],
+  "playwright.testExplorer.testIdAttribute": "data-testid",
+  // Vitest extension settings
+  "vitest.enable": true,
+  "vitest.testFilePatterns": ["**/*.test.ts", "**/*.spec.ts"]
 }

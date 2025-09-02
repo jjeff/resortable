@@ -37,6 +37,24 @@ const sortable = new Sortable(document.getElementById('my-list'), {
 });
 ```
 
+## Core API
+
+Sortable emits lifecycle events during drag operations:
+
+- `start` – when dragging begins
+- `update` – when an item moves
+- `end` – when drag completes
+
+These can be subscribed to via options:
+
+```ts
+const sortable = new Sortable(list, {
+  onStart: (evt) => console.log('start', evt),
+  onUpdate: (evt) => console.log('update', evt),
+  onEnd: (evt) => console.log('end', evt)
+})
+```
+
 ## Development
 
 ```bash
