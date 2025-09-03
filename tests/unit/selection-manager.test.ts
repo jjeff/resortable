@@ -194,60 +194,8 @@ describe('SelectionManager', () => {
     })
   })
 
-  describe('Keyboard Event Handling', () => {
-    it('should handle Ctrl+Click for toggle selection', () => {
-      selectionManager = new SelectionManager(container, eventSystem, {
-        multiSelect: true
-      })
-      
-      const clickEvent = new MouseEvent('click', {
-        ctrlKey: true,
-        bubbles: true
-      })
-      
-      items[1].dispatchEvent(clickEvent)
-      expect(selectionManager.getSelected()).toContain(items[1])
-      
-      items[1].dispatchEvent(clickEvent)
-      expect(selectionManager.getSelected()).not.toContain(items[1])
-    })
-
-    it('should handle Shift+Click for range selection', () => {
-      selectionManager = new SelectionManager(container, eventSystem, {
-        multiSelect: true
-      })
-      
-      // First select an item
-      const normalClick = new MouseEvent('click', { bubbles: true })
-      items[1].dispatchEvent(normalClick)
-      
-      // Then shift-click another item
-      const shiftClick = new MouseEvent('click', {
-        shiftKey: true,
-        bubbles: true
-      })
-      items[3].dispatchEvent(shiftClick)
-      
-      expect(selectionManager.getSelected()).toHaveLength(3)
-      expect(selectionManager.getSelected()).toContain(items[1])
-      expect(selectionManager.getSelected()).toContain(items[2])
-      expect(selectionManager.getSelected()).toContain(items[3])
-    })
-
-    it('should handle Cmd+Click on Mac for toggle selection', () => {
-      selectionManager = new SelectionManager(container, eventSystem, {
-        multiSelect: true
-      })
-      
-      const clickEvent = new MouseEvent('click', {
-        metaKey: true,
-        bubbles: true
-      })
-      
-      items[2].dispatchEvent(clickEvent)
-      expect(selectionManager.getSelected()).toContain(items[2])
-    })
-  })
+  // Note: Click event handling has been moved to KeyboardManager
+  // These tests have been moved to the integration tests
 
   describe('Cleanup', () => {
     it('should clean up event listeners on destroy', () => {

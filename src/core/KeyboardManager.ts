@@ -56,6 +56,12 @@ export class KeyboardManager {
     this.container.removeAttribute('role')
     this.container.removeAttribute('aria-label')
     
+    // Reset tabindex on items
+    const items = this.zone.getItems()
+    items.forEach(item => {
+      item.setAttribute('tabindex', '-1')
+    })
+    
     // Clean up announcer
     if (this.announcer) {
       this.announcer.remove()
@@ -244,6 +250,16 @@ export class KeyboardManager {
       this.events
     )
 
+    // Emit start event
+    this.events.emit('start', {
+      item: selected[0],
+      items: selected,
+      from: this.container,
+      to: this.container,
+      oldIndex: this.originalIndices[0],
+      newIndex: this.originalIndices[0]
+    })
+
     // Announce grab
     this.announce(`Grabbed ${selected.length} item${selected.length > 1 ? 's' : ''}. Use arrow keys to move, Enter to drop, Escape to cancel.`)
   }
@@ -260,12 +276,24 @@ export class KeyboardManager {
       item.setAttribute('aria-grabbed', 'false')
     })
 
+    // Get final position before cleanup
+    const newIndex = this.zone.getIndex(this.grabbedItems[0])
+    
     // End drag in global state
     const dragId = 'keyboard-drag'
     globalDragState.endDrag(dragId)
 
+    // Emit end event
+    this.events.emit('end', {
+      item: this.grabbedItems[0],
+      items: this.grabbedItems,
+      from: this.container,
+      to: this.container,
+      oldIndex: this.originalIndices[0],
+      newIndex: newIndex
+    })
+
     // Announce drop
-    const newIndex = this.zone.getIndex(this.grabbedItems[0])
     this.announce(`Dropped ${this.grabbedItems.length} item${this.grabbedItems.length > 1 ? 's' : ''} at position ${newIndex + 1}`)
 
     this.isGrabbing = false

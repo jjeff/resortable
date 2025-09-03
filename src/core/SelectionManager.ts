@@ -33,7 +33,7 @@ export class SelectionManager {
     if (!this.isValidItem(item)) return
 
     if (!addToSelection) {
-      this.clearSelection()
+      this.clearSelectionWithoutEvent()
     }
 
     this.selectedItems.add(item)
@@ -99,13 +99,20 @@ export class SelectionManager {
    * Clear all selections
    */
   public clearSelection(): void {
+    this.clearSelectionWithoutEvent()
+    this.emitSelectionEvent()
+  }
+
+  /**
+   * Clear all selections without emitting event
+   */
+  private clearSelectionWithoutEvent(): void {
     this.selectedItems.forEach(item => {
       item.classList.remove(this.selectedClass)
       item.setAttribute('aria-selected', 'false')
     })
     this.selectedItems.clear()
     this.lastSelectedItem = null
-    this.emitSelectionEvent()
   }
 
   /**
@@ -222,6 +229,8 @@ export class SelectionManager {
     const event: Partial<SortableEvent> = {
       items: selected,
       item: selected[0] || null as any,
+      from: this.container,
+      to: this.container,
     }
     this.events.emit('select', event)
   }
