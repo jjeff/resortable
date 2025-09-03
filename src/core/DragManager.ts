@@ -79,10 +79,12 @@ export class DragManager {
       this.keyboardManager.attach()
     }
 
-    // Setup draggable items
+    // Setup draggable items - only for elements that already have sortable-item class
     for (const child of this.zone.getItems()) {
-      child.draggable = true
-      child.classList.add('sortable-item')
+      // Only make items with sortable-item class draggable
+      if (child.classList.contains('sortable-item')) {
+        child.draggable = true
+      }
     }
   }
 

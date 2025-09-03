@@ -7,9 +7,9 @@ import { insertAt } from '../utils/dom.js'
 export class DropZone {
   constructor(public readonly element: HTMLElement) {}
 
-  /** Get sortable items */
+  /** Get sortable items (only elements with sortable-item class) */
   public getItems(): HTMLElement[] {
-    return Array.from(this.element.children) as HTMLElement[]
+    return Array.from(this.element.querySelectorAll('.sortable-item')) as HTMLElement[]
   }
 
   /** Get index of an item within container */
