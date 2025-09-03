@@ -240,3 +240,10 @@ function resolveGroupName(group: SortableOptions['group']): string {
   if (typeof group === 'string') return group
   return group.name || 'default'
 }
+
+/** Resolve the group name from group option */
+function resolveGroupName(group: SortableOptions['group']): string {
+  if (!group) return 'default'
+  if (typeof group === 'string') return group
+  return group.name || 'default'
+}
