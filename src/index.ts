@@ -120,7 +120,13 @@ export class Sortable {
     this.dragManager = new DragManager(
       this.dropZone,
       this.eventSystem,
-      groupName
+      groupName,
+      {
+        enableAccessibility: this.options.enableAccessibility,
+        multiSelect: this.options.multiDrag,
+        selectedClass: this.options.selectedClass,
+        focusClass: this.options.focusClass
+      }
     )
     this.dragManager.attach()
 
@@ -138,6 +144,9 @@ export class Sortable {
     }
     if (this.options.onRemove) {
       this.eventSystem.on('remove', this.options.onRemove)
+    }
+    if (this.options.onSelect) {
+      this.eventSystem.on('select', this.options.onSelect as any)
     }
   }
 
@@ -220,6 +229,9 @@ const defaultOptions: SortableOptions = {
   sort: true,
   disabled: false,
   multiDrag: false,
+  enableAccessibility: true,
+  selectedClass: 'sortable-selected',
+  focusClass: 'sortable-focused',
 }
 
 /** Resolve the group name from group option */

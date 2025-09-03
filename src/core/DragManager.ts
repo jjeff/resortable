@@ -2,12 +2,14 @@ import { SortableEvent } from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
+import { SelectionManager } from './SelectionManager.js'
+import { KeyboardManager } from './KeyboardManager.js'
 
 // Global registry of DragManager instances for cross-zone operations
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
 
 /**
- * Handles HTML5 drag and drop interactions
+ * Handles drag and drop interactions with accessibility support
  * @internal
  */
 export class DragManager {
@@ -15,14 +17,46 @@ export class DragManager {
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
+  private selectionManager: SelectionManager
+  private keyboardManager: KeyboardManager
+  private enableAccessibility: boolean
 
   constructor(
     public zone: DropZone,
     public events: SortableEventSystem,
-    public groupName: string
+    public groupName: string,
+    options?: {
+      enableAccessibility?: boolean
+      multiSelect?: boolean
+      selectedClass?: string
+      focusClass?: string
+    }
   ) {
     // Register this drag manager in the global registry
     dragManagerRegistry.set(this.zone.element, this)
+    
+    // Initialize accessibility features
+    this.enableAccessibility = options?.enableAccessibility ?? true
+    
+    // Initialize selection manager
+    this.selectionManager = new SelectionManager(
+      this.zone.element,
+      this.events,
+      {
+        selectedClass: options?.selectedClass,
+        focusClass: options?.focusClass,
+        multiSelect: options?.multiSelect
+      }
+    )
+    
+    // Initialize keyboard manager if accessibility is enabled
+    this.keyboardManager = new KeyboardManager(
+      this.zone.element,
+      this.zone,
+      this.selectionManager,
+      this.events,
+      this.groupName
+    )
   }
 
   /** Attach event listeners */
@@ -40,8 +74,15 @@ export class DragManager {
     el.addEventListener('pointerdown', this.onPointerDown)
     // Note: pointermove and pointerup are attached to document in onPointerDown
 
+    // Attach accessibility features
+    if (this.enableAccessibility) {
+      this.keyboardManager.attach()
+    }
+
+    // Setup draggable items
     for (const child of this.zone.getItems()) {
       child.draggable = true
+      child.classList.add('sortable-item')
     }
   }
 
@@ -58,6 +99,12 @@ export class DragManager {
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
     // Document listeners are removed in onPointerUp
+
+    // Detach accessibility features
+    if (this.enableAccessibility) {
+      this.keyboardManager.detach()
+      this.selectionManager.destroy()
+    }
 
     // Unregister from global registry
     dragManagerRegistry.delete(this.zone.element)
@@ -407,6 +454,16 @@ export class DragManager {
   /** Find the DragManager instance that manages a specific zone */
   private findDragManagerForZone(targetZone: HTMLElement): DragManager | null {
     return dragManagerRegistry.get(targetZone) || null
+  }
+
+  /** Get the selection manager for this drag manager */
+  public getSelectionManager(): SelectionManager {
+    return this.selectionManager
+  }
+
+  /** Get the keyboard manager for this drag manager */
+  public getKeyboardManager(): KeyboardManager {
+    return this.keyboardManager
   }
 
   /** Check if we can drop in a target zone based on group compatibility */
