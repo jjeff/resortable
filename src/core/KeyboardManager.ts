@@ -29,6 +29,7 @@ export class KeyboardManager {
   public attach(): void {
     this.container.addEventListener('keydown', this.onKeyDown)
     this.container.addEventListener('click', this.onClick)
+    this.container.addEventListener('focus', this.onFocus, true) // Use capture to handle focus on children
     
     // Make container focusable if it isn't already
     if (!this.container.hasAttribute('tabindex')) {
@@ -49,6 +50,7 @@ export class KeyboardManager {
   public detach(): void {
     this.container.removeEventListener('keydown', this.onKeyDown)
     this.container.removeEventListener('click', this.onClick)
+    this.container.removeEventListener('focus', this.onFocus, true)
     
     // Clean up ARIA attributes
     this.container.removeAttribute('role')
@@ -67,8 +69,10 @@ export class KeyboardManager {
   private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement
     
-    // Only handle events on sortable items or the container
-    if (!target.classList.contains('sortable-item') && target !== this.container) {
+    // Handle events on sortable items or the container
+    // When using container.press() in tests, the target is the container
+    // When pressing keys normally, the target is the focused element
+    if (!target.classList.contains('sortable-item') && target !== this.container && !this.container.contains(target)) {
       return
     }
 
@@ -158,6 +162,18 @@ export class KeyboardManager {
           this.selectAll()
         }
         break
+    }
+  }
+
+  /**
+   * Handle focus events to sync with SelectionManager
+   */
+  private onFocus = (e: FocusEvent): void => {
+    const target = e.target as HTMLElement
+    
+    // If a sortable item receives focus, update SelectionManager
+    if (target.classList.contains('sortable-item')) {
+      this.selectionManager.setFocus(target)
     }
   }
 

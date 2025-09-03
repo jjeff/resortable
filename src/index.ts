@@ -78,9 +78,9 @@ export class Sortable {
    */
   public readonly options: SortableOptions
 
-  private dropZone: DropZone
-  private dragManager: DragManager
-  private eventSystem: EventSystem<SortableEvents>
+  public readonly dropZone: DropZone
+  public readonly dragManager: DragManager
+  public readonly eventSystem: EventSystem<SortableEvents>
 
   /**
    * Creates a new Sortable instance

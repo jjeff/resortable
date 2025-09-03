@@ -7,66 +7,79 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('navigates through items with arrow keys', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const secondItem = page.locator('#basic-list [data-id="basic-2"]')
     const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
     const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
     
-    // Focus the first item
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
+    // Focus the container first, then the first item
+    await container.focus()
     await firstItem.focus()
     await expect(firstItem).toBeFocused()
     await expect(firstItem).toHaveAttribute('tabindex', '0')
     
-    // Navigate down with ArrowDown
-    await page.keyboard.press('ArrowDown')
+    // Navigate down with ArrowDown - dispatch to container
+    await container.press('ArrowDown')
     await expect(secondItem).toBeFocused()
     await expect(secondItem).toHaveAttribute('tabindex', '0')
     await expect(firstItem).toHaveAttribute('tabindex', '-1')
     
     // Navigate down again
-    await page.keyboard.press('ArrowDown')
+    await container.press('ArrowDown')
     await expect(thirdItem).toBeFocused()
     
     // Navigate up with ArrowUp
-    await page.keyboard.press('ArrowUp')
+    await container.press('ArrowUp')
     await expect(secondItem).toBeFocused()
     
     // Navigate to last item with End
-    await page.keyboard.press('End')
+    await container.press('End')
     await expect(fourthItem).toBeFocused()
     
     // Navigate to first item with Home
-    await page.keyboard.press('Home')
+    await container.press('Home')
     await expect(firstItem).toBeFocused()
   })
 
   test('wraps around when navigating past boundaries', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
     
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
     // Focus first item and navigate up (should wrap to last)
     await firstItem.focus()
-    await page.keyboard.press('ArrowUp')
+    await container.press('ArrowUp')
     await expect(fourthItem).toBeFocused()
     
     // Navigate down from last (should wrap to first)
-    await page.keyboard.press('ArrowDown')
+    await container.press('ArrowDown')
     await expect(firstItem).toBeFocused()
   })
 
   test('selects items with Space key', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const secondItem = page.locator('#basic-list [data-id="basic-2"]')
     
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
     // Focus and select first item
     await firstItem.focus()
-    await page.keyboard.press('Space')
+    await container.press('Space')
     await expect(firstItem).toHaveAttribute('aria-selected', 'true')
     await expect(firstItem).toHaveClass(/sortable-selected/)
     
     // Navigate to second item and select it
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('Space')
+    await container.press('ArrowDown')
+    await container.press('Space')
     
     // In single-select mode, first should be deselected
     await expect(firstItem).toHaveAttribute('aria-selected', 'false')
@@ -74,24 +87,28 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('performs keyboard drag and drop with Enter key', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const items = page.locator('#basic-list .sortable-item')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
     
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
     // Focus and select first item
     await firstItem.focus()
-    await page.keyboard.press('Space')
+    await container.press('Space')
     
     // Grab the item with Enter
-    await page.keyboard.press('Enter')
+    await container.press('Enter')
     await expect(firstItem).toHaveAttribute('aria-grabbed', 'true')
     
     // Navigate to third position
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('ArrowDown')
+    await container.press('ArrowDown')
+    await container.press('ArrowDown')
     
     // Drop the item with Enter
-    await page.keyboard.press('Enter')
+    await container.press('Enter')
     await expect(firstItem).toHaveAttribute('aria-grabbed', 'false')
     
     // Verify new order
@@ -102,23 +119,27 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('cancels drag operation with Escape key', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const items = page.locator('#basic-list .sortable-item')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
     // Focus and select first item
     await firstItem.focus()
-    await page.keyboard.press('Space')
+    await container.press('Space')
     
     // Grab the item
-    await page.keyboard.press('Enter')
+    await container.press('Enter')
     await expect(firstItem).toHaveAttribute('aria-grabbed', 'true')
     
     // Navigate down
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('ArrowDown')
+    await container.press('ArrowDown')
+    await container.press('ArrowDown')
     
     // Cancel with Escape
-    await page.keyboard.press('Escape')
+    await container.press('Escape')
     await expect(firstItem).toHaveAttribute('aria-grabbed', 'false')
     
     // Verify original order is maintained
@@ -129,33 +150,42 @@ test.describe('Keyboard Navigation', () => {
   })
 
   test('maintains focus visibility during keyboard navigation', async ({ page }) => {
+    const container = page.locator('#basic-list')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    
+    // Wait for initialization
+    await page.waitForTimeout(100)
     
     // Focus first item
     await firstItem.focus()
     await expect(firstItem).toHaveClass(/sortable-focused/)
     
     // Navigate to second item
-    await page.keyboard.press('ArrowDown')
+    await container.press('ArrowDown')
     await expect(firstItem).not.toHaveClass(/sortable-focused/)
     await expect(secondItem).toHaveClass(/sortable-focused/)
   })
 
   test('supports keyboard navigation across different sortable groups', async ({ page }) => {
     // Test navigation in shared groups
+    const list1 = page.locator('#list1')
+    const list2 = page.locator('#list2')
     const list1FirstItem = page.locator('#list1 [data-id="item-1"]')
     const list2FirstItem = page.locator('#list2 [data-id="item-5"]')
     
+    // Wait for initialization
+    await page.waitForTimeout(100)
+    
     // Focus and grab item from list1
     await list1FirstItem.focus()
-    await page.keyboard.press('Space')
-    await page.keyboard.press('Enter')
+    await list1.press('Space')
+    await list1.press('Enter')
     await expect(list1FirstItem).toHaveAttribute('aria-grabbed', 'true')
     
     // Tab to list2 and drop
     await list2FirstItem.focus()
-    await page.keyboard.press('Enter')
+    await list2.press('Enter')
     
     // Verify item moved to list2
     await expect(page.locator('#list2 [data-id="item-1"]')).toBeVisible()
