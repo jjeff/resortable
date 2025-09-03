@@ -34,10 +34,10 @@ export class DragManager {
   ) {
     // Register this drag manager in the global registry
     dragManagerRegistry.set(this.zone.element, this)
-    
+
     // Initialize accessibility features
     this.enableAccessibility = options?.enableAccessibility ?? true
-    
+
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
       this.zone.element,
@@ -45,10 +45,10 @@ export class DragManager {
       {
         selectedClass: options?.selectedClass,
         focusClass: options?.focusClass,
-        multiSelect: options?.multiSelect
+        multiSelect: options?.multiSelect,
       }
     )
-    
+
     // Initialize keyboard manager if accessibility is enabled
     this.keyboardManager = new KeyboardManager(
       this.zone.element,
@@ -249,7 +249,11 @@ export class DragManager {
 
     // If there's already an active drag and this is a touch event, cancel the drag
     // This handles multi-touch scenarios where any second touch cancels dragging
-    if (this.isPointerDragging && this.activePointerId !== null && e.pointerType === 'touch') {
+    if (
+      this.isPointerDragging &&
+      this.activePointerId !== null &&
+      e.pointerType === 'touch'
+    ) {
       // Cancel the existing drag when ANY second touch is detected (primary or not)
       // This prevents accidental moves during multi-touch
       this.cleanupPointerDrag(true)
@@ -419,7 +423,7 @@ export class DragManager {
         // Move the element back to its original position
         const fromZone = activeDrag.fromZone
         // Get only sortable items, not all children
-        const items = Array.from(fromZone.querySelectorAll('.sortable-item')) as HTMLElement[]
+        const items = Array.from(fromZone.querySelectorAll('.sortable-item'))
         const currentIndex = items.indexOf(this.dragElement)
 
         // Only revert if the element has actually moved
@@ -430,8 +434,10 @@ export class DragManager {
           }
 
           // Get the current list of sortable items after removal
-          const itemsAfterRemoval = Array.from(fromZone.querySelectorAll('.sortable-item')) as HTMLElement[]
-          
+          const itemsAfterRemoval = Array.from(
+            fromZone.querySelectorAll('.sortable-item')
+          )
+
           // Insert at original position
           if (this.startIndex >= itemsAfterRemoval.length) {
             // If original index is at or beyond the end, append

@@ -3,12 +3,13 @@ import { KeyboardManager } from '../../src/core/KeyboardManager'
 import { SelectionManager } from '../../src/core/SelectionManager'
 import { DropZone } from '../../src/core/DropZone'
 import { EventSystem } from '../../src/core/EventSystem'
+import type { SortableEvents } from '../../src/types/index.js'
 
 describe('KeyboardManager', () => {
   let container: HTMLElement
   let dropZone: DropZone
   let selectionManager: SelectionManager
-  let eventSystem: EventSystem
+  let eventSystem: EventSystem<SortableEvents>
   let keyboardManager: KeyboardManager
   let items: HTMLElement[]
   let announcer: HTMLElement
@@ -50,7 +51,7 @@ describe('KeyboardManager', () => {
 
     // Initialize components
     dropZone = new DropZone(container)
-    eventSystem = new EventSystem()
+    eventSystem = new EventSystem<SortableEvents>()
     selectionManager = new SelectionManager(container, eventSystem)
     keyboardManager = new KeyboardManager(
       container,
@@ -71,7 +72,7 @@ describe('KeyboardManager', () => {
   describe('Initialization', () => {
     it('should attach keyboard event listeners', () => {
       keyboardManager.attach()
-      
+
       // First item should have tabindex="0"
       expect(items[0].getAttribute('tabindex')).toBe('0')
       // Others should have tabindex="-1"
@@ -80,7 +81,7 @@ describe('KeyboardManager', () => {
 
     it('should set ARIA attributes on items', () => {
       keyboardManager.attach()
-      
+
       items.forEach((item, index) => {
         expect(item.getAttribute('role')).toBe('listitem')
         expect(item.getAttribute('aria-grabbed')).toBe('false')
@@ -99,13 +100,13 @@ describe('KeyboardManager', () => {
     it('should navigate down with ArrowDown', () => {
       items[0].focus()
       selectionManager.setFocus(items[0])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowDown',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[1])
       expect(items[1].getAttribute('tabindex')).toBe('0')
       expect(items[0].getAttribute('tabindex')).toBe('-1')
@@ -113,61 +114,61 @@ describe('KeyboardManager', () => {
 
     it('should navigate up with ArrowUp', () => {
       selectionManager.setFocus(items[2])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowUp',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[1])
     })
 
     it('should wrap around when navigating past the end', () => {
       selectionManager.setFocus(items[4])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowDown',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[0])
     })
 
     it('should wrap around when navigating before the start', () => {
       selectionManager.setFocus(items[0])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowUp',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[4])
     })
 
     it('should navigate to first item with Home key', () => {
       selectionManager.setFocus(items[3])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'Home',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[0])
     })
 
     it('should navigate to last item with End key', () => {
       selectionManager.setFocus(items[1])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'End',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getFocused()).toBe(items[4])
     })
   })
@@ -179,14 +180,14 @@ describe('KeyboardManager', () => {
 
     it('should select item with Space key', () => {
       selectionManager.setFocus(items[1])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: ' ',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getSelected()).toContain(items[1])
     })
 
@@ -194,7 +195,7 @@ describe('KeyboardManager', () => {
       // Create new keyboard manager with multi-select
       keyboardManager.detach()
       selectionManager = new SelectionManager(container, eventSystem, {
-        multiSelect: true
+        multiSelect: true,
       })
       keyboardManager = new KeyboardManager(
         container,
@@ -204,19 +205,19 @@ describe('KeyboardManager', () => {
         'test-group'
       )
       keyboardManager.attach()
-      
+
       selectionManager.setFocus(items[1])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: ' ',
         ctrlKey: true,
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
-      
+
       container.dispatchEvent(event)
       expect(selectionManager.getSelected()).toContain(items[1])
-      
+
       container.dispatchEvent(event)
       expect(selectionManager.getSelected()).not.toContain(items[1])
     })
@@ -230,14 +231,14 @@ describe('KeyboardManager', () => {
     it('should grab item with Enter key', () => {
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(items[1].getAttribute('aria-grabbed')).toBe('true')
     })
 
@@ -245,50 +246,50 @@ describe('KeyboardManager', () => {
       // First grab an item
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       const grabEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(grabEvent)
-      
+
       // Move focus to drop location
       selectionManager.setFocus(items[3])
-      
+
       // Drop the item
       const dropEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(dropEvent)
-      
+
       expect(items[1].getAttribute('aria-grabbed')).toBe('false')
     })
 
     it('should cancel grab with Escape key', () => {
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       // Grab item
       const grabEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(grabEvent)
-      
+
       expect(items[1].getAttribute('aria-grabbed')).toBe('true')
-      
+
       // Cancel with Escape
       const escapeEvent = new KeyboardEvent('keydown', {
         key: 'Escape',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(escapeEvent)
-      
+
       expect(items[1].getAttribute('aria-grabbed')).toBe('false')
     })
 
@@ -297,24 +298,24 @@ describe('KeyboardManager', () => {
       const endHandler = vi.fn()
       eventSystem.on('start', startHandler)
       eventSystem.on('end', endHandler)
-      
+
       // Select and grab
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       const grabEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(grabEvent)
-      
+
       expect(startHandler).toHaveBeenCalled()
-      
+
       // Move and drop
       selectionManager.setFocus(items[3])
       container.dispatchEvent(grabEvent)
-      
+
       expect(endHandler).toHaveBeenCalled()
     })
   })
@@ -323,7 +324,7 @@ describe('KeyboardManager', () => {
     beforeEach(() => {
       keyboardManager.detach()
       selectionManager = new SelectionManager(container, eventSystem, {
-        multiSelect: true
+        multiSelect: true,
       })
       keyboardManager = new KeyboardManager(
         container,
@@ -339,14 +340,14 @@ describe('KeyboardManager', () => {
     it.skip('should extend selection with Shift+ArrowDown', () => {
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowDown',
         shiftKey: true,
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getSelected()).toContain(items[1])
       expect(selectionManager.getSelected()).toContain(items[2])
       expect(selectionManager.getFocused()).toBe(items[2])
@@ -355,14 +356,14 @@ describe('KeyboardManager', () => {
     it.skip('should extend selection with Shift+ArrowUp', () => {
       selectionManager.select(items[2])
       selectionManager.setFocus(items[2])
-      
+
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowUp',
         shiftKey: true,
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getSelected()).toContain(items[1])
       expect(selectionManager.getSelected()).toContain(items[2])
     })
@@ -372,12 +373,12 @@ describe('KeyboardManager', () => {
         key: 'a',
         ctrlKey: true,
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getSelected()).toHaveLength(5)
-      items.forEach(item => {
+      items.forEach((item) => {
         expect(selectionManager.getSelected()).toContain(item)
       })
     })
@@ -387,10 +388,10 @@ describe('KeyboardManager', () => {
         key: 'a',
         metaKey: true,
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(event)
-      
+
       expect(selectionManager.getSelected()).toHaveLength(5)
     })
   })
@@ -403,51 +404,47 @@ describe('KeyboardManager', () => {
     it('should announce when item is grabbed', () => {
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
-      const announceHandler = vi.fn()
-      const originalMethod = keyboardManager.announce
-      keyboardManager.announce = announceHandler
-      
+
+      const announceSpy = vi.spyOn(keyboardManager, 'announce')
+
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(event)
-      
-      expect(announceHandler).toHaveBeenCalledWith(
+
+      expect(announceSpy).toHaveBeenCalledWith(
         expect.stringContaining('Grabbed')
       )
-      
-      keyboardManager.announce = originalMethod
+
+      announceSpy.mockRestore()
     })
 
     it('should announce when item is dropped', () => {
       // Grab item first
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
-      
+
       const grabEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
       container.dispatchEvent(grabEvent)
-      
+
       // Set up announcement spy
-      const announceHandler = vi.fn()
-      const originalMethod = keyboardManager.announce
-      keyboardManager.announce = announceHandler
-      
+      const announceSpy = vi.spyOn(keyboardManager, 'announce')
+
       // Move and drop
       selectionManager.setFocus(items[3])
       container.dispatchEvent(grabEvent)
-      
-      expect(announceHandler).toHaveBeenCalledWith(
+
+      expect(announceSpy).toHaveBeenCalledWith(
         expect.stringContaining('Dropped')
       )
-      
-      keyboardManager.announce = originalMethod
+
+      announceSpy.mockRestore()
     })
   })
 
@@ -455,17 +452,17 @@ describe('KeyboardManager', () => {
     it('should remove event listeners on detach', () => {
       keyboardManager.attach()
       keyboardManager.detach()
-      
+
       const handler = vi.fn()
       eventSystem.on('start', handler)
-      
+
       // Try keyboard operation after detach
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
-        bubbles: true
+        bubbles: true,
       })
       container.dispatchEvent(event)
-      
+
       // Should not trigger any events
       expect(handler).not.toHaveBeenCalled()
     })
@@ -473,8 +470,8 @@ describe('KeyboardManager', () => {
     it('should reset tabindex values on detach', () => {
       keyboardManager.attach()
       keyboardManager.detach()
-      
-      items.forEach(item => {
+
+      items.forEach((item) => {
         expect(item.getAttribute('tabindex')).toBe('-1')
       })
     })

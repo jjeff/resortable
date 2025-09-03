@@ -125,7 +125,7 @@ export class Sortable {
         enableAccessibility: this.options.enableAccessibility,
         multiSelect: this.options.multiDrag,
         selectedClass: this.options.selectedClass,
-        focusClass: this.options.focusClass
+        focusClass: this.options.focusClass,
       }
     )
     this.dragManager.attach()
@@ -146,7 +146,7 @@ export class Sortable {
       this.eventSystem.on('remove', this.options.onRemove)
     }
     if (this.options.onSelect) {
-      this.eventSystem.on('select', this.options.onSelect as any)
+      this.eventSystem.on('select', this.options.onSelect)
     }
   }
 
@@ -232,13 +232,6 @@ const defaultOptions: SortableOptions = {
   enableAccessibility: true,
   selectedClass: 'sortable-selected',
   focusClass: 'sortable-focused',
-}
-
-/** Resolve the group name from group option */
-function resolveGroupName(group: SortableOptions['group']): string {
-  if (!group) return 'default'
-  if (typeof group === 'string') return group
-  return group.name || 'default'
 }
 
 /** Resolve the group name from group option */

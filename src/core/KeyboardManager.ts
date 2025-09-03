@@ -30,7 +30,7 @@ export class KeyboardManager {
     this.container.addEventListener('keydown', this.onKeyDown)
     this.container.addEventListener('click', this.onClick)
     this.container.addEventListener('focus', this.onFocus, true) // Use capture to handle focus on children
-    
+
     // Make container focusable if it isn't already
     if (!this.container.hasAttribute('tabindex')) {
       this.container.setAttribute('tabindex', '-1')
@@ -38,8 +38,11 @@ export class KeyboardManager {
 
     // Add ARIA attributes
     this.container.setAttribute('role', 'list')
-    this.container.setAttribute('aria-label', 'Sortable list. Use arrow keys to navigate, space to select, and enter to move items.')
-    
+    this.container.setAttribute(
+      'aria-label',
+      'Sortable list. Use arrow keys to navigate, space to select, and enter to move items.'
+    )
+
     // Mark sortable items
     this.updateItemAttributes()
   }
@@ -51,17 +54,17 @@ export class KeyboardManager {
     this.container.removeEventListener('keydown', this.onKeyDown)
     this.container.removeEventListener('click', this.onClick)
     this.container.removeEventListener('focus', this.onFocus, true)
-    
+
     // Clean up ARIA attributes
     this.container.removeAttribute('role')
     this.container.removeAttribute('aria-label')
-    
+
     // Reset tabindex on items
     const items = this.zone.getItems()
-    items.forEach(item => {
+    items.forEach((item) => {
       item.setAttribute('tabindex', '-1')
     })
-    
+
     // Clean up announcer
     if (this.announcer) {
       this.announcer.remove()
@@ -74,11 +77,15 @@ export class KeyboardManager {
    */
   private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement
-    
+
     // Handle events on sortable items or the container
     // When using container.press() in tests, the target is the container
     // When pressing keys normally, the target is the focused element
-    if (!target.classList.contains('sortable-item') && target !== this.container && !this.container.contains(target)) {
+    if (
+      !target.classList.contains('sortable-item') &&
+      target !== this.container &&
+      !this.container.contains(target)
+    ) {
       return
     }
 
@@ -108,10 +115,10 @@ export class KeyboardManager {
           if (focused) {
             if (e.shiftKey && this.selectionManager.getLastSelected()) {
               // Range selection with Shift+Space
-              this.selectionManager.selectRange(
-                this.selectionManager.getLastSelected()!,
-                focused
-              )
+              const lastSelected = this.selectionManager.getLastSelected()
+              if (lastSelected) {
+                this.selectionManager.selectRange(lastSelected, focused)
+              }
             } else if (e.ctrlKey || e.metaKey) {
               // Toggle selection with Ctrl/Cmd+Space
               this.selectionManager.toggle(focused)
@@ -176,7 +183,7 @@ export class KeyboardManager {
    */
   private onFocus = (e: FocusEvent): void => {
     const target = e.target as HTMLElement
-    
+
     // If a sortable item receives focus, update SelectionManager
     if (target.classList.contains('sortable-item')) {
       this.selectionManager.setFocus(target)
@@ -187,16 +194,18 @@ export class KeyboardManager {
    * Handle click events for selection
    */
   private onClick = (e: MouseEvent): void => {
-    const target = (e.target as HTMLElement).closest('.sortable-item') as HTMLElement
+    const target = (e.target as HTMLElement).closest(
+      '.sortable-item'
+    ) as HTMLElement
     if (!target) return
 
     if (e.shiftKey && this.selectionManager.getLastSelected()) {
       // Range selection
       e.preventDefault()
-      this.selectionManager.selectRange(
-        this.selectionManager.getLastSelected()!,
-        target
-      )
+      const lastSelected = this.selectionManager.getLastSelected()
+      if (lastSelected) {
+        this.selectionManager.selectRange(lastSelected, target)
+      }
     } else if (e.ctrlKey || e.metaKey) {
       // Toggle selection
       e.preventDefault()
@@ -230,10 +239,10 @@ export class KeyboardManager {
 
     this.isGrabbing = true
     this.grabbedItems = selected
-    this.originalIndices = selected.map(item => this.zone.getIndex(item))
+    this.originalIndices = selected.map((item) => this.zone.getIndex(item))
 
     // Add grabbing state
-    selected.forEach(item => {
+    selected.forEach((item) => {
       item.classList.add('sortable-grabbing')
       item.setAttribute('aria-grabbed', 'true')
     })
@@ -257,11 +266,13 @@ export class KeyboardManager {
       from: this.container,
       to: this.container,
       oldIndex: this.originalIndices[0],
-      newIndex: this.originalIndices[0]
+      newIndex: this.originalIndices[0],
     })
 
     // Announce grab
-    this.announce(`Grabbed ${selected.length} item${selected.length > 1 ? 's' : ''}. Use arrow keys to move, Enter to drop, Escape to cancel.`)
+    this.announce(
+      `Grabbed ${selected.length} item${selected.length > 1 ? 's' : ''}. Use arrow keys to move, Enter to drop, Escape to cancel.`
+    )
   }
 
   /**
@@ -271,14 +282,14 @@ export class KeyboardManager {
     if (!this.isGrabbing) return
 
     // Remove grabbing state
-    this.grabbedItems.forEach(item => {
+    this.grabbedItems.forEach((item) => {
       item.classList.remove('sortable-grabbing')
       item.setAttribute('aria-grabbed', 'false')
     })
 
     // Get final position before cleanup
     const newIndex = this.zone.getIndex(this.grabbedItems[0])
-    
+
     // End drag in global state
     const dragId = 'keyboard-drag'
     globalDragState.endDrag(dragId)
@@ -290,11 +301,13 @@ export class KeyboardManager {
       from: this.container,
       to: this.container,
       oldIndex: this.originalIndices[0],
-      newIndex: newIndex
+      newIndex,
     })
 
     // Announce drop
-    this.announce(`Dropped ${this.grabbedItems.length} item${this.grabbedItems.length > 1 ? 's' : ''} at position ${newIndex + 1}`)
+    this.announce(
+      `Dropped ${this.grabbedItems.length} item${this.grabbedItems.length > 1 ? 's' : ''} at position ${newIndex + 1}`
+    )
 
     this.isGrabbing = false
     this.grabbedItems = []
@@ -338,10 +351,10 @@ export class KeyboardManager {
 
     const firstItem = this.grabbedItems[0]
     const currentIndex = this.zone.getIndex(firstItem)
-    
+
     if (currentIndex > 0) {
       // Move all grabbed items up by one position
-      this.grabbedItems.forEach(item => {
+      this.grabbedItems.forEach((item) => {
         const itemIndex = this.zone.getIndex(item)
         if (itemIndex > 0) {
           this.zone.move(item, itemIndex - 1)
@@ -362,7 +375,7 @@ export class KeyboardManager {
     const lastItem = this.grabbedItems[this.grabbedItems.length - 1]
     const currentIndex = this.zone.getIndex(lastItem)
     const maxIndex = this.zone.getItems().length - 1
-    
+
     if (currentIndex < maxIndex) {
       // Move all grabbed items down by one position (in reverse order)
       for (let i = this.grabbedItems.length - 1; i >= 0; i--) {
@@ -384,7 +397,7 @@ export class KeyboardManager {
    */
   private selectAll(): void {
     const items = this.zone.getItems()
-    items.forEach(item => this.selectionManager.select(item, true))
+    items.forEach((item) => this.selectionManager.select(item, true))
     this.announce(`Selected all ${items.length} items`)
   }
 
@@ -399,7 +412,7 @@ export class KeyboardManager {
       item.setAttribute('aria-posinset', (index + 1).toString())
       item.setAttribute('aria-selected', 'false')
       item.setAttribute('aria-grabbed', 'false')
-      
+
       // Make items focusable - first item gets tabindex="0", others get "-1"
       item.setAttribute('tabindex', index === 0 ? '0' : '-1')
     })
@@ -429,7 +442,7 @@ export class KeyboardManager {
     if (this.announcer) {
       this.announcer.textContent = message
       // Clear after a delay to allow re-announcement of same message
-      setTimeout(() => {
+      window.setTimeout(() => {
         if (this.announcer) {
           this.announcer.textContent = ''
         }

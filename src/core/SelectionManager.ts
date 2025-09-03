@@ -66,9 +66,10 @@ export class SelectionManager {
     item.setAttribute('aria-selected', 'false')
 
     if (this.lastSelectedItem === item) {
-      this.lastSelectedItem = this.selectedItems.size > 0
-        ? Array.from(this.selectedItems)[this.selectedItems.size - 1]
-        : null
+      this.lastSelectedItem =
+        this.selectedItems.size > 0
+          ? Array.from(this.selectedItems)[this.selectedItems.size - 1]
+          : null
     }
 
     this.emitSelectionEvent()
@@ -107,7 +108,7 @@ export class SelectionManager {
    * Clear all selections without emitting event
    */
   private clearSelectionWithoutEvent(): void {
-    this.selectedItems.forEach(item => {
+    this.selectedItems.forEach((item) => {
       item.classList.remove(this.selectedClass)
       item.setAttribute('aria-selected', 'false')
     })
@@ -217,8 +218,9 @@ export class SelectionManager {
    * Check if an item is a valid sortable item
    */
   private isValidItem(item: HTMLElement): boolean {
-    return item.classList.contains('sortable-item') && 
-           this.container.contains(item)
+    return (
+      item.classList.contains('sortable-item') && this.container.contains(item)
+    )
   }
 
   /**
@@ -228,13 +230,12 @@ export class SelectionManager {
     const selected = this.getSelected()
     const event: Partial<SortableEvent> = {
       items: selected,
-      item: selected[0] || null as any,
+      item: selected[0] || null,
       from: this.container,
       to: this.container,
     }
     this.events.emit('select', event)
   }
-
 
   /**
    * Cleanup and remove all event listeners
