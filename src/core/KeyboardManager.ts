@@ -131,6 +131,26 @@ export class KeyboardManager {
         }
         break
 
+      case 'Home':
+        e.preventDefault()
+        if (!this.isGrabbing) {
+          const items = this.zone.getItems()
+          if (items.length > 0) {
+            this.selectionManager.setFocus(items[0])
+          }
+        }
+        break
+
+      case 'End':
+        e.preventDefault()
+        if (!this.isGrabbing) {
+          const items = this.zone.getItems()
+          if (items.length > 0) {
+            this.selectionManager.setFocus(items[items.length - 1])
+          }
+        }
+        break
+
       case 'a':
         // Select all with Ctrl/Cmd+A
         if (e.ctrlKey || e.metaKey) {
@@ -336,10 +356,8 @@ export class KeyboardManager {
       item.setAttribute('aria-selected', 'false')
       item.setAttribute('aria-grabbed', 'false')
       
-      // Make items focusable
-      if (!item.hasAttribute('tabindex')) {
-        item.setAttribute('tabindex', '-1')
-      }
+      // Make items focusable - first item gets tabindex="0", others get "-1"
+      item.setAttribute('tabindex', index === 0 ? '0' : '-1')
     })
   }
 
@@ -363,7 +381,7 @@ export class KeyboardManager {
   /**
    * Announce message to screen readers
    */
-  private announce(message: string): void {
+  public announce(message: string): void {
     if (this.announcer) {
       this.announcer.textContent = message
       // Clear after a delay to allow re-announcement of same message

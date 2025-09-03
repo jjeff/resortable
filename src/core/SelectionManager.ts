@@ -136,7 +136,7 @@ export class SelectionManager {
     // Remove focus from previous item
     if (this.focusedItem) {
       this.focusedItem.classList.remove(this.focusClass)
-      this.focusedItem.removeAttribute('tabindex')
+      this.focusedItem.setAttribute('tabindex', '-1')
     }
 
     // Set focus to new item
@@ -155,6 +155,24 @@ export class SelectionManager {
    */
   public getFocused(): HTMLElement | null {
     return this.focusedItem
+  }
+
+  /**
+   * Get the last selected item
+   */
+  public getLastSelected(): HTMLElement | null {
+    return this.lastSelectedItem
+  }
+
+  /**
+   * Clear focus from all items
+   */
+  public clearFocus(): void {
+    if (this.focusedItem) {
+      this.focusedItem.classList.remove(this.focusClass)
+      this.focusedItem.setAttribute('tabindex', '-1')
+      this.focusedItem = null
+    }
   }
 
   /**
@@ -208,12 +226,6 @@ export class SelectionManager {
     this.events.emit('select', event)
   }
 
-  /**
-   * Get the last selected item (for range selection)
-   */
-  public getLastSelected(): HTMLElement | null {
-    return this.lastSelectedItem
-  }
 
   /**
    * Cleanup and remove all event listeners
