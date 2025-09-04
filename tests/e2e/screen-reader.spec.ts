@@ -49,7 +49,9 @@ test.describe('Screen Reader Support', () => {
     await expect(announcer).toHaveText(/Selected all 4 items/)
   })
 
-  test.skip('announces cancellation of drag operations - TODO: Fix announcement timing', async ({ page }) => {
+  test.skip('announces cancellation of drag operations - TODO: Fix announcement timing', async ({
+    page,
+  }) => {
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
 
@@ -144,7 +146,7 @@ test.describe('Screen Reader Support', () => {
 
     // Wait for the container to have the aria-label attribute
     await expect(container).toHaveAttribute('aria-label', /Sortable list/)
-    
+
     // Container should have instructions for keyboard users
     const ariaLabel = await container.getAttribute('aria-label')
     expect(ariaLabel).toContain('arrow keys')
@@ -152,7 +154,9 @@ test.describe('Screen Reader Support', () => {
     expect(ariaLabel).toContain('enter')
   })
 
-  test.skip('announces multi-item operations correctly - TODO: Implement multi-drag in Phase 2.4', async ({ page }) => {
+  test.skip('announces multi-item operations correctly - TODO: Implement multi-drag in Phase 2.4', async ({
+    page,
+  }) => {
     // Initialize multi-select sortable
     await page.evaluate(() => {
       const basicList = document.getElementById('basic-list')
