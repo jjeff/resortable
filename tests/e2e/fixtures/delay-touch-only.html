@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delay Touch Only Test</title>
+  <style>
+    .sortable-item {
+      padding: 10px;
+      margin: 5px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      cursor: move;
+    }
+    .sortable-ghost {
+      opacity: 0.5;
+    }
+    .sortable-chosen {
+      background: #d0d0d0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Delay Touch Only Test</h1>
+  <p>Mouse: instant drag | Touch: 400ms delay</p>
+  
+  <div id="delay-touch-test">
+    <div class="sortable-item" data-id="item-1">
+      Item 1
+    </div>
+    <div class="sortable-item" data-id="item-2">
+      Item 2
+    </div>
+    <div class="sortable-item" data-id="item-3">
+      Item 3
+    </div>
+  </div>
+
+  <script type="module">
+    import { Sortable } from '/src/index.js';
+    
+    const sortable = new Sortable(document.getElementById('delay-touch-test'), {
+      delay: 0, // No delay for mouse
+      delayOnTouchOnly: 400, // 400ms delay for touch only
+      animation: 150,
+      onStart: (e) => console.log('Start drag', e),
+      onEnd: (e) => console.log('End drag', e),
+    });
+    
+    window.sortable = sortable;
+  </script>
+</body>
+</html>

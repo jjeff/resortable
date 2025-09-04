@@ -39,6 +39,9 @@ import { EventSystem } from './core/EventSystem.js'
 import { SortableOptions, type SortableEvents } from './types/index.js'
 import { toArray as domToArray } from './utils/dom.js'
 
+// WeakMap to track Sortable instances by their elements
+const sortableInstances = new WeakMap<HTMLElement, Sortable>()
+
 /**
  * @beta
  * Main Sortable class for creating drag-and-drop sortable lists
@@ -67,6 +70,66 @@ import { toArray as domToArray } from './utils/dom.js'
  */
 export class Sortable {
   /**
+   * The currently active Sortable instance (if any drag is in progress)
+   * @readonly
+   */
+  public static active: Sortable | null = null
+
+  /**
+   * The currently dragged element (if any)
+   * @readonly
+   */
+  public static dragged: HTMLElement | null = null
+
+  /**
+   * Finds the closest Sortable instance to a given element
+   *
+   * @param element - The element to start searching from
+   * @param selector - Optional CSS selector to filter parent elements
+   * @returns The closest Sortable instance, or null if none found
+   *
+   * @example
+   * ```typescript
+   * const sortable = Sortable.closest(draggedElement);
+   * if (sortable) {
+   *   console.log('Found sortable:', sortable);
+   * }
+   * ```
+   *
+   * @example With selector
+   * ```typescript
+   * const sortable = Sortable.closest(element, '.sortable-container');
+   * ```
+   *
+   * @public
+   */
+  public static closest(
+    element: HTMLElement,
+    selector?: string
+  ): Sortable | null {
+    if (!element) return null
+
+    let current: HTMLElement | null = element
+    while (current) {
+      // Check if current element matches selector (if provided)
+      if (selector && !current.matches(selector)) {
+        current = current.parentElement
+        continue
+      }
+
+      // Check if current element has a Sortable instance
+      // We'll need to track instances in a WeakMap
+      const sortable = sortableInstances.get(current)
+      if (sortable) {
+        return sortable
+      }
+
+      current = current.parentElement
+    }
+
+    return null
+  }
+  /**
    * The DOM element that this Sortable instance is bound to
    * @readonly
    */
@@ -79,7 +142,7 @@ export class Sortable {
   public readonly options: SortableOptions
 
   public readonly dropZone: DropZone
-  public readonly dragManager: DragManager
+  public dragManager: DragManager // Made non-readonly to allow replacement
   public readonly eventSystem: EventSystem<SortableEvents>
 
   /**
@@ -114,6 +177,9 @@ export class Sortable {
     this.element = element
     this.options = { ...defaultOptions, ...options }
 
+    // Track this instance
+    sortableInstances.set(element, this)
+
     this.dropZone = new DropZone(this.element)
     this.eventSystem = new EventSystem<SortableEvents>()
     const groupName = resolveGroupName(this.options.group)
@@ -129,18 +195,33 @@ export class Sortable {
         handle: this.options.handle,
         filter: this.options.filter,
         onFilter: this.options.onFilter,
+        draggable: this.options.draggable,
+        delay: this.options.delay,
+        delayOnTouchOnly: this.options.delayOnTouchOnly,
+        touchStartThreshold: this.options.touchStartThreshold,
       }
     )
     this.dragManager.attach()
 
-    if (this.options.onStart) {
-      this.eventSystem.on('start', this.options.onStart)
-    }
+    // Set up internal handlers for static properties
+    this.eventSystem.on('start', (event) => {
+      Sortable.active = this
+      Sortable.dragged = event.item
+      if (this.options.onStart) {
+        this.options.onStart(event)
+      }
+    })
+
+    this.eventSystem.on('end', (event) => {
+      Sortable.active = null
+      Sortable.dragged = null
+      if (this.options.onEnd) {
+        this.options.onEnd(event)
+      }
+    })
+
     if (this.options.onUpdate) {
       this.eventSystem.on('update', this.options.onUpdate)
-    }
-    if (this.options.onEnd) {
-      this.eventSystem.on('end', this.options.onEnd)
     }
     if (this.options.onAdd) {
       this.eventSystem.on('add', this.options.onAdd)
@@ -171,6 +252,8 @@ export class Sortable {
    */
   public destroy(): void {
     this.dragManager.detach()
+    // Remove from instance tracking
+    sortableInstances.delete(this.element)
   }
 
   /**
@@ -193,6 +276,96 @@ export class Sortable {
    */
   public toArray(): string[] {
     return domToArray(this.element)
+  }
+
+  /**
+   * Gets or sets a configuration option at runtime
+   *
+   * @param name - The option name to get or set
+   * @param value - The value to set (omit to get the current value)
+   * @returns The current value of the option (when getting)
+   *
+   * @example Getting an option value
+   * ```typescript
+   * const animationDuration = sortable.option('animation');
+   * console.log('Animation duration:', animationDuration);
+   * ```
+   *
+   * @example Setting an option value
+   * ```typescript
+   * sortable.option('animation', 300);
+   * sortable.option('disabled', true);
+   * ```
+   *
+   * @public
+   */
+  public option<K extends keyof SortableOptions>(name: K): SortableOptions[K]
+  public option<K extends keyof SortableOptions>(
+    name: K,
+    value: SortableOptions[K]
+  ): void
+  public option<K extends keyof SortableOptions>(
+    name: K,
+    value?: SortableOptions[K]
+  ): SortableOptions[K] | void {
+    if (arguments.length === 1) {
+      // Get option
+      return this.options[name]
+    }
+
+    // Set option
+    this.options[name] = value as SortableOptions[K]
+
+    // Handle special cases that need immediate updates
+    switch (name) {
+      case 'disabled':
+        // Update draggable state on all items
+        if (value) {
+          this.element.classList.add('sortable-disabled')
+        } else {
+          this.element.classList.remove('sortable-disabled')
+        }
+        break
+
+      case 'handle':
+      case 'filter':
+      case 'onFilter':
+      case 'draggable':
+      case 'delay':
+      case 'delayOnTouchOnly':
+      case 'touchStartThreshold': {
+        // Re-create drag manager with new options
+        this.dragManager.detach()
+        const groupName = resolveGroupName(this.options.group)
+        this.dragManager = new DragManager(
+          this.dropZone,
+          this.eventSystem,
+          groupName,
+          {
+            enableAccessibility: this.options.enableAccessibility,
+            multiSelect: this.options.multiDrag,
+            selectedClass: this.options.selectedClass,
+            focusClass: this.options.focusClass,
+            handle: this.options.handle,
+            filter: this.options.filter,
+            onFilter: this.options.onFilter,
+            draggable: this.options.draggable,
+            delay: this.options.delay,
+            delayOnTouchOnly: this.options.delayOnTouchOnly,
+            touchStartThreshold: this.options.touchStartThreshold,
+          }
+        )
+        this.dragManager.attach()
+        break
+      }
+
+      case 'group':
+        // Update group name in drag manager
+        this.dragManager.groupName = resolveGroupName(
+          value as SortableOptions['group']
+        )
+        break
+    }
   }
 }
 

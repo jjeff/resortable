@@ -23,6 +23,12 @@ export class DragManager {
   private handle?: string
   private filter?: string
   private onFilter?: (event: Event) => void
+  private draggable: string
+  private delay: number
+  private delayOnTouchOnly: number
+  private touchStartThreshold: number
+  private dragStartTimer?: number
+  private dragStartPosition?: { x: number; y: number }
 
   constructor(
     public zone: DropZone,
@@ -36,6 +42,10 @@ export class DragManager {
       handle?: string
       filter?: string
       onFilter?: (event: Event) => void
+      draggable?: string
+      delay?: number
+      delayOnTouchOnly?: number
+      touchStartThreshold?: number
     }
   ) {
     // Register this drag manager in the global registry
@@ -48,6 +58,12 @@ export class DragManager {
     this.handle = options?.handle
     this.filter = options?.filter
     this.onFilter = options?.onFilter
+
+    // Initialize draggable selector and delay options
+    this.draggable = options?.draggable || '.sortable-item'
+    this.delay = options?.delay || 0
+    this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
+    this.touchStartThreshold = options?.touchStartThreshold || 5
 
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
@@ -90,13 +106,8 @@ export class DragManager {
       this.keyboardManager.attach()
     }
 
-    // Setup draggable items - only for elements that already have sortable-item class
-    for (const child of this.zone.getItems()) {
-      // Only make items with sortable-item class draggable
-      if (child.classList.contains('sortable-item')) {
-        child.draggable = true
-      }
-    }
+    // Setup draggable items based on the draggable selector
+    this.updateDraggableItems()
   }
 
   /** Detach event listeners */
@@ -113,6 +124,10 @@ export class DragManager {
     el.removeEventListener('pointerdown', this.onPointerDown)
     // Document listeners are removed in onPointerUp
 
+    // Cancel any pending drag delay
+    this.cancelDragDelay()
+    document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+
     // Detach accessibility features
     if (this.enableAccessibility) {
       this.keyboardManager.detach()
@@ -124,11 +139,18 @@ export class DragManager {
   }
 
   private onDragStart = (e: DragEvent): void => {
-    // Find the closest sortable-item that would be dragged
+    // Find the closest draggable item
+    const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
-      '.sortable-item'
+      draggableSelector
     ) as HTMLElement
     if (!target || target.parentElement !== this.zone.element) return
+
+    // Check if the element is draggable
+    if (!this.isDraggable(target)) {
+      e.preventDefault()
+      return
+    }
 
     // Check if drag should be allowed based on handle/filter options
     if (!this.shouldAllowDrag(e, target)) {
@@ -259,11 +281,15 @@ export class DragManager {
 
   // Pointer-based drag and drop for modern touch/pen/mouse support
   private onPointerDown = (e: PointerEvent): void => {
-    // Find the closest sortable-item that would be dragged
+    // Find the closest draggable item
+    const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
-      '.sortable-item'
+      draggableSelector
     ) as HTMLElement
     if (!target || target.parentElement !== this.zone.element) return
+
+    // Check if the element is draggable
+    if (!this.isDraggable(target)) return
 
     // Check if drag should be allowed based on handle/filter options
     if (!this.shouldAllowDrag(e, target)) {
@@ -298,6 +324,54 @@ export class DragManager {
     if (this.isPointerDragging && this.activePointerId !== null) {
       return
     }
+
+    // Handle delay if configured
+    const isTouch = e.pointerType === 'touch'
+    const effectiveDelay =
+      isTouch && this.delayOnTouchOnly !== undefined
+        ? this.delayOnTouchOnly
+        : this.delay
+
+    if (effectiveDelay && effectiveDelay > 0) {
+      // Start delay timer
+      this.startDragDelay(e, target, () => {
+        // After delay, start the actual drag
+        this.startPointerDrag(e, target)
+      })
+
+      // Store initial pointer position for threshold checking
+      if (this.touchStartThreshold && this.touchStartThreshold > 0) {
+        document.addEventListener('pointermove', this.onPointerMoveBeforeDrag)
+      }
+
+      // Prevent default to avoid text selection while waiting
+      e.preventDefault()
+    } else {
+      // No delay, start drag immediately
+      this.startPointerDrag(e, target)
+      e.preventDefault()
+    }
+  }
+
+  private onPointerMoveBeforeDrag = (e: PointerEvent): void => {
+    if (!this.dragStartPosition || !this.dragStartTimer) return
+
+    // Check if pointer moved beyond threshold
+    const dx = e.clientX - this.dragStartPosition.x
+    const dy = e.clientY - this.dragStartPosition.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    if (this.touchStartThreshold && distance > this.touchStartThreshold) {
+      // Cancel delayed drag
+      this.cancelDragDelay()
+      document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+    }
+  }
+
+  private startPointerDrag(e: PointerEvent, target: HTMLElement): void {
+    // Clear any delay timer
+    this.cancelDragDelay()
+    document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
 
     // Get selected items if multiSelect is enabled
     let draggedItems: HTMLElement[] = [target]
@@ -347,9 +421,6 @@ export class DragManager {
       newIndex: this.startIndex,
     }
     this.events.emit('start', evt)
-
-    // Prevent text selection
-    e.preventDefault()
   }
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -449,6 +520,10 @@ export class DragManager {
   }
 
   private cleanupPointerDrag(revert = false): void {
+    // Cancel any pending delay timer
+    this.cancelDragDelay()
+    document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+
     // Remove global pointer event listeners
     document.removeEventListener('pointermove', this.onPointerMove)
     document.removeEventListener('pointerup', this.onPointerUp)
@@ -626,5 +701,102 @@ export class DragManager {
     }
 
     return true
+  }
+
+  /**
+   * Update which items are draggable based on the draggable selector
+   */
+  private updateDraggableItems(): void {
+    // First, remove draggable from all children
+    for (const child of this.zone.getItems()) {
+      child.draggable = false
+    }
+
+    // Then set draggable on items matching the selector
+    // If draggable selector matches items that also have sortable-item class
+    const draggableItems = this.zone.element.querySelectorAll(this.draggable)
+    for (const item of draggableItems) {
+      if (
+        item instanceof HTMLElement &&
+        item.parentElement === this.zone.element
+      ) {
+        item.draggable = !this.handle // Only set draggable if no handle (handle uses pointer events)
+      }
+    }
+  }
+
+  /**
+   * Check if an element is draggable based on the draggable selector
+   */
+  private isDraggable(element: HTMLElement): boolean {
+    return element.matches(this.draggable)
+  }
+
+  /**
+   * Handle delayed drag start for touch/mouse with delay option
+   */
+  private startDragDelay(
+    event: PointerEvent,
+    _target: HTMLElement,
+    callback: () => void
+  ): void {
+    // Determine if delay should be applied
+    const isTouch = event.pointerType === 'touch'
+    const effectiveDelay = isTouch ? this.delayOnTouchOnly : this.delay
+
+    if (effectiveDelay <= 0) {
+      callback()
+      return
+    }
+
+    // Store initial position for threshold checking
+    this.dragStartPosition = { x: event.clientX, y: event.clientY }
+
+    // Set up delay timer
+    this.dragStartTimer = window.setTimeout(() => {
+      this.dragStartTimer = undefined
+      this.dragStartPosition = undefined
+      callback()
+    }, effectiveDelay)
+
+    // Add temporary move handler to check threshold
+    const onMove = (e: PointerEvent): void => {
+      if (!this.dragStartPosition || !this.dragStartTimer) {
+        document.removeEventListener('pointermove', onMove)
+        return
+      }
+
+      const dx = Math.abs(e.clientX - this.dragStartPosition.x)
+      const dy = Math.abs(e.clientY - this.dragStartPosition.y)
+      const distance = Math.sqrt(dx * dx + dy * dy)
+
+      // Cancel drag if movement exceeds threshold
+      if (distance > this.touchStartThreshold) {
+        this.cancelDragDelay()
+        document.removeEventListener('pointermove', onMove)
+      }
+    }
+
+    const onUp = (): void => {
+      this.cancelDragDelay()
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('pointercancel', onUp)
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+    document.addEventListener('pointercancel', onUp)
+  }
+
+  /**
+   * Cancel delayed drag start
+   */
+  private cancelDragDelay(): void {
+    if (this.dragStartTimer) {
+      window.clearTimeout(this.dragStartTimer)
+      this.dragStartTimer = undefined
+    }
+    this.dragStartPosition = undefined
   }
 }
