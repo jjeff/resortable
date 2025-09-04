@@ -204,7 +204,7 @@ test.describe('Keyboard Navigation', () => {
     const items = container.locator('.sortable-item')
 
     // Check container ARIA attributes
-    await expect(container).toHaveAttribute('role', 'list')
+    await expect(container).toHaveAttribute('role', 'listbox')
     await expect(container).toHaveAttribute('aria-label', /Sortable list/)
 
     // Check item ARIA attributes

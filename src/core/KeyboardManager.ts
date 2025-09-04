@@ -339,6 +339,9 @@ export class KeyboardManager {
       `Dropped ${this.grabbedItems.length} item${this.grabbedItems.length > 1 ? 's' : ''} at position ${newIndex + 1}`
     )
 
+    // Update ARIA attributes after drop
+    this.updateItemAttributes()
+
     this.isGrabbing = false
     this.grabbedItems = []
     this.originalIndices = []
@@ -365,6 +368,9 @@ export class KeyboardManager {
     const dragId = 'keyboard-drag'
     globalDragState.endDrag(dragId)
 
+    // Update ARIA attributes after restore
+    this.updateItemAttributes()
+    
     // Announce cancellation
     this.announce('Move cancelled')
 
@@ -393,6 +399,9 @@ export class KeyboardManager {
 
       // Announce move
       this.announce(`Moved to position ${currentIndex}`)
+      
+      // Update ARIA attributes after move
+      this.updateItemAttributes()
     }
   }
 
@@ -419,6 +428,9 @@ export class KeyboardManager {
       // Announce move
       const newIndex = this.zone.getIndex(this.grabbedItems[0])
       this.announce(`Moved to position ${newIndex + 1}`)
+      
+      // Update ARIA attributes after move
+      this.updateItemAttributes()
     }
   }
 
@@ -437,7 +449,7 @@ export class KeyboardManager {
   private updateItemAttributes(): void {
     const items = this.zone.getItems()
     items.forEach((item, index) => {
-      item.setAttribute('role', 'option')
+      item.setAttribute('role', 'listitem')
       item.setAttribute('aria-setsize', items.length.toString())
       item.setAttribute('aria-posinset', (index + 1).toString())
       item.setAttribute('aria-selected', 'false')

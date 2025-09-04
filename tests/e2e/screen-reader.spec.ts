@@ -24,6 +24,7 @@ test.describe('Screen Reader Support', () => {
 
     // Grab item - should announce
     await page.keyboard.press('Enter')
+    await page.waitForTimeout(50) // Wait for announcement
     await expect(announcer).toHaveText(/Grabbed 1 item/)
 
     // Move item
@@ -32,6 +33,7 @@ test.describe('Screen Reader Support', () => {
 
     // Drop item - should announce
     await page.keyboard.press('Enter')
+    await page.waitForTimeout(50) // Wait for announcement
     await expect(announcer).toHaveText(/Dropped 1 item/)
   })
 
@@ -61,6 +63,9 @@ test.describe('Screen Reader Support', () => {
 
     // Cancel with Escape
     await page.keyboard.press('Escape')
+    
+    // Wait a bit for the announcement
+    await page.waitForTimeout(50)
     await expect(announcer).toHaveText(/Move cancelled/)
   })
 
