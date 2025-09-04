@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draggable Selector Test</title>
+  <style>
+    .sortable-item {
+      padding: 10px;
+      margin: 5px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+    }
+    .draggable-item {
+      background: #e0f0e0;
+      cursor: move;
+    }
+    .non-draggable {
+      background: #f0e0e0;
+      cursor: not-allowed;
+    }
+    .sortable-ghost {
+      opacity: 0.5;
+    }
+    .sortable-chosen {
+      background: #d0d0d0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Draggable Selector Test</h1>
+  
+  <div id="draggable-test">
+    <div class="sortable-item draggable-item" data-id="item-1">
+      Item 1 (Draggable)
+    </div>
+    <div class="sortable-item non-draggable" data-id="item-2">
+      Item 2 (Non-Draggable)
+    </div>
+    <div class="sortable-item draggable-item" data-id="item-3">
+      Item 3 (Draggable)
+    </div>
+  </div>
+
+  <script type="module">
+    import { Sortable } from '/src/index.js';
+    
+    const sortable = new Sortable(document.getElementById('draggable-test'), {
+      draggable: '.draggable-item',
+      animation: 150,
+      onStart: (e) => console.log('Start drag', e),
+      onEnd: (e) => console.log('End drag', e),
+    });
+    
+    window.sortable = sortable;
+  </script>
+</body>
+</html>

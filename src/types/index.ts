@@ -251,6 +251,18 @@ export interface SortableOptions {
    * ```
    */
   delayOnTouchOnly?: number
+
+  /**
+   * Pixels of movement allowed before cancelling delayed drag event
+   * @defaultValue 5
+   *
+   * @example
+   * ```typescript
+   * // Allow 10px of movement before cancelling delayed drag
+   * { touchStartThreshold: 10 }
+   * ```
+   */
+  touchStartThreshold?: number
 }
 
 /**

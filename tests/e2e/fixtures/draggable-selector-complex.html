@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draggable Selector Complex Test</title>
+  <style>
+    .sortable-item {
+      padding: 10px;
+      margin: 5px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+    }
+    .active {
+      background: #e0f0e0;
+      cursor: move;
+    }
+    .inactive {
+      background: #f0e0e0;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .premium {
+      background: #f0f0e0;
+      border: 2px solid gold;
+      cursor: move;
+    }
+    .sortable-ghost {
+      opacity: 0.5;
+    }
+    .sortable-chosen {
+      background: #d0d0d0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Draggable Selector Complex Test</h1>
+  
+  <div id="draggable-complex-test">
+    <div class="sortable-item active" data-status="active" data-id="item-active">
+      Active Item (Draggable)
+    </div>
+    <div class="sortable-item inactive" data-status="inactive" data-id="item-inactive">
+      Inactive Item (Not Draggable)
+    </div>
+    <div class="sortable-item premium" data-status="premium" data-id="item-premium">
+      Premium Item (Draggable)
+    </div>
+  </div>
+
+  <script type="module">
+    import { Sortable } from '/src/index.js';
+    
+    const sortable = new Sortable(document.getElementById('draggable-complex-test'), {
+      // Complex selector: only active items or items with premium status
+      draggable: '.sortable-item.active, .sortable-item[data-status="premium"]',
+      animation: 150,
+      onStart: (e) => console.log('Start drag', e),
+      onEnd: (e) => console.log('End drag', e),
+    });
+    
+    window.sortable = sortable;
+  </script>
+</body>
+</html>
