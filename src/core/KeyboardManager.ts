@@ -370,7 +370,7 @@ export class KeyboardManager {
 
     // Update ARIA attributes after restore
     this.updateItemAttributes()
-    
+
     // Announce cancellation
     this.announce('Move cancelled')
 
@@ -399,7 +399,7 @@ export class KeyboardManager {
 
       // Announce move
       this.announce(`Moved to position ${currentIndex}`)
-      
+
       // Update ARIA attributes after move
       this.updateItemAttributes()
     }
@@ -428,7 +428,7 @@ export class KeyboardManager {
       // Announce move
       const newIndex = this.zone.getIndex(this.grabbedItems[0])
       this.announce(`Moved to position ${newIndex + 1}`)
-      
+
       // Update ARIA attributes after move
       this.updateItemAttributes()
     }

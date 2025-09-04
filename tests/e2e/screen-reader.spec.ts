@@ -63,7 +63,7 @@ test.describe('Screen Reader Support', () => {
 
     // Cancel with Escape
     await page.keyboard.press('Escape')
-    
+
     // Wait a bit for the announcement
     await page.waitForTimeout(50)
     await expect(announcer).toHaveText(/Move cancelled/)
