@@ -10,8 +10,12 @@ test.describe('Handle and Filter Options', () => {
       page,
       browserName,
     }) => {
-      // Skip for browsers with pointer event handling issues
-      test.skip(browserName === 'chromium' || browserName === 'webkit', 'Skipping due to browser-specific pointer event differences')
+      // @TODO: Fix browser-specific pointer event handling for Chromium and WebKit
+      // The handle functionality works but tests fail due to event simulation differences
+      test.skip(
+        browserName === 'chromium' || browserName === 'webkit',
+        'Skipping due to browser-specific pointer event differences'
+      )
       // Capture console messages for debugging
       // eslint-disable-next-line no-console
       page.on('console', (msg) => console.log('Browser console:', msg.text()))
@@ -97,8 +101,9 @@ test.describe('Handle and Filter Options', () => {
       await expect(items.nth(2)).toHaveAttribute('data-id', 'item-3')
     })
 
-    test.skip('should work with nested handle elements', async ({ page, browserName }) => {
-      // TODO: Fix cross-browser compatibility for nested handle elements
+    test.skip('should work with nested handle elements', async ({ page }) => {
+      // @TODO: Fix cross-browser compatibility for nested handle elements
+      // Issue: Event target detection when clicking on nested elements within handles
       // Initialize sortable with nested handle structure
       await page.evaluate(() => {
         const container = document.createElement('div')
@@ -153,9 +158,9 @@ test.describe('Handle and Filter Options', () => {
   test.describe('Filter Option', () => {
     test.skip('should prevent drag when initiated from filtered elements', async ({
       page,
-      browserName,
     }) => {
-      // TODO: Fix cross-browser compatibility for filter drag prevention
+      // @TODO: Fix cross-browser compatibility for filter drag prevention
+      // Issue: Drag prevention not working consistently across browsers in tests
       // Initialize sortable with filter option
       await page.evaluate(() => {
         const container = document.createElement('div')
@@ -297,8 +302,11 @@ test.describe('Handle and Filter Options', () => {
   })
 
   test.describe('Handle and Filter Combined', () => {
-    test.skip('should respect both handle and filter options', async ({ page, browserName }) => {
-      // TODO: Fix cross-browser compatibility for combined handle and filter
+    test.skip('should respect both handle and filter options', async ({
+      page,
+    }) => {
+      // @TODO: Fix cross-browser compatibility for combined handle and filter
+      // Issue: Combined handle and filter logic needs browser-specific event handling
       // Initialize sortable with both handle and filter
       await page.evaluate(() => {
         const container = document.createElement('div')
