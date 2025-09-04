@@ -720,7 +720,7 @@ export class DragManager {
         item.draggable = true
       }
     }
-    
+
     // Set draggable=false for items that don't match the selector
     for (const child of this.zone.getItems()) {
       if (!child.matches(this.draggable)) {
