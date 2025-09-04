@@ -12,6 +12,7 @@ export class SelectionManager {
   private selectedClass: string
   private focusedItem: HTMLElement | null = null
   private focusClass: string
+  private multiSelect: boolean
 
   constructor(
     private container: HTMLElement,
@@ -24,6 +25,7 @@ export class SelectionManager {
   ) {
     this.selectedClass = options?.selectedClass || 'sortable-selected'
     this.focusClass = options?.focusClass || 'sortable-focused'
+    this.multiSelect = options?.multiSelect || false
   }
 
   /**

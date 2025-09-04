@@ -37,7 +37,8 @@ export class KeyboardManager {
     }
 
     // Add ARIA attributes
-    this.container.setAttribute('role', 'list')
+    this.container.setAttribute('role', 'listbox')
+    this.container.setAttribute('aria-multiselectable', 'true')
     this.container.setAttribute(
       'aria-label',
       'Sortable list. Use arrow keys to navigate, space to select, and enter to move items.'
@@ -65,9 +66,14 @@ export class KeyboardManager {
       item.setAttribute('tabindex', '-1')
     })
 
-    // Clean up announcer
+    // Clean up announcer only if no other instances are using it
     if (this.announcer) {
-      this.announcer.remove()
+      // Check if any other sortable instances exist
+      const sortableElements = document.querySelectorAll('[role="listbox"]')
+      if (sortableElements.length <= 1) {
+        // We're the last one, remove the announcer
+        this.announcer.remove()
+      }
       this.announcer = null
     }
   }
@@ -94,6 +100,18 @@ export class KeyboardManager {
         e.preventDefault()
         if (this.isGrabbing) {
           this.moveGrabbedDown()
+        } else if (e.shiftKey) {
+          // Extend selection with Shift+ArrowDown
+          const focused = this.selectionManager.getFocused()
+          if (focused) {
+            const items = this.zone.getItems()
+            const currentIndex = items.indexOf(focused)
+            if (currentIndex < items.length - 1) {
+              const nextItem = items[currentIndex + 1]
+              this.selectionManager.setFocus(nextItem)
+              this.selectionManager.select(nextItem, true) // true to add to selection
+            }
+          }
         } else {
           this.selectionManager.focusNext()
         }
@@ -103,6 +121,18 @@ export class KeyboardManager {
         e.preventDefault()
         if (this.isGrabbing) {
           this.moveGrabbedUp()
+        } else if (e.shiftKey) {
+          // Extend selection with Shift+ArrowUp
+          const focused = this.selectionManager.getFocused()
+          if (focused) {
+            const items = this.zone.getItems()
+            const currentIndex = items.indexOf(focused)
+            if (currentIndex > 0) {
+              const prevItem = items[currentIndex - 1]
+              this.selectionManager.setFocus(prevItem)
+              this.selectionManager.select(prevItem, true) // true to add to selection
+            }
+          }
         } else {
           this.selectionManager.focusPrevious()
         }
@@ -407,7 +437,7 @@ export class KeyboardManager {
   private updateItemAttributes(): void {
     const items = this.zone.getItems()
     items.forEach((item, index) => {
-      item.setAttribute('role', 'listitem')
+      item.setAttribute('role', 'option')
       item.setAttribute('aria-setsize', items.length.toString())
       item.setAttribute('aria-posinset', (index + 1).toString())
       item.setAttribute('aria-selected', 'false')
@@ -422,11 +452,18 @@ export class KeyboardManager {
    * Setup screen reader announcer
    */
   private setupAnnouncer(): void {
+    // Use a single shared announcer for all instances
+    const existingAnnouncer = document.querySelector('.sortable-announcer')
+    if (existingAnnouncer) {
+      this.announcer = existingAnnouncer as HTMLElement
+      return
+    }
+
     this.announcer = document.createElement('div')
     this.announcer.setAttribute('role', 'status')
     this.announcer.setAttribute('aria-live', 'assertive')
     this.announcer.setAttribute('aria-atomic', 'true')
-    this.announcer.className = 'sr-only'
+    this.announcer.className = 'sr-only sortable-announcer'
     this.announcer.style.position = 'absolute'
     this.announcer.style.left = '-10000px'
     this.announcer.style.width = '1px'

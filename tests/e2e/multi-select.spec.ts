@@ -26,11 +26,14 @@ test.describe('Multi-Select Functionality', () => {
           multiDrag: true,
           selectedClass: 'sortable-selected',
           group: 'basic',
+          enableAccessibility: true,
         })
       }
     })
 
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
+    // Wait for initialization
+    await page.waitForTimeout(100)
   })
 
   test('selects multiple items with Ctrl+Click', async ({ page }) => {

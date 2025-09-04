@@ -268,6 +268,16 @@ export class DragManager {
       return
     }
 
+    // Get selected items if multiSelect is enabled
+    let draggedItems: HTMLElement[] = [target]
+    if (this.selectionManager.isSelected(target)) {
+      // If the target is already selected, drag all selected items
+      draggedItems = this.selectionManager.getSelected()
+    } else {
+      // If target is not selected, select only it
+      this.selectionManager.select(target)
+    }
+
     // Capture the pointer to ensure we receive all subsequent events
     // Firefox throws an error for synthetic events, so we need to handle this gracefully
     try {
@@ -299,7 +309,7 @@ export class DragManager {
 
     const evt: SortableEvent = {
       item: target,
-      items: [target],
+      items: draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
