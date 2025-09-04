@@ -40,7 +40,9 @@ test.describe('Delay Options', () => {
   })
 
   // @TODO: Touch-specific delays are hard to test in automated browser tests
-  test.skip('should only delay on touch with delayOnTouchOnly', async ({ page }) => {
+  test.skip('should only delay on touch with delayOnTouchOnly', async ({
+    page,
+  }) => {
     await page.goto('/tests/e2e/fixtures/delay-touch-only.html')
 
     const item1 = page.locator('[data-id="item-1"]')
