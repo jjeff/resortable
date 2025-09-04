@@ -126,6 +126,9 @@ export class Sortable {
         multiSelect: this.options.multiDrag,
         selectedClass: this.options.selectedClass,
         focusClass: this.options.focusClass,
+        handle: this.options.handle,
+        filter: this.options.filter,
+        onFilter: this.options.onFilter,
       }
     )
     this.dragManager.attach()

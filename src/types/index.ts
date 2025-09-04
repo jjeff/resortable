@@ -181,6 +181,76 @@ export interface SortableOptions {
    * @param event - The sortable event
    */
   onSelect?: (event: Partial<SortableEvent>) => void
+
+  /**
+   * CSS selector for drag handle
+   * When specified, drag can only be initiated from matching elements
+   * @defaultValue undefined
+   *
+   * @example
+   * ```typescript
+   * // Only allow dragging from elements with class 'drag-handle'
+   * { handle: '.drag-handle' }
+   *
+   * // Multiple handles using a more complex selector
+   * { handle: '.drag-handle, .drag-icon' }
+   * ```
+   */
+  handle?: string
+
+  /**
+   * CSS selector for elements that should not trigger drag
+   * @defaultValue undefined
+   *
+   * @example
+   * ```typescript
+   * // Prevent dragging when clicking on input elements
+   * { filter: 'input, textarea, button' }
+   * ```
+   */
+  filter?: string
+
+  /**
+   * Callback fired when a filtered element is clicked
+   * @param event - The original mouse/touch event
+   */
+  onFilter?: (event: Event) => void
+
+  /**
+   * CSS selector for draggable items
+   * @defaultValue '.sortable-item'
+   *
+   * @example
+   * ```typescript
+   * // Only allow specific items to be draggable
+   * { draggable: '.draggable-item' }
+   * ```
+   */
+  draggable?: string
+
+  /**
+   * Delay in milliseconds before drag starts
+   * @defaultValue 0
+   *
+   * @example
+   * ```typescript
+   * // 300ms delay before drag starts
+   * { delay: 300 }
+   * ```
+   */
+  delay?: number
+
+  /**
+   * Delay on touch devices (fallback to `delay` if not specified)
+   * @defaultValue delay || 0
+   *
+   * @example
+   * ```typescript
+   * // Different delays for mouse and touch
+   * { delay: 0, delayOnTouchOnly: 300 }
+   * ```
+   */
+  delayOnTouchOnly?: number
 }
 
 /**
