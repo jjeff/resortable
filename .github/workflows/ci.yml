@@ -116,7 +116,9 @@ jobs:
   cross-platform-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Temporarily only using Linux to reduce GitHub Actions budget
+        # TODO: Re-enable windows-latest, macos-latest when budget allows
+        os: [ubuntu-latest]
         node-version: [18, 20]
     runs-on: ${{ matrix.os }}
     steps:
