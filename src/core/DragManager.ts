@@ -20,6 +20,9 @@ export class DragManager {
   private selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
   private enableAccessibility: boolean
+  private handle?: string
+  private filter?: string
+  private onFilter?: (event: Event) => void
 
   constructor(
     public zone: DropZone,
@@ -30,6 +33,9 @@ export class DragManager {
       multiSelect?: boolean
       selectedClass?: string
       focusClass?: string
+      handle?: string
+      filter?: string
+      onFilter?: (event: Event) => void
     }
   ) {
     // Register this drag manager in the global registry
@@ -37,6 +43,11 @@ export class DragManager {
 
     // Initialize accessibility features
     this.enableAccessibility = options?.enableAccessibility ?? true
+
+    // Initialize handle and filter options
+    this.handle = options?.handle
+    this.filter = options?.filter
+    this.onFilter = options?.onFilter
 
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
@@ -80,10 +91,13 @@ export class DragManager {
     }
 
     // Setup draggable items - only for elements that already have sortable-item class
-    for (const child of this.zone.getItems()) {
-      // Only make items with sortable-item class draggable
-      if (child.classList.contains('sortable-item')) {
-        child.draggable = true
+    // If handle option is specified, don't set draggable attribute (rely on pointer events only)
+    if (!this.handle) {
+      for (const child of this.zone.getItems()) {
+        // Only make items with sortable-item class draggable
+        if (child.classList.contains('sortable-item')) {
+          child.draggable = true
+        }
       }
     }
   }
@@ -113,8 +127,18 @@ export class DragManager {
   }
 
   private onDragStart = (e: DragEvent): void => {
-    const target = e.target as HTMLElement
+    // Find the closest sortable-item that would be dragged
+    const target = (e.target as HTMLElement)?.closest(
+      '.sortable-item'
+    ) as HTMLElement
     if (!target || target.parentElement !== this.zone.element) return
+
+    // Check if drag should be allowed based on handle/filter options
+    if (!this.shouldAllowDrag(e, target)) {
+      e.preventDefault()
+      return
+    }
+
     this.startIndex = this.zone.getIndex(target)
 
     // Register with global drag state using HTML5 drag API as ID
@@ -238,8 +262,18 @@ export class DragManager {
 
   // Pointer-based drag and drop for modern touch/pen/mouse support
   private onPointerDown = (e: PointerEvent): void => {
-    const target = e.target as HTMLElement
+    // Find the closest sortable-item that would be dragged
+    const target = (e.target as HTMLElement)?.closest(
+      '.sortable-item'
+    ) as HTMLElement
     if (!target || target.parentElement !== this.zone.element) return
+
+    // Check if drag should be allowed based on handle/filter options
+    if (!this.shouldAllowDrag(e, target)) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
 
     // Only start drag on primary button (left mouse or primary touch)
     if (e.button !== 0) return
@@ -553,5 +587,46 @@ export class DragManager {
 
     // Default: allow if same group name (this should be improved)
     return currentGroup === 'default'
+  }
+
+  /**
+   * Check if drag should be allowed based on handle and filter options
+   * @param event - The triggering event (drag or pointer)
+   * @param dragTarget - The element that would be dragged
+   * @returns true if drag should be allowed, false otherwise
+   */
+  private shouldAllowDrag(event: Event, dragTarget: HTMLElement): boolean {
+    const eventTarget = event.target as HTMLElement
+
+    // Check filter option - if event target matches filter, prevent drag
+    if (this.filter && eventTarget.matches(this.filter)) {
+      // Call onFilter callback if provided
+      if (this.onFilter) {
+        this.onFilter(event)
+      }
+      return false
+    }
+
+    // Check handle option - if handle is specified, drag must start from handle
+    if (this.handle) {
+      // Check if the event target or any of its parents (up to dragTarget) matches the handle selector
+      let currentElement: HTMLElement | null = eventTarget
+      let foundHandle = false
+
+      while (currentElement && currentElement !== dragTarget.parentElement) {
+        if (currentElement.matches(this.handle)) {
+          foundHandle = true
+          break
+        }
+        currentElement = currentElement.parentElement
+      }
+
+      // If handle is specified but not found, prevent drag
+      if (!foundHandle) {
+        return false
+      }
+    }
+
+    return true
   }
 }
