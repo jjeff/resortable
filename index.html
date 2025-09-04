@@ -190,6 +190,10 @@
     try {
       // Try to import and initialize Resortable
       const { Sortable } = await import('/src/index.ts');
+      
+      // Store Sortable globally and create array for instances
+      window.Sortable = Sortable;
+      window.sortables = [];
 
       const log = (label) => (evt) => {
         const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from.id || 'unknown'} to ${evt.to.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
@@ -198,62 +202,69 @@
       };
 
       // Basic list (sort only)
-      new Sortable(document.getElementById('basic-list'), {
+      window.sortables.push(new Sortable(document.getElementById('basic-list'), {
         group: 'basic',
         animation: 150,
+        enableAccessibility: true,
+        multiSelect: false,
         onEnd: log('Basic end'),
         onUpdate: log('Basic update'),
-      });
+      }));
 
       // Shared Group A
       const sharedOpts = {
         group: 'group-a',
         animation: 150,
+        enableAccessibility: true,
         onAdd: log('Group A add'),
         onRemove: log('Group A remove'),
         onEnd: log('Group A end'),
       };
-      new Sortable(document.getElementById('shared-a-1'), sharedOpts);
-      new Sortable(document.getElementById('shared-a-2'), sharedOpts);
+      window.sortables.push(new Sortable(document.getElementById('shared-a-1'), sharedOpts));
+      window.sortables.push(new Sortable(document.getElementById('shared-a-2'), sharedOpts));
 
       // Independent groups A and B
-      new Sortable(document.getElementById('group-a-1'), {
+      window.sortables.push(new Sortable(document.getElementById('group-a-1'), {
         group: 'independent-a',
         animation: 150,
+        enableAccessibility: true,
         onEnd: log('Independent A end'),
         onAdd: log('Independent A add'),
         onRemove: log('Independent A remove'),
-      });
-      new Sortable(document.getElementById('group-b-1'), {
+      }));
+      window.sortables.push(new Sortable(document.getElementById('group-b-1'), {
         group: 'independent-b',
         animation: 150,
+        enableAccessibility: true,
         onEnd: log('Independent B end'),
         onAdd: log('Independent B add'),
         onRemove: log('Independent B remove'),
-      });
+      }));
 
       // Grid shared
       const gridOpts = {
         group: 'grid-shared',
         animation: 150,
+        enableAccessibility: true,
         onAdd: log('Grid add'),
         onRemove: log('Grid remove'),
         onEnd: log('Grid end'),
       };
-      new Sortable(document.getElementById('grid-1'), gridOpts);
-      new Sortable(document.getElementById('grid-2'), gridOpts);
+      window.sortables.push(new Sortable(document.getElementById('grid-1'), gridOpts));
+      window.sortables.push(new Sortable(document.getElementById('grid-2'), gridOpts));
 
       // Legacy E2E lists
       const e2eOpts = {
         group: 'shared',
         animation: 150,
+        enableAccessibility: true,
         onEnd: log('E2E end'),
         onUpdate: log('E2E update'),
         onAdd: log('E2E add'),
         onRemove: log('E2E remove'),
       };
-      new Sortable(document.getElementById('list1'), e2eOpts);
-      new Sortable(document.getElementById('list2'), e2eOpts);
+      window.sortables.push(new Sortable(document.getElementById('list1'), e2eOpts));
+      window.sortables.push(new Sortable(document.getElementById('list2'), e2eOpts));
 
       document.getElementById('library-status').textContent = 'Resortable Library Loaded';
       

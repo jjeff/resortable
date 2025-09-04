@@ -2,12 +2,14 @@ import { SortableEvent } from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
+import { SelectionManager } from './SelectionManager.js'
+import { KeyboardManager } from './KeyboardManager.js'
 
 // Global registry of DragManager instances for cross-zone operations
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
 
 /**
- * Handles HTML5 drag and drop interactions
+ * Handles drag and drop interactions with accessibility support
  * @internal
  */
 export class DragManager {
@@ -15,14 +17,46 @@ export class DragManager {
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
+  private selectionManager: SelectionManager
+  private keyboardManager: KeyboardManager
+  private enableAccessibility: boolean
 
   constructor(
     public zone: DropZone,
     public events: SortableEventSystem,
-    public groupName: string
+    public groupName: string,
+    options?: {
+      enableAccessibility?: boolean
+      multiSelect?: boolean
+      selectedClass?: string
+      focusClass?: string
+    }
   ) {
     // Register this drag manager in the global registry
     dragManagerRegistry.set(this.zone.element, this)
+
+    // Initialize accessibility features
+    this.enableAccessibility = options?.enableAccessibility ?? true
+
+    // Initialize selection manager
+    this.selectionManager = new SelectionManager(
+      this.zone.element,
+      this.events,
+      {
+        selectedClass: options?.selectedClass,
+        focusClass: options?.focusClass,
+        multiSelect: options?.multiSelect,
+      }
+    )
+
+    // Initialize keyboard manager if accessibility is enabled
+    this.keyboardManager = new KeyboardManager(
+      this.zone.element,
+      this.zone,
+      this.selectionManager,
+      this.events,
+      this.groupName
+    )
   }
 
   /** Attach event listeners */
@@ -40,8 +74,17 @@ export class DragManager {
     el.addEventListener('pointerdown', this.onPointerDown)
     // Note: pointermove and pointerup are attached to document in onPointerDown
 
+    // Attach accessibility features
+    if (this.enableAccessibility) {
+      this.keyboardManager.attach()
+    }
+
+    // Setup draggable items - only for elements that already have sortable-item class
     for (const child of this.zone.getItems()) {
-      child.draggable = true
+      // Only make items with sortable-item class draggable
+      if (child.classList.contains('sortable-item')) {
+        child.draggable = true
+      }
     }
   }
 
@@ -58,6 +101,12 @@ export class DragManager {
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
     // Document listeners are removed in onPointerUp
+
+    // Detach accessibility features
+    if (this.enableAccessibility) {
+      this.keyboardManager.detach()
+      this.selectionManager.destroy()
+    }
 
     // Unregister from global registry
     dragManagerRegistry.delete(this.zone.element)
@@ -198,21 +247,36 @@ export class DragManager {
     // Ignore pen input - pen should use native drag API or be explicitly handled
     if (e.pointerType === 'pen') return
 
-    // If there's already an active drag, cancel it if this is a touch event
-    // This handles multi-touch scenarios where dragging should be cancelled
-    if (this.isPointerDragging && this.activePointerId !== null) {
-      if (e.pointerType === 'touch') {
-        // Cancel the existing drag when a second touch is detected
-        // Revert any moves that may have happened
-        this.cleanupPointerDrag(true)
-        return
-      }
-      // For non-touch events, just ignore the new pointer
+    // If there's already an active drag and this is a touch event, cancel the drag
+    // This handles multi-touch scenarios where any second touch cancels dragging
+    if (
+      this.isPointerDragging &&
+      this.activePointerId !== null &&
+      e.pointerType === 'touch'
+    ) {
+      // Cancel the existing drag when ANY second touch is detected (primary or not)
+      // This prevents accidental moves during multi-touch
+      this.cleanupPointerDrag(true)
       return
     }
 
-    // Only handle primary pointers for multi-touch scenarios
+    // Only handle primary pointers for starting new drags
     if (!e.isPrimary) return
+
+    // If there's already an active drag from a non-touch pointer, ignore new pointers
+    if (this.isPointerDragging && this.activePointerId !== null) {
+      return
+    }
+
+    // Get selected items if multiSelect is enabled
+    let draggedItems: HTMLElement[] = [target]
+    if (this.selectionManager.isSelected(target)) {
+      // If the target is already selected, drag all selected items
+      draggedItems = this.selectionManager.getSelected()
+    } else {
+      // If target is not selected, select only it
+      this.selectionManager.select(target)
+    }
 
     // Capture the pointer to ensure we receive all subsequent events
     // Firefox throws an error for synthetic events, so we need to handle this gracefully
@@ -245,7 +309,7 @@ export class DragManager {
 
     const evt: SortableEvent = {
       item: target,
-      items: [target],
+      items: draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
@@ -368,21 +432,29 @@ export class DragManager {
       if (activeDrag && activeDrag.fromZone) {
         // Move the element back to its original position
         const fromZone = activeDrag.fromZone
-        const items = Array.from(fromZone.children)
+        // Get only sortable items, not all children
+        const items = Array.from(fromZone.querySelectorAll('.sortable-item'))
         const currentIndex = items.indexOf(this.dragElement)
 
-        if (currentIndex !== this.startIndex) {
+        // Only revert if the element has actually moved
+        if (currentIndex !== this.startIndex && currentIndex !== -1) {
           // Remove from current position
           if (this.dragElement.parentElement) {
             this.dragElement.parentElement.removeChild(this.dragElement)
           }
 
+          // Get the current list of sortable items after removal
+          const itemsAfterRemoval = Array.from(
+            fromZone.querySelectorAll('.sortable-item')
+          )
+
           // Insert at original position
-          if (this.startIndex >= items.length - 1) {
+          if (this.startIndex >= itemsAfterRemoval.length) {
+            // If original index is at or beyond the end, append
             fromZone.appendChild(this.dragElement)
           } else {
-            const beforeElement =
-              items[this.startIndex] || items[this.startIndex + 1]
+            // Insert before the item that's now at our original index
+            const beforeElement = itemsAfterRemoval[this.startIndex]
             if (beforeElement) {
               fromZone.insertBefore(this.dragElement, beforeElement)
             } else {
@@ -407,6 +479,16 @@ export class DragManager {
   /** Find the DragManager instance that manages a specific zone */
   private findDragManagerForZone(targetZone: HTMLElement): DragManager | null {
     return dragManagerRegistry.get(targetZone) || null
+  }
+
+  /** Get the selection manager for this drag manager */
+  public getSelectionManager(): SelectionManager {
+    return this.selectionManager
+  }
+
+  /** Get the keyboard manager for this drag manager */
+  public getKeyboardManager(): KeyboardManager {
+    return this.keyboardManager
   }
 
   /** Check if we can drop in a target zone based on group compatibility */

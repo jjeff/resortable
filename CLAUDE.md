@@ -31,8 +31,7 @@ Currently no build system is set up. Based on the implementation plan:
 
 ## Debugging and Development Tips
 
-- If you (Claude) have the Playwright MCP tool installed, you can use Vite's dev server and "see" your changes live in
-  the browser.
+- If you (Claude) have the Playwright MCP tool installed, you can use Vite's dev server and "see" your changes live in the browser.
 - Leverage Playwright's debugging capabilities, to troubleshoot issues interactively.
 
 ## References

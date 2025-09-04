@@ -163,6 +163,24 @@ export interface SortableOptions {
    * @param event - The sortable event
    */
   onRemove?: (event: SortableEvent) => void
+
+  /**
+   * Enable accessibility features (keyboard navigation, ARIA attributes)
+   * @defaultValue true
+   */
+  enableAccessibility?: boolean
+
+  /**
+   * CSS class for focused items during keyboard navigation
+   * @defaultValue 'sortable-focused'
+   */
+  focusClass?: string
+
+  /**
+   * Callback fired when items are selected/deselected
+   * @param event - The sortable event
+   */
+  onSelect?: (event: Partial<SortableEvent>) => void
 }
 
 /**
@@ -362,6 +380,8 @@ export interface SortableEvents {
   add: SortableEvent
   /** Fired on the list an item is dragged from when moved to another list */
   remove: SortableEvent
+  /** Fired when items are selected or deselected */
+  select: Partial<SortableEvent>
   /** Allow additional custom events */
   [key: string]: unknown
 }
