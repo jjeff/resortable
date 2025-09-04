@@ -91,13 +91,10 @@ export class DragManager {
     }
 
     // Setup draggable items - only for elements that already have sortable-item class
-    // If handle option is specified, don't set draggable attribute (rely on pointer events only)
-    if (!this.handle) {
-      for (const child of this.zone.getItems()) {
-        // Only make items with sortable-item class draggable
-        if (child.classList.contains('sortable-item')) {
-          child.draggable = true
-        }
+    for (const child of this.zone.getItems()) {
+      // Only make items with sortable-item class draggable
+      if (child.classList.contains('sortable-item')) {
+        child.draggable = true
       }
     }
   }
@@ -609,11 +606,12 @@ export class DragManager {
 
     // Check handle option - if handle is specified, drag must start from handle
     if (this.handle) {
-      // Check if the event target or any of its parents (up to dragTarget) matches the handle selector
+      // Check if the event target or any of its parents within dragTarget matches the handle selector
       let currentElement: HTMLElement | null = eventTarget
       let foundHandle = false
 
-      while (currentElement && currentElement !== dragTarget.parentElement) {
+      // Traverse up the DOM tree looking for handle, but stay within dragTarget
+      while (currentElement && dragTarget.contains(currentElement)) {
         if (currentElement.matches(this.handle)) {
           foundHandle = true
           break
