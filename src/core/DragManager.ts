@@ -707,20 +707,24 @@ export class DragManager {
    * Update which items are draggable based on the draggable selector
    */
   private updateDraggableItems(): void {
-    // First, remove draggable from all children
-    for (const child of this.zone.getItems()) {
-      child.draggable = false
-    }
-
-    // Then set draggable on items matching the selector
-    // If draggable selector matches items that also have sortable-item class
+    // Update draggable attribute based on selector
     const draggableItems = this.zone.element.querySelectorAll(this.draggable)
     for (const item of draggableItems) {
       if (
         item instanceof HTMLElement &&
         item.parentElement === this.zone.element
       ) {
-        item.draggable = !this.handle // Only set draggable if no handle (handle uses pointer events)
+        // Set draggable=true for HTML5 drag API
+        // When using handle, we still need draggable=true for HTML5 drag,
+        // the handle check happens in onDragStart
+        item.draggable = true
+      }
+    }
+    
+    // Set draggable=false for items that don't match the selector
+    for (const child of this.zone.getItems()) {
+      if (!child.matches(this.draggable)) {
+        child.draggable = false
       }
     }
   }
