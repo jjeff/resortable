@@ -217,7 +217,7 @@ export class DragManager {
     if (this.swapThreshold === undefined) {
       return true
     }
-    
+
     // Calculate overlap percentage based on direction
     let overlap: number
     if (this.direction === 'vertical') {
@@ -297,7 +297,7 @@ export class DragManager {
       related: over,
       willInsertAfter: dragIndex < overIndex,
       draggedRect: dragRect,
-      targetRect: targetRect,
+      targetRect,
     }
 
     // Fire onMove event
@@ -337,7 +337,7 @@ export class DragManager {
         oldIndex: dragIndex,
         newIndex: overIndex,
       })
-      
+
       // Emit change event when order changes within same list
       this.events.emit('change', {
         item: dragItem,
@@ -525,7 +525,7 @@ export class DragManager {
     }
     // Emit choose event first
     this.events.emit('choose', evt)
-    // Then emit start event  
+    // Then emit start event
     this.events.emit('start', evt)
   }
 
