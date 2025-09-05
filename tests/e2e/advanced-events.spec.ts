@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+
 /* eslint-disable no-console */
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe.skip(
   'Advanced Event Callbacks - TODO: Fix initialization issues',
@@ -209,18 +208,16 @@ test.describe.skip(
 
       // Move over item2
       const item2Box = await item2.boundingBox()
-      await page.mouse.move(
-        item2Box!.x + 10,
-        item2Box!.y + item2Box!.height / 2
-      )
+      if (!item2Box)
+        throw new Error('Could not determine bounding box for item2')
+      await page.mouse.move(item2Box.x + 10, item2Box.y + item2Box.height / 2)
       await page.waitForTimeout(100)
 
       // Move over item3
       const item3Box = await item3.boundingBox()
-      await page.mouse.move(
-        item3Box!.x + 10,
-        item3Box!.y + item3Box!.height / 2
-      )
+      if (!item3Box)
+        throw new Error('Could not determine bounding box for item3')
+      await page.mouse.move(item3Box.x + 10, item3Box.y + item3Box.height / 2)
       await page.waitForTimeout(100)
 
       await page.mouse.up()
@@ -239,7 +236,7 @@ test.describe.skip(
     test.skip('should include MoveEvent properties in onMove callback', async ({
       page,
     }) => {
-      await page.evaluate(() => {
+      await page.evaluate(async () => {
         window.moveEventData = null
         const container = document.createElement('div')
         container.id = 'test-list'
@@ -266,85 +263,88 @@ test.describe.skip(
             }
           },
         })
+        const alpha = page.locator('.sortable-item').first()
+        const beta = page.locator('.sortable-item').nth(1)
+
+        // Drag alpha over beta
+        await alpha.hover()
+        await page.mouse.down()
+
+        const betaBox = await beta.boundingBox()
+        if (!betaBox)
+          throw new Error('Could not determine bounding box for beta')
+        await page.mouse.move(betaBox.x + 10, betaBox.y + betaBox.height / 2)
+        await page.waitForTimeout(100)
+        await page.mouse.up()
+        await page.waitForTimeout(100)
+        await page.mouse.up()
+
+        // Check that MoveEvent had all expected properties
+        const moveData = await page.evaluate(() => window.moveEventData || null)
+        expect(moveData).toEqual({
+          hasRelated: true,
+          hasWillInsertAfter: true,
+          hasDraggedRect: true,
+          hasTargetRect: true,
+        })
       })
 
-      const alpha = page.locator('.sortable-item').first()
-      const beta = page.locator('.sortable-item').nth(1)
-
-      // Drag alpha over beta
-      await alpha.hover()
-      await page.mouse.down()
-
-      const betaBox = await beta.boundingBox()
-      await page.mouse.move(betaBox!.x + 10, betaBox!.y + betaBox!.height / 2)
-      await page.waitForTimeout(100)
-      await page.mouse.up()
-
-      // Check that MoveEvent had all expected properties
-      const moveData = await page.evaluate(() => window.moveEventData || null)
-      expect(moveData).toEqual({
-        hasRelated: true,
-        hasWillInsertAfter: true,
-        hasDraggedRect: true,
-        hasTargetRect: true,
-      })
-    })
-
-    test.skip('should fire events in correct order during drag operation', async ({
-      page,
-    }) => {
-      await page.evaluate(() => {
-        window.eventOrder = []
-        const container = document.createElement('div')
-        container.id = 'test-list'
-        container.style.padding = '20px'
-        container.innerHTML = `
+      test.skip('should fire events in correct order during drag operation', async ({
+        page,
+      }) => {
+        await page.evaluate(() => {
+          window.eventOrder = []
+          const container = document.createElement('div')
+          container.id = 'test-list'
+          container.style.padding = '20px'
+          container.innerHTML = `
         <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">One</div>
         <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Two</div>
         <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Three</div>
       `
-        document
-          .querySelectorAll('.container')
-          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
-        document.body.appendChild(container)
-        const Sortable = window.Sortable as any
-        if (!Sortable) return
-        new Sortable(container, {
-          animation: 0,
-          onChoose: () => window.eventOrder?.push('choose'),
-          onStart: () => window.eventOrder?.push('start'),
-          onMove: () => {
-            if (!window.eventOrder?.includes('move')) {
-              window.eventOrder?.push('move')
-            }
-          },
-          onSort: () => window.eventOrder?.push('sort'),
-          onChange: () => window.eventOrder?.push('change'),
-          onUpdate: () => window.eventOrder?.push('update'),
-          onEnd: () => window.eventOrder?.push('end'),
+          document
+            .querySelectorAll('.container')
+            .forEach((el) => ((el as HTMLElement).style.display = 'none'))
+          document.body.appendChild(container)
+          const Sortable = window.Sortable as any
+          if (!Sortable) return
+          new Sortable(container, {
+            animation: 0,
+            onChoose: () => window.eventOrder?.push('choose'),
+            onStart: () => window.eventOrder?.push('start'),
+            onMove: () => {
+              if (!window.eventOrder?.includes('move')) {
+                window.eventOrder?.push('move')
+              }
+            },
+            onSort: () => window.eventOrder?.push('sort'),
+            onChange: () => window.eventOrder?.push('change'),
+            onUpdate: () => window.eventOrder?.push('update'),
+            onEnd: () => window.eventOrder?.push('end'),
+          })
         })
+
+        // Perform a drag operation
+        const one = page.locator('.sortable-item').first()
+        const two = page.locator('.sortable-item').nth(1)
+
+        await one.dragTo(two)
+
+        // Check event order
+        const eventOrder = await page.evaluate(() => window.eventOrder || [])
+
+        // Choose should come before start
+        const chooseIndex = eventOrder.indexOf('choose')
+        const startIndex = eventOrder.indexOf('start')
+        expect(chooseIndex).toBeLessThan(startIndex)
+
+        // Start should come before move
+        const moveIndex = eventOrder.indexOf('move')
+        expect(startIndex).toBeLessThan(moveIndex)
+
+        // End should be last
+        expect(eventOrder[eventOrder.length - 1]).toBe('end')
       })
-
-      // Perform a drag operation
-      const one = page.locator('.sortable-item').first()
-      const two = page.locator('.sortable-item').nth(1)
-
-      await one.dragTo(two)
-
-      // Check event order
-      const eventOrder = await page.evaluate(() => window.eventOrder || [])
-
-      // Choose should come before start
-      const chooseIndex = eventOrder.indexOf('choose')
-      const startIndex = eventOrder.indexOf('start')
-      expect(chooseIndex).toBeLessThan(startIndex)
-
-      // Start should come before move
-      const moveIndex = eventOrder.indexOf('move')
-      expect(startIndex).toBeLessThan(moveIndex)
-
-      // End should be last
-      expect(eventOrder[eventOrder.length - 1]).toBe('end')
     })
   }
 )

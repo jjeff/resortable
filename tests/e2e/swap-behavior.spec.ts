@@ -2,8 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { test, expect } from '@playwright/test'
 
 test.describe.skip(
@@ -136,7 +134,6 @@ test.describe.skip(
           .querySelectorAll('.container')
           .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
-        const list = document.getElementById('horizontal-list')
         const Sortable = window.Sortable as any
         if (!Sortable) return
         new Sortable(container, {

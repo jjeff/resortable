@@ -1,10 +1,16 @@
 // Type declarations for test files
 
-interface Window {
-  Sortable?: any
-  eventLog?: any[]
-  eventOrder?: string[]
-  moveEventCount?: number
-  moveEventData?: any
-  lastRelatedElement?: string
+import type { Sortable } from '../../src'
+
+declare global {
+  interface Window {
+    Sortable?: typeof Sortable
+    eventLog?: unknown[]
+    eventOrder?: string[]
+    moveEventCount?: number
+    moveEventData?: unknown
+    lastRelatedElement?: string
+  }
 }
+
+export {}
