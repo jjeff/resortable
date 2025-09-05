@@ -35,38 +35,38 @@ export class DragManager {
   private direction: 'vertical' | 'horizontal'
   // Fallback system properties - to be fully implemented in future phase
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _forceFallback: boolean
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackClass?: string
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackOnBody: boolean
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackTolerance: number
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackOffsetX: number
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackOffsetY: number
   // @ts-expect-error - Will be implemented in fallback system
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _fallbackClone: HTMLElement | null = null
   // @ts-expect-error - Will be implemented in visual customization
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _dragoverBubble: boolean
   // @ts-expect-error - Will be implemented in visual customization
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _removeCloneOnHide: boolean
   // @ts-expect-error - Will be implemented in visual customization
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _emptyInsertThreshold: number
   private preventOnFilter: boolean
   // @ts-expect-error - Will be implemented in data management
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   private _dataIdAttr: string
 
   constructor(
@@ -125,7 +125,7 @@ export class DragManager {
     this.invertSwap = options?.invertSwap ?? false
     this.invertedSwapThreshold = options?.invertedSwapThreshold
     this.direction = options?.direction ?? 'vertical'
-    
+
     // Initialize fallback options (to be fully implemented)
     this._forceFallback = options?.forceFallback ?? false
     this._fallbackClass = options?.fallbackClass
@@ -133,12 +133,12 @@ export class DragManager {
     this._fallbackTolerance = options?.fallbackTolerance ?? 0
     this._fallbackOffsetX = options?.fallbackOffsetX ?? 0
     this._fallbackOffsetY = options?.fallbackOffsetY ?? 0
-    
+
     // Initialize visual customization options
     this._dragoverBubble = options?.dragoverBubble ?? false
     this._removeCloneOnHide = options?.removeCloneOnHide ?? true
     this._emptyInsertThreshold = options?.emptyInsertThreshold ?? 5
-    
+
     // Initialize other options
     this.preventOnFilter = options?.preventOnFilter ?? true
     this._dataIdAttr = options?.dataIdAttr ?? 'data-id'

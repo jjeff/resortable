@@ -48,8 +48,8 @@ export function toArray(parent: HTMLElement, dataIdAttr = 'data-id'): string[] {
   return Array.from(parent.children).map((child, i) => {
     const el = child as HTMLElement
     // Remove 'data-' prefix if present
-    const attrName = dataIdAttr.startsWith('data-') 
-      ? dataIdAttr.slice(5) 
+    const attrName = dataIdAttr.startsWith('data-')
+      ? dataIdAttr.slice(5)
       : dataIdAttr
     return el.dataset[attrName] ?? el.getAttribute(dataIdAttr) ?? String(i)
   })
