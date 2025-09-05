@@ -199,6 +199,10 @@ export class Sortable {
         delay: this.options.delay,
         delayOnTouchOnly: this.options.delayOnTouchOnly,
         touchStartThreshold: this.options.touchStartThreshold,
+        swapThreshold: this.options.swapThreshold,
+        invertSwap: this.options.invertSwap,
+        invertedSwapThreshold: this.options.invertedSwapThreshold,
+        direction: this.options.direction,
       }
     )
     this.dragManager.attach()
@@ -220,8 +224,17 @@ export class Sortable {
       }
     })
 
+    if (this.options.onChoose) {
+      this.eventSystem.on('choose', this.options.onChoose)
+    }
+    if (this.options.onUnchoose) {
+      this.eventSystem.on('unchoose', this.options.onUnchoose)
+    }
     if (this.options.onUpdate) {
       this.eventSystem.on('update', this.options.onUpdate)
+    }
+    if (this.options.onSort) {
+      this.eventSystem.on('sort', this.options.onSort)
     }
     if (this.options.onAdd) {
       this.eventSystem.on('add', this.options.onAdd)
@@ -231,6 +244,14 @@ export class Sortable {
     }
     if (this.options.onSelect) {
       this.eventSystem.on('select', this.options.onSelect)
+    }
+    // Note: onMove is handled specially in DragManager as it needs the original event too
+    // TODO: Implement proper onMove handling with original event parameter
+    if (this.options.onClone) {
+      this.eventSystem.on('clone', this.options.onClone)
+    }
+    if (this.options.onChange) {
+      this.eventSystem.on('change', this.options.onChange)
     }
   }
 
@@ -333,7 +354,11 @@ export class Sortable {
       case 'draggable':
       case 'delay':
       case 'delayOnTouchOnly':
-      case 'touchStartThreshold': {
+      case 'touchStartThreshold':
+      case 'swapThreshold':
+      case 'invertSwap':
+      case 'invertedSwapThreshold':
+      case 'direction': {
         // Re-create drag manager with new options
         this.dragManager.detach()
         const groupName = resolveGroupName(this.options.group)
@@ -353,6 +378,10 @@ export class Sortable {
             delay: this.options.delay,
             delayOnTouchOnly: this.options.delayOnTouchOnly,
             touchStartThreshold: this.options.touchStartThreshold,
+            swapThreshold: this.options.swapThreshold,
+            invertSwap: this.options.invertSwap,
+            invertedSwapThreshold: this.options.invertedSwapThreshold,
+            direction: this.options.direction,
           }
         )
         this.dragManager.attach()
