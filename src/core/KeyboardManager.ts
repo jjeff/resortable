@@ -324,6 +324,16 @@ export class KeyboardManager {
     const dragId = 'keyboard-drag'
     globalDragState.endDrag(dragId)
 
+    // Emit unchoose event before end
+    this.events.emit('unchoose', {
+      item: this.grabbedItems[0],
+      items: this.grabbedItems,
+      from: this.container,
+      to: this.container,
+      oldIndex: this.originalIndices[0],
+      newIndex: -1,
+    })
+
     // Emit end event
     this.events.emit('end', {
       item: this.grabbedItems[0],

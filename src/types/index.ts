@@ -355,6 +355,36 @@ export interface SortableOptions {
   fallbackOffsetY?: number
 
   /**
+   * Allow dragover event to bubble
+   * @defaultValue false
+   */
+  dragoverBubble?: boolean
+
+  /**
+   * Remove clone element when it's not showing
+   * @defaultValue true
+   */
+  removeCloneOnHide?: boolean
+
+  /**
+   * Distance mouse must move from empty sortable to insert drag element into it
+   * @defaultValue 5
+   */
+  emptyInsertThreshold?: number
+
+  /**
+   * Call preventDefault when filter is triggered
+   * @defaultValue true
+   */
+  preventOnFilter?: boolean
+
+  /**
+   * HTML attribute used to track element IDs
+   * @defaultValue 'data-id'
+   */
+  dataIdAttr?: string
+
+  /**
    * Callback fired when an element is chosen
    * @param event - The sortable event
    */

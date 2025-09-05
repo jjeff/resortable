@@ -203,6 +203,17 @@ export class Sortable {
         invertSwap: this.options.invertSwap,
         invertedSwapThreshold: this.options.invertedSwapThreshold,
         direction: this.options.direction,
+        forceFallback: this.options.forceFallback,
+        fallbackClass: this.options.fallbackClass,
+        fallbackOnBody: this.options.fallbackOnBody,
+        fallbackTolerance: this.options.fallbackTolerance,
+        fallbackOffsetX: this.options.fallbackOffsetX,
+        fallbackOffsetY: this.options.fallbackOffsetY,
+        dragoverBubble: this.options.dragoverBubble,
+        removeCloneOnHide: this.options.removeCloneOnHide,
+        emptyInsertThreshold: this.options.emptyInsertThreshold,
+        preventOnFilter: this.options.preventOnFilter,
+        dataIdAttr: this.options.dataIdAttr,
       }
     )
     this.dragManager.attach()
@@ -285,6 +296,7 @@ export class Sortable {
    * @remarks
    * This method reads the `data-id` attribute from each sortable item.
    * If an item doesn't have a `data-id` attribute, its index will be used.
+   * The attribute name can be customized using the `dataIdAttr` option.
    *
    * @example
    * ```typescript
@@ -293,10 +305,16 @@ export class Sortable {
    * console.log('Current order:', order); // ['item-1', 'item-2', 'item-3']
    * ```
    *
+   * @example With custom data attribute
+   * ```typescript
+   * const sortable = new Sortable(element, { dataIdAttr: 'data-item-id' });
+   * const order = sortable.toArray();
+   * ```
+   *
    * @public
    */
   public toArray(): string[] {
-    return domToArray(this.element)
+    return domToArray(this.element, this.options.dataIdAttr)
   }
 
   /**
