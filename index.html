@@ -840,12 +840,6 @@
       collapsible.classList.toggle('active');
     }
     
-    // Auto-open developer section if running in test environment
-    // This makes tests run faster by avoiding animations and waits
-    if (window.location.search.includes('test=true') || window.__PLAYWRIGHT__) {
-      document.getElementById('developer-collapsible').classList.add('active');
-    }
-    
     // Initialize status
     document.getElementById('library-status').textContent = 'Loading Resortable...';
     

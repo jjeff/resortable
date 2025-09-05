@@ -2,15 +2,18 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Legacy E2E Drag and Drop', () => {
   test.beforeEach(async ({ page }) => {
-    // Mark as Playwright test environment
-    await page.addInitScript(() => {
-      (window as any).__PLAYWRIGHT__ = true
-    })
-    
     await page.goto('/')
+
+    // Open developer section if lists are not visible
+    const list1 = page.locator('#list1')
+    const isVisible = await list1.isVisible()
     
-    // Ensure developer section is open and lists are visible
-    await page.waitForSelector('#list1', { state: 'visible', timeout: 5000 })
+    if (!isVisible) {
+      // Click to open the developer section
+      await page.locator('.collapsible-header').click()
+      await page.waitForSelector('#list1', { state: 'visible', timeout: 5000 })
+    }
+    
     await expect(page.locator('#list1 .sortable-item')).toHaveCount(4)
     await expect(page.locator('#list2 .sortable-item')).toHaveCount(4)
   })

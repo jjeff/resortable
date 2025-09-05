@@ -2,11 +2,6 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Showcase Page Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Mark as Playwright test environment
-    await page.addInitScript(() => {
-      (window as any).__PLAYWRIGHT__ = true
-    })
-    
     await page.goto('/')
     // Wait for a specific element instead of networkidle (much faster)
     await page.waitForSelector('.hero h1', { state: 'visible', timeout: 5000 })
