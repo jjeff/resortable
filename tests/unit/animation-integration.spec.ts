@@ -127,7 +127,7 @@ describe('AnimationManager Integration Tests', () => {
     expect(newItem.style.transition).toContain('transform')
   })
 
-  it('should apply remove animation to elements', () => {
+  it('should apply remove animation to elements', async () => {
     const itemToRemove = items[2]
     let callbackCalled = false
 
@@ -141,11 +141,14 @@ describe('AnimationManager Integration Tests', () => {
     expect(itemToRemove.style.transition).toContain('opacity')
     expect(itemToRemove.style.transition).toContain('transform')
 
-    // Callback should be called after animation (we'd need to wait in real scenario)
-    // eslint-disable-next-line no-undef
-    setTimeout(() => {
-      expect(callbackCalled).toBe(true)
-    }, 60)
+    // Wait for animation callback to be called
+    await new Promise((resolve) => {
+      // eslint-disable-next-line no-undef
+      setTimeout(() => {
+        expect(callbackCalled).toBe(true)
+        resolve(undefined)
+      }, 60)
+    })
   })
 
   it('should handle ghost element animations', () => {
