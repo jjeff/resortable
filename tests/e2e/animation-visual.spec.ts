@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from '@playwright/test'
 
 test.describe('Animation System - Visual Tests', () => {
@@ -10,22 +15,20 @@ test.describe('Animation System - Visual Tests', () => {
     const hasAnimation = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return false
-      
+
       // Check if Sortable is initialized with animation
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       const sortable = (window as any).Sortable
       if (!sortable) return false
-      
+
       // Create a test instance to verify animation is configured
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const instance = new (window as any).Sortable(list, {
         animation: 150,
       })
-      
+
       // Check if options are set correctly
       return instance.options.animation === 150
     })
-    
+
     expect(hasAnimation).toBe(true)
   })
 
@@ -33,15 +36,14 @@ test.describe('Animation System - Visual Tests', () => {
     const ghostClass = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return null
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const instance = new (window as any).Sortable(list, {
         ghostClass: 'sortable-ghost',
       })
-      
+
       return instance.options.ghostClass
     })
-    
+
     expect(ghostClass).toBe('sortable-ghost')
   })
 
@@ -49,15 +51,14 @@ test.describe('Animation System - Visual Tests', () => {
     const noAnimation = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return false
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const instance = new (window as any).Sortable(list, {
         animation: 0,
       })
-      
+
       return instance.options.animation === 0
     })
-    
+
     expect(noAnimation).toBe(true)
   })
 
@@ -65,16 +66,15 @@ test.describe('Animation System - Visual Tests', () => {
     const customEasing = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return null
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const instance = new (window as any).Sortable(list, {
         animation: 300,
         easing: 'ease-in-out',
       })
-      
+
       return instance.options.easing
     })
-    
+
     expect(customEasing).toBe('ease-in-out')
   })
 
@@ -82,18 +82,17 @@ test.describe('Animation System - Visual Tests', () => {
     const updated = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return false
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const instance = new (window as any).Sortable(list, {
         animation: 150,
       })
-      
+
       // Update animation duration
       instance.option('animation', 300)
-      
+
       return instance.option('animation') === 300
     })
-    
+
     expect(updated).toBe(true)
   })
 
@@ -101,15 +100,14 @@ test.describe('Animation System - Visual Tests', () => {
     const hasAnimationManager = await page.evaluate(() => {
       const list = document.getElementById('simple-list')
       if (!list) return false
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const instance = new (window as any).Sortable(list)
-      
+
       // Check if the instance has an animation manager (internal property)
       // The animation manager is created in the constructor
       return instance.options.animation !== undefined
     })
-    
+
     expect(hasAnimationManager).toBe(true)
   })
 })
