@@ -39,3 +39,4 @@ Currently no build system is set up. Based on the implementation plan:
 - Original Sortable.js docs and examples in `legacy-sortable/README.md`
 - Detailed implementation plan in `sortable-rewrite-implementation-plan.md`
 - Legacy source code in `legacy-sortable/src/` for reference during rewrite
+- Always fix eslint & typescript typing issues before pushing to origin.
