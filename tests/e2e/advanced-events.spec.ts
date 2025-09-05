@@ -1,3 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable no-console */
 import { test, expect } from '@playwright/test'
 
 test.describe.skip(
@@ -35,7 +42,7 @@ test.describe.skip(
         // Hide existing content and append our test container
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) {
@@ -43,9 +50,9 @@ test.describe.skip(
           return
         }
         const instance = new Sortable(container, {
-          onChoose: (evt) => {
+          onChoose: (evt: any) => {
             console.log('onChoose fired:', evt)
-            window.eventLog.push({
+            window.eventLog?.push({
               type: 'choose',
               item: evt.item.textContent,
               oldIndex: evt.oldIndex,
@@ -62,7 +69,7 @@ test.describe.skip(
       await page.waitForTimeout(50)
 
       // Check that onChoose was fired
-      const eventLog = await page.evaluate(() => window.eventLog)
+      const eventLog = await page.evaluate(() => window.eventLog || [])
       expect(eventLog).toContainEqual({
         type: 'choose',
         item: 'Item 2',
@@ -87,14 +94,14 @@ test.describe.skip(
       `
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) return
-        new Sortable(list, {
+        new Sortable(container, {
           animation: 0,
-          onSort: (evt) => {
-            window.eventLog.push({
+          onSort: (evt: any) => {
+            window.eventLog?.push({
               type: 'sort',
               oldIndex: evt.oldIndex,
               newIndex: evt.newIndex,
@@ -110,8 +117,8 @@ test.describe.skip(
       await itemA.dragTo(itemC)
 
       // Check that onSort was fired
-      const eventLog = await page.evaluate(() => window.eventLog)
-      expect(eventLog.some((e) => e.type === 'sort')).toBeTruthy()
+      const eventLog = await page.evaluate(() => window.eventLog || [])
+      expect(eventLog.some((e: any) => e.type === 'sort')).toBeTruthy()
     })
 
     test.skip('should fire onChange event when order changes within same list', async ({
@@ -129,14 +136,14 @@ test.describe.skip(
       `
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) return
         new Sortable(container, {
           animation: 0,
-          onChange: (evt) => {
-            window.eventLog.push({
+          onChange: (evt: any) => {
+            window.eventLog?.push({
               type: 'change',
               item: evt.item.textContent,
               oldIndex: evt.oldIndex,
@@ -153,8 +160,8 @@ test.describe.skip(
       await first.dragTo(second)
 
       // Check that onChange was fired
-      const eventLog = await page.evaluate(() => window.eventLog)
-      expect(eventLog.some((e) => e.type === 'change')).toBeTruthy()
+      const eventLog = await page.evaluate(() => window.eventLog || [])
+      expect(eventLog.some((e: any) => e.type === 'change')).toBeTruthy()
 
       // Verify the new order
       const items = await page.locator('.sortable-item').allTextContents()
@@ -176,14 +183,14 @@ test.describe.skip(
       `
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) return
         new Sortable(container, {
           animation: 0,
-          onMove: (evt) => {
-            window.moveEventCount++
+          onMove: (evt: any) => {
+            window.moveEventCount = (window.moveEventCount || 0) + 1
             // Check that related element is provided
             if (evt.related) {
               window.lastRelatedElement = evt.related.textContent
@@ -219,11 +226,13 @@ test.describe.skip(
       await page.mouse.up()
 
       // Check that onMove was fired multiple times
-      const moveCount = await page.evaluate(() => window.moveEventCount)
+      const moveCount = await page.evaluate(() => window.moveEventCount || 0)
       expect(moveCount).toBeGreaterThan(0)
 
       // Check that related element was tracked
-      const lastRelated = await page.evaluate(() => window.lastRelatedElement)
+      const lastRelated = await page.evaluate(
+        () => window.lastRelatedElement || ''
+      )
       expect(lastRelated).toBeTruthy()
     })
 
@@ -242,13 +251,13 @@ test.describe.skip(
       `
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) return
         new Sortable(container, {
           animation: 0,
-          onMove: (evt) => {
+          onMove: (evt: any) => {
             window.moveEventData = {
               hasRelated: !!evt.related,
               hasWillInsertAfter: evt.willInsertAfter !== undefined,
@@ -272,7 +281,7 @@ test.describe.skip(
       await page.mouse.up()
 
       // Check that MoveEvent had all expected properties
-      const moveData = await page.evaluate(() => window.moveEventData)
+      const moveData = await page.evaluate(() => window.moveEventData || null)
       expect(moveData).toEqual({
         hasRelated: true,
         hasWillInsertAfter: true,
@@ -296,23 +305,23 @@ test.describe.skip(
       `
         document
           .querySelectorAll('.container')
-          .forEach((el) => (el.style.display = 'none'))
+          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
         document.body.appendChild(container)
         const Sortable = window.Sortable as any
         if (!Sortable) return
         new Sortable(container, {
           animation: 0,
-          onChoose: () => window.eventOrder.push('choose'),
-          onStart: () => window.eventOrder.push('start'),
+          onChoose: () => window.eventOrder?.push('choose'),
+          onStart: () => window.eventOrder?.push('start'),
           onMove: () => {
-            if (!window.eventOrder.includes('move')) {
-              window.eventOrder.push('move')
+            if (!window.eventOrder?.includes('move')) {
+              window.eventOrder?.push('move')
             }
           },
-          onSort: () => window.eventOrder.push('sort'),
-          onChange: () => window.eventOrder.push('change'),
-          onUpdate: () => window.eventOrder.push('update'),
-          onEnd: () => window.eventOrder.push('end'),
+          onSort: () => window.eventOrder?.push('sort'),
+          onChange: () => window.eventOrder?.push('change'),
+          onUpdate: () => window.eventOrder?.push('update'),
+          onEnd: () => window.eventOrder?.push('end'),
         })
       })
 
@@ -323,7 +332,7 @@ test.describe.skip(
       await one.dragTo(two)
 
       // Check event order
-      const eventOrder = await page.evaluate(() => window.eventOrder)
+      const eventOrder = await page.evaluate(() => window.eventOrder || [])
 
       // Choose should come before start
       const chooseIndex = eventOrder.indexOf('choose')
