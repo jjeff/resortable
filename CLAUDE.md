@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL: Pre-Commit Checklist
+
+**ALWAYS run these commands BEFORE EVERY commit/push:**
+1. `npm run lint` - Check for linting errors
+2. `npm run type-check` - Check for TypeScript errors
+3. Fix any issues found
+4. Only then commit and push
+
+**NO EXCEPTIONS - The user has emphasized this multiple times.**
+
+If you forget to do this, the CI will fail and the user will be frustrated.
+
 ## Project Overview
 
 This is **Resortable** - a complete rewrite of the Sortable.js library using modern TypeScript and contemporary
@@ -39,3 +51,4 @@ Currently no build system is set up. Based on the implementation plan:
 - Original Sortable.js docs and examples in `legacy-sortable/README.md`
 - Detailed implementation plan in `sortable-rewrite-implementation-plan.md`
 - Legacy source code in `legacy-sortable/src/` for reference during rewrite
+- Always fix eslint & typescript typing issues before pushing to origin.

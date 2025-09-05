@@ -33,7 +33,8 @@ export default defineConfig({
     },
   },
   server: {
-    open: true,
+    open: !process.env.CI,
     port: 3000,
+    host: process.env.CI ? '0.0.0.0' : 'localhost',
   },
 });

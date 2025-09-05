@@ -1,11 +1,19 @@
 import { insertAt } from '../utils/dom.js'
+import type { AnimationManager } from '../animation/AnimationManager.js'
 
 /**
  * Manages sortable container and basic DOM operations
  * @internal
  */
 export class DropZone {
-  constructor(public readonly element: HTMLElement) {}
+  private animationManager?: AnimationManager
+
+  constructor(
+    public readonly element: HTMLElement,
+    animationManager?: AnimationManager
+  ) {
+    this.animationManager = animationManager
+  }
 
   /** Get sortable items (only elements with sortable-item class) */
   public getItems(): HTMLElement[] {
@@ -64,6 +72,18 @@ export class DropZone {
       }
     }
 
-    insertAt(this.element, item, targetDOMIndex)
+    // If we have an animation manager, animate the reordering
+    if (this.animationManager) {
+      // Get all sortable items that might be affected by this move
+      const affectedItems = this.getItems()
+
+      // Use FLIP animation for smooth reordering
+      this.animationManager.animateReorder(affectedItems, () => {
+        insertAt(this.element, item, targetDOMIndex)
+      })
+    } else {
+      // No animation, just do the move
+      insertAt(this.element, item, targetDOMIndex)
+    }
   }
 }
