@@ -29,7 +29,7 @@ export class DragManager {
   private touchStartThreshold: number
   private dragStartTimer?: number
   private dragStartPosition?: { x: number; y: number }
-  private swapThreshold: number
+  private swapThreshold?: number
   private invertSwap: boolean
   private invertedSwapThreshold?: number
   private direction: 'vertical' | 'horizontal'
@@ -74,10 +74,10 @@ export class DragManager {
     this.touchStartThreshold = options?.touchStartThreshold || 5
 
     // Initialize swap behavior options
-    this.swapThreshold = options?.swapThreshold ?? 1
+    // swapThreshold is undefined by default (no threshold checking)
+    this.swapThreshold = options?.swapThreshold
     this.invertSwap = options?.invertSwap ?? false
-    this.invertedSwapThreshold =
-      options?.invertedSwapThreshold ?? this.swapThreshold
+    this.invertedSwapThreshold = options?.invertedSwapThreshold
     this.direction = options?.direction ?? 'vertical'
 
     // Initialize selection manager
@@ -195,10 +195,8 @@ export class DragManager {
       oldIndex: this.startIndex,
       newIndex: this.startIndex,
     }
-
     // Emit choose event first
     this.events.emit('choose', evt)
-
     // Then emit start event
     this.events.emit('start', evt)
     if (e.dataTransfer) {
@@ -208,13 +206,18 @@ export class DragManager {
   }
 
   /**
-   * Calculate if swap should occur based on overlap
+   * Calculate if swap should occur based on overlap (only if threshold is set)
    */
   private shouldSwap(
     dragRect: DOMRect,
     targetRect: DOMRect,
     _dragDirection: 'forward' | 'backward'
   ): boolean {
+    // If no threshold is set, always allow swap (legacy behavior)
+    if (this.swapThreshold === undefined) {
+      return true
+    }
+    
     // Calculate overlap percentage based on direction
     let overlap: number
     if (this.direction === 'vertical') {
@@ -232,8 +235,7 @@ export class DragManager {
     // Apply swap threshold logic
     let threshold = this.swapThreshold
     if (this.invertSwap) {
-      // In inverted mode, check if we're in the "swap zone"
-      // Swap occurs when overlap is less than the inverted threshold
+      // In inverted mode, swap occurs when overlap is less than the threshold
       threshold = this.invertedSwapThreshold ?? this.swapThreshold
       return overlap < threshold
     }
@@ -275,7 +277,7 @@ export class DragManager {
     const dragIndex = this.zone.getIndex(dragItem)
     if (overIndex === dragIndex) return
 
-    // Calculate if we should swap based on overlap
+    // Check swap threshold if configured
     const dragRect = dragItem.getBoundingClientRect()
     const targetRect = over.getBoundingClientRect()
     const dragDirection = dragIndex < overIndex ? 'forward' : 'backward'
@@ -283,6 +285,23 @@ export class DragManager {
     if (!this.shouldSwap(dragRect, targetRect, dragDirection)) {
       return // Don't swap if threshold not met
     }
+
+    // Create MoveEvent for onMove callback
+    const moveEvent: import('../types/index.js').MoveEvent = {
+      item: dragItem,
+      items: [dragItem],
+      from: this.zone.element,
+      to: this.zone.element,
+      oldIndex: dragIndex,
+      newIndex: overIndex,
+      related: over,
+      willInsertAfter: dragIndex < overIndex,
+      draggedRect: dragRect,
+      targetRect: targetRect,
+    }
+
+    // Fire onMove event
+    this.events.emit('move', moveEvent)
 
     // Determine the correct insertion index based on drag direction
     // We want to insert the dragged item before the item we're hovering over
@@ -294,29 +313,6 @@ export class DragManager {
     } else {
       // Dragging upwards: insert before the target (overIndex stays the same)
       targetIndex = overIndex
-    }
-
-    // Create MoveEvent to check if move is allowed
-    const moveEvent: import('../types/index.js').MoveEvent = {
-      item: dragItem,
-      items: [dragItem],
-      from: this.zone.element,
-      to: this.zone.element,
-      oldIndex: dragIndex,
-      newIndex: overIndex,
-      related: over,
-      willInsertAfter: dragIndex < overIndex,
-      draggedRect: dragRect,
-      targetRect,
-    }
-
-    // Fire onMove event - if it returns false, cancel the move
-    const shouldMove = true
-    this.events.emit('move', moveEvent)
-    // TODO: Handle move cancellation properly once we have a way to check return values
-
-    if (!shouldMove) {
-      return
     }
 
     this.zone.move(dragItem, targetIndex)
@@ -341,7 +337,7 @@ export class DragManager {
         oldIndex: dragIndex,
         newIndex: overIndex,
       })
-
+      
       // Emit change event when order changes within same list
       this.events.emit('change', {
         item: dragItem,
@@ -527,6 +523,9 @@ export class DragManager {
       oldIndex: this.startIndex,
       newIndex: this.startIndex,
     }
+    // Emit choose event first
+    this.events.emit('choose', evt)
+    // Then emit start event  
     this.events.emit('start', evt)
   }
 
