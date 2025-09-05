@@ -2,7 +2,15 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Basic Sortable Functionality', () => {
   test.beforeEach(async ({ page }) => {
+    // Mark as Playwright test environment
+    await page.addInitScript(() => {
+      (window as any).__PLAYWRIGHT__ = true
+    })
+    
     await page.goto('/')
+    
+    // Ensure developer section is open (auto-opens with __PLAYWRIGHT__ flag)
+    await page.waitForSelector('#basic-list', { state: 'visible', timeout: 5000 })
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })
 

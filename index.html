@@ -724,7 +724,7 @@
 
   <!-- Developer Testing Section (Collapsible) -->
   <div class="developer-section">
-    <div class="collapsible">
+    <div class="collapsible" id="developer-collapsible">
       <div class="collapsible-header" onclick="toggleDeveloperSection()">
         <h2>🔧 Developer Testing Area</h2>
         <span class="toggle-icon">▼</span>
@@ -838,6 +838,12 @@
     window.toggleDeveloperSection = function() {
       const collapsible = document.querySelector('.collapsible');
       collapsible.classList.toggle('active');
+    }
+    
+    // Auto-open developer section if running in test environment
+    // This makes tests run faster by avoiding animations and waits
+    if (window.location.search.includes('test=true') || window.__PLAYWRIGHT__) {
+      document.getElementById('developer-collapsible').classList.add('active');
     }
     
     // Initialize status
