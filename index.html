@@ -861,55 +861,70 @@
       // Initialize Showcase Demos
       
       // Visual Effects - Smooth List
-      window.sortables.push(new Sortable(document.getElementById('smooth-list'), {
-        animation: 300,
-        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        dragClass: 'sortable-drag',
-      }));
+      const smoothList = document.getElementById('smooth-list');
+      if (smoothList) {
+        window.sortables.push(new Sortable(smoothList, {
+          animation: 300,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
+          group: 'smooth-demo',
+        }));
+      }
       
       // Visual Effects - Spring List
-      window.sortables.push(new Sortable(document.getElementById('spring-list'), {
-        animation: 400,
-        easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-      }));
+      const springList = document.getElementById('spring-list');
+      if (springList) {
+        window.sortables.push(new Sortable(springList, {
+          animation: 400,
+          easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          group: 'spring-demo',
+        }));
+      }
       
       // Multi-Select Demo
       const multiSelectList = document.getElementById('multi-select-list');
-      let selectedItems = new Set();
-      
-      multiSelectList.addEventListener('click', (e) => {
-        const item = e.target.closest('.sortable-item');
-        if (item) {
-          if (selectedItems.has(item)) {
-            selectedItems.delete(item);
-            item.classList.remove('selected');
-          } else {
-            selectedItems.add(item);
-            item.classList.add('selected');
+      if (multiSelectList) {
+        let selectedItems = new Set();
+        
+        multiSelectList.addEventListener('click', (e) => {
+          const item = e.target.closest('.sortable-item');
+          if (item) {
+            if (selectedItems.has(item)) {
+              selectedItems.delete(item);
+              item.classList.remove('selected');
+            } else {
+              selectedItems.add(item);
+              item.classList.add('selected');
+            }
           }
-        }
-      });
-      
-      window.sortables.push(new Sortable(multiSelectList, {
-        animation: 200,
-        multiDrag: true,
-        selectedClass: 'selected',
-        onEnd: () => {
-          selectedItems.forEach(item => item.classList.remove('selected'));
-          selectedItems.clear();
-        }
-      }));
+        });
+        
+        window.sortables.push(new Sortable(multiSelectList, {
+          animation: 200,
+          multiDrag: true,
+          selectedClass: 'selected',
+          group: 'multi-select-demo',
+          onEnd: () => {
+            selectedItems.forEach(item => item.classList.remove('selected'));
+            selectedItems.clear();
+          }
+        }));
+      }
       
       // Keyboard Navigation Demo
-      window.sortables.push(new Sortable(document.getElementById('keyboard-list'), {
-        animation: 200,
-        enableAccessibility: true,
-        ghostClass: 'sortable-ghost',
-      }));
+      const keyboardList = document.getElementById('keyboard-list');
+      if (keyboardList) {
+        window.sortables.push(new Sortable(keyboardList, {
+          animation: 200,
+          enableAccessibility: true,
+          ghostClass: 'sortable-ghost',
+          group: 'keyboard-demo',
+        }));
+      }
       
       // Kanban Board
       const kanbanOptions = {
@@ -919,24 +934,36 @@
         onAdd: log('Kanban moved'),
       };
       
-      window.sortables.push(new Sortable(document.getElementById('kanban-todo'), kanbanOptions));
-      window.sortables.push(new Sortable(document.getElementById('kanban-doing'), kanbanOptions));
-      window.sortables.push(new Sortable(document.getElementById('kanban-done'), kanbanOptions));
+      const kanbanTodo = document.getElementById('kanban-todo');
+      const kanbanDoing = document.getElementById('kanban-doing');
+      const kanbanDone = document.getElementById('kanban-done');
+      
+      if (kanbanTodo) window.sortables.push(new Sortable(kanbanTodo, kanbanOptions));
+      if (kanbanDoing) window.sortables.push(new Sortable(kanbanDoing, kanbanOptions));
+      if (kanbanDone) window.sortables.push(new Sortable(kanbanDone, kanbanOptions));
       
       // Image Gallery
-      window.sortables.push(new Sortable(document.getElementById('image-gallery'), {
-        animation: 300,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        onEnd: log('Gallery reordered'),
-      }));
+      const imageGallery = document.getElementById('image-gallery');
+      if (imageGallery) {
+        window.sortables.push(new Sortable(imageGallery, {
+          animation: 300,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          group: 'gallery-demo',
+          onEnd: log('Gallery reordered'),
+        }));
+      }
       
       // Nested Lists - Folders can be reordered
-      window.sortables.push(new Sortable(document.getElementById('nested-list'), {
-        animation: 200,
-        handle: '.folder-header',
-        ghostClass: 'sortable-ghost',
-      }));
+      const nestedList = document.getElementById('nested-list');
+      if (nestedList) {
+        window.sortables.push(new Sortable(nestedList, {
+          animation: 200,
+          handle: '.folder-header',
+          ghostClass: 'sortable-ghost',
+          group: 'folders-demo',
+        }));
+      }
       
       // Files within folders
       const folderOptions = {
@@ -945,60 +972,93 @@
         ghostClass: 'sortable-ghost',
       };
       
-      window.sortables.push(new Sortable(document.getElementById('folder-1-content'), folderOptions));
-      window.sortables.push(new Sortable(document.getElementById('folder-2-content'), folderOptions));
-      window.sortables.push(new Sortable(document.getElementById('folder-3-content'), folderOptions));
+      const folder1 = document.getElementById('folder-1-content');
+      const folder2 = document.getElementById('folder-2-content');
+      const folder3 = document.getElementById('folder-3-content');
+      
+      if (folder1) window.sortables.push(new Sortable(folder1, folderOptions));
+      if (folder2) window.sortables.push(new Sortable(folder2, folderOptions));
+      if (folder3) window.sortables.push(new Sortable(folder3, folderOptions));
       
       // Initialize Test Lists (in Developer Section)
       
-      // Basic list
-      window.sortables.push(new Sortable(document.getElementById('basic-list'), {
-        group: 'basic',
-        animation: 150,
-        onEnd: log('Basic end'),
-      }));
+      // Basic list (in Developer Section)
+      const basicList = document.getElementById('basic-list');
+      if (basicList) {
+        window.sortables.push(new Sortable(basicList, {
+          group: 'basic-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Basic end'),
+        }));
+      }
       
       // Shared Group A
       const sharedOpts = {
-        group: 'group-a',
+        group: 'group-a-test',
         animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onAdd: log('Group A add'),
         onRemove: log('Group A remove'),
       };
-      window.sortables.push(new Sortable(document.getElementById('shared-a-1'), sharedOpts));
-      window.sortables.push(new Sortable(document.getElementById('shared-a-2'), sharedOpts));
+      const sharedA1 = document.getElementById('shared-a-1');
+      const sharedA2 = document.getElementById('shared-a-2');
+      if (sharedA1) window.sortables.push(new Sortable(sharedA1, sharedOpts));
+      if (sharedA2) window.sortables.push(new Sortable(sharedA2, sharedOpts));
       
       // Independent groups
-      window.sortables.push(new Sortable(document.getElementById('group-a-1'), {
-        group: 'independent-a',
-        animation: 150,
-        onEnd: log('Independent A end'),
-      }));
-      window.sortables.push(new Sortable(document.getElementById('group-b-1'), {
-        group: 'independent-b',
-        animation: 150,
-        onEnd: log('Independent B end'),
-      }));
+      const groupA1 = document.getElementById('group-a-1');
+      const groupB1 = document.getElementById('group-b-1');
+      
+      if (groupA1) {
+        window.sortables.push(new Sortable(groupA1, {
+          group: 'independent-a-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Independent A end'),
+        }));
+      }
+      
+      if (groupB1) {
+        window.sortables.push(new Sortable(groupB1, {
+          group: 'independent-b-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Independent B end'),
+        }));
+      }
       
       // Grid shared
       const gridOpts = {
-        group: 'grid-shared',
+        group: 'grid-shared-test',
         animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onEnd: log('Grid end'),
       };
-      window.sortables.push(new Sortable(document.getElementById('grid-1'), gridOpts));
-      window.sortables.push(new Sortable(document.getElementById('grid-2'), gridOpts));
+      const grid1 = document.getElementById('grid-1');
+      const grid2 = document.getElementById('grid-2');
+      if (grid1) window.sortables.push(new Sortable(grid1, gridOpts));
+      if (grid2) window.sortables.push(new Sortable(grid2, gridOpts));
       
       // Legacy E2E lists
       const e2eOpts = {
         group: 'shared',
         animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onEnd: log('E2E end'),
         onAdd: log('E2E add'),
         onRemove: log('E2E remove'),
       };
-      window.sortables.push(new Sortable(document.getElementById('list1'), e2eOpts));
-      window.sortables.push(new Sortable(document.getElementById('list2'), e2eOpts));
+      const list1 = document.getElementById('list1');
+      const list2 = document.getElementById('list2');
+      if (list1) window.sortables.push(new Sortable(list1, e2eOpts));
+      if (list2) window.sortables.push(new Sortable(list2, e2eOpts));
       
       // Update status
       document.getElementById('library-status').textContent = `Resortable loaded - ${window.sortables.length} instances active`;
