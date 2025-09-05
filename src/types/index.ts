@@ -263,6 +263,134 @@ export interface SortableOptions {
    * ```
    */
   touchStartThreshold?: number
+
+  /**
+   * Threshold of the swap zone (0-1)
+   * @defaultValue 1
+   *
+   * @example
+   * ```typescript
+   * // Swap when dragged element overlaps 50% with target
+   * { swapThreshold: 0.5 }
+   * ```
+   */
+  swapThreshold?: number
+
+  /**
+   * Inverts the swap threshold behavior
+   * @defaultValue false
+   *
+   * @example
+   * ```typescript
+   * // Invert swap behavior for drop zones
+   * { invertSwap: true }
+   * ```
+   */
+  invertSwap?: boolean
+
+  /**
+   * Threshold when swap is inverted (0-1)
+   * @defaultValue swapThreshold
+   *
+   * @example
+   * ```typescript
+   * // Different threshold when inverted
+   * { invertedSwapThreshold: 0.3 }
+   * ```
+   */
+  invertedSwapThreshold?: number
+
+  /**
+   * Direction of sortable ('vertical' or 'horizontal')
+   * @defaultValue 'vertical'
+   *
+   * @example
+   * ```typescript
+   * // Horizontal sorting for image gallery
+   * { direction: 'horizontal' }
+   * ```
+   */
+  direction?: 'vertical' | 'horizontal'
+
+  /**
+   * Enable fallback for browsers without native drag support
+   * @defaultValue true
+   *
+   * @example
+   * ```typescript
+   * // Disable fallback to use native HTML5 drag only
+   * { forceFallback: false }
+   * ```
+   */
+  forceFallback?: boolean
+
+  /**
+   * CSS class for fallback ghost element
+   * @defaultValue 'sortable-fallback'
+   */
+  fallbackClass?: string
+
+  /**
+   * Use fallback on touch devices
+   * @defaultValue false
+   */
+  fallbackOnBody?: boolean
+
+  /**
+   * Fallback tolerance in pixels
+   * @defaultValue 0
+   */
+  fallbackTolerance?: number
+
+  /**
+   * X-axis offset for fallback ghost
+   * @defaultValue 0
+   */
+  fallbackOffsetX?: number
+
+  /**
+   * Y-axis offset for fallback ghost
+   * @defaultValue 0
+   */
+  fallbackOffsetY?: number
+
+  /**
+   * Callback fired when an element is chosen
+   * @param event - The sortable event
+   */
+  onChoose?: (event: SortableEvent) => void
+
+  /**
+   * Callback fired when an element is unchosen
+   * @param event - The sortable event
+   */
+  onUnchoose?: (event: SortableEvent) => void
+
+  /**
+   * Callback fired when sorting changes
+   * @param event - The sortable event
+   */
+  onSort?: (event: SortableEvent) => void
+
+  /**
+   * Callback fired during move operations
+   * @param event - The move event with related element
+   * @param originalEvent - The original drag event
+   * @returns false to cancel move
+   */
+  onMove?: (event: MoveEvent, originalEvent: Event) => boolean | void
+
+  /**
+   * Callback fired when an element is cloned
+   * @param event - The sortable event with clone
+   */
+  onClone?: (event: SortableEvent) => void
+
+  /**
+   * Callback fired when the sort order has changed
+   * @param event - The sortable event
+   */
+  onChange?: (event: SortableEvent) => void
 }
 
 /**
@@ -385,6 +513,42 @@ export interface SortableEvent {
 }
 
 /**
+ * Move event object passed to onMove callback
+ *
+ * @remarks
+ * This event provides information about move operations during drag,
+ * allowing you to control whether the move should be allowed.
+ *
+ * @public
+ */
+export interface MoveEvent extends SortableEvent {
+  /**
+   * Element being dragged over
+   */
+  related: HTMLElement
+
+  /**
+   * Whether the move will result in a swap
+   */
+  willInsertAfter?: boolean
+
+  /**
+   * The target list element
+   */
+  draggedRect?: DOMRect
+
+  /**
+   * The target element's rectangle
+   */
+  targetRect?: DOMRect
+
+  /**
+   * The related element's rectangle
+   */
+  relatedRect?: DOMRect
+}
+
+/**
  * Plugin interface for extending Sortable functionality
  *
  * @remarks
@@ -454,8 +618,14 @@ export type ElementSelector = string | HTMLElement
 export interface SortableEvents {
   /** Fired when drag starts */
   start: SortableEvent
+  /** Fired when an item is chosen for dragging */
+  choose: SortableEvent
+  /** Fired when an item is unchosen (drag cancelled) */
+  unchoose: SortableEvent
   /** Fired when an item is moved during drag */
   update: SortableEvent
+  /** Fired when sorting changes */
+  sort: SortableEvent
   /** Fired when drag ends */
   end: SortableEvent
   /** Fired on the list receiving an item from another list */
@@ -464,6 +634,12 @@ export interface SortableEvents {
   remove: SortableEvent
   /** Fired when items are selected or deselected */
   select: Partial<SortableEvent>
+  /** Fired during move operations */
+  move: MoveEvent
+  /** Fired when an item is cloned */
+  clone: SortableEvent
+  /** Fired when the sort order has changed */
+  change: SortableEvent
   /** Allow additional custom events */
   [key: string]: unknown
 }

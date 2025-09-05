@@ -29,6 +29,10 @@ export class DragManager {
   private touchStartThreshold: number
   private dragStartTimer?: number
   private dragStartPosition?: { x: number; y: number }
+  private swapThreshold?: number
+  private invertSwap: boolean
+  private invertedSwapThreshold?: number
+  private direction: 'vertical' | 'horizontal'
 
   constructor(
     public zone: DropZone,
@@ -46,6 +50,10 @@ export class DragManager {
       delay?: number
       delayOnTouchOnly?: number
       touchStartThreshold?: number
+      swapThreshold?: number
+      invertSwap?: boolean
+      invertedSwapThreshold?: number
+      direction?: 'vertical' | 'horizontal'
     }
   ) {
     // Register this drag manager in the global registry
@@ -64,6 +72,13 @@ export class DragManager {
     this.delay = options?.delay || 0
     this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
     this.touchStartThreshold = options?.touchStartThreshold || 5
+
+    // Initialize swap behavior options
+    // swapThreshold is undefined by default (no threshold checking)
+    this.swapThreshold = options?.swapThreshold
+    this.invertSwap = options?.invertSwap ?? false
+    this.invertedSwapThreshold = options?.invertedSwapThreshold
+    this.direction = options?.direction ?? 'vertical'
 
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
@@ -180,11 +195,53 @@ export class DragManager {
       oldIndex: this.startIndex,
       newIndex: this.startIndex,
     }
+    // Emit choose event first
+    this.events.emit('choose', evt)
+    // Then emit start event
     this.events.emit('start', evt)
     if (e.dataTransfer) {
       e.dataTransfer.setData('text/plain', '')
       e.dataTransfer.effectAllowed = 'move'
     }
+  }
+
+  /**
+   * Calculate if swap should occur based on overlap (only if threshold is set)
+   */
+  private shouldSwap(
+    dragRect: DOMRect,
+    targetRect: DOMRect,
+    _dragDirection: 'forward' | 'backward'
+  ): boolean {
+    // If no threshold is set, always allow swap (legacy behavior)
+    if (this.swapThreshold === undefined) {
+      return true
+    }
+
+    // Calculate overlap percentage based on direction
+    let overlap: number
+    if (this.direction === 'vertical') {
+      const overlapHeight =
+        Math.min(dragRect.bottom, targetRect.bottom) -
+        Math.max(dragRect.top, targetRect.top)
+      overlap = Math.max(0, overlapHeight) / targetRect.height
+    } else {
+      const overlapWidth =
+        Math.min(dragRect.right, targetRect.right) -
+        Math.max(dragRect.left, targetRect.left)
+      overlap = Math.max(0, overlapWidth) / targetRect.width
+    }
+
+    // Apply swap threshold logic
+    let threshold = this.swapThreshold
+    if (this.invertSwap) {
+      // In inverted mode, swap occurs when overlap is less than the threshold
+      threshold = this.invertedSwapThreshold ?? this.swapThreshold
+      return overlap < threshold
+    }
+
+    // Normal mode: swap when overlap exceeds threshold
+    return overlap >= threshold
   }
 
   private onDragOver = (e: DragEvent): void => {
@@ -220,6 +277,32 @@ export class DragManager {
     const dragIndex = this.zone.getIndex(dragItem)
     if (overIndex === dragIndex) return
 
+    // Check swap threshold if configured
+    const dragRect = dragItem.getBoundingClientRect()
+    const targetRect = over.getBoundingClientRect()
+    const dragDirection = dragIndex < overIndex ? 'forward' : 'backward'
+
+    if (!this.shouldSwap(dragRect, targetRect, dragDirection)) {
+      return // Don't swap if threshold not met
+    }
+
+    // Create MoveEvent for onMove callback
+    const moveEvent: import('../types/index.js').MoveEvent = {
+      item: dragItem,
+      items: [dragItem],
+      from: this.zone.element,
+      to: this.zone.element,
+      oldIndex: dragIndex,
+      newIndex: overIndex,
+      related: over,
+      willInsertAfter: dragIndex < overIndex,
+      draggedRect: dragRect,
+      targetRect,
+    }
+
+    // Fire onMove event
+    this.events.emit('move', moveEvent)
+
     // Determine the correct insertion index based on drag direction
     // We want to insert the dragged item before the item we're hovering over
     let targetIndex = overIndex
@@ -234,9 +317,29 @@ export class DragManager {
 
     this.zone.move(dragItem, targetIndex)
 
+    // Emit sort event (always fired when sorting changes)
+    this.events.emit('sort', {
+      item: dragItem,
+      items: [dragItem],
+      from: this.zone.element,
+      to: this.zone.element,
+      oldIndex: dragIndex,
+      newIndex: overIndex,
+    })
+
     // Only emit update if it's within the same zone originally
     if (activeDrag.fromZone === this.zone.element) {
       this.events.emit('update', {
+        item: dragItem,
+        items: [dragItem],
+        from: this.zone.element,
+        to: this.zone.element,
+        oldIndex: dragIndex,
+        newIndex: overIndex,
+      })
+
+      // Emit change event when order changes within same list
+      this.events.emit('change', {
         item: dragItem,
         items: [dragItem],
         from: this.zone.element,
@@ -420,6 +523,9 @@ export class DragManager {
       oldIndex: this.startIndex,
       newIndex: this.startIndex,
     }
+    // Emit choose event first
+    this.events.emit('choose', evt)
+    // Then emit start event
     this.events.emit('start', evt)
   }
 

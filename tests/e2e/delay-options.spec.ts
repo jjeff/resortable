@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Delay Options', () => {
   // @TODO: These tests are failing due to complexities with simulating delays in automated tests
@@ -59,13 +59,14 @@ test.describe('Delay Options', () => {
     // Reset order
     await page.evaluate(() => {
       const container = document.getElementById('delay-touch-test')
-      const items = Array.from(container!.children) as HTMLElement[]
+      if (!container) return
+      const items = Array.from(container.children) as HTMLElement[]
       items.sort((a, b) => {
-        const aId = parseInt(a.dataset.id!.replace('item-', ''))
-        const bId = parseInt(b.dataset.id!.replace('item-', ''))
+        const aId = parseInt(a.dataset.id?.replace('item-', '') || '0')
+        const bId = parseInt(b.dataset.id?.replace('item-', '') || '0')
         return aId - bId
       })
-      items.forEach((item) => container!.appendChild(item))
+      items.forEach((item) => container.appendChild(item))
     })
 
     // Touch drag should require delay

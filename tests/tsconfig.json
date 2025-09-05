@@ -12,21 +12,15 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    
+
     /* Test-specific settings */
     "types": ["@playwright/test", "node"],
-    
+
     /* More lenient for tests */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "allowImportingTsExtensions": false
   },
-  "include": [
-    "**/*.ts",
-    "**/*.spec.ts", 
-    "**/*.test.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["**/*.ts", "**/*.spec.ts", "**/*.test.ts", "**/*.d.ts"],
+  "exclude": ["node_modules"]
 }
