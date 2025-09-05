@@ -14,17 +14,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Use parallel workers for better performance */
-  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? [
+      ['line'],
       ['github'],
       ['junit', { outputFile: 'test-results/junit.xml' }],
     ]
     : [
       ['list'],
-      ['junit', { outputFile: 'test-results/junit.xml' }],
     ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -41,36 +39,36 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: process.env.CI
     ? [
-        // In CI, only test Chromium to speed up tests
-        {
-          name: 'chromium',
-          use: { ...devices['Desktop Chrome'] },
-        },
-      ]
+      // In CI, only test Chromium to speed up tests
+      {
+        name: 'chromium',
+        use: { ...devices['Desktop Chrome'] },
+      },
+    ]
     : [
-        // Locally, test all browsers
-        {
-          name: 'chromium',
-          use: { ...devices['Desktop Chrome'] },
-        },
-        {
-          name: 'firefox',
-          use: { ...devices['Desktop Firefox'] },
-        },
-        {
-          name: 'webkit',
-          use: { ...devices['Desktop Safari'] },
-        },
-        /* Test against mobile viewports. */
-        {
-          name: 'Mobile Chrome',
-          use: { ...devices['Pixel 5'] },
-        },
-        {
-          name: 'Mobile Safari',
-          use: { ...devices['iPhone 12'] },
-        },
-      ],
+      // Locally, test all browsers
+      {
+        name: 'chromium',
+        use: { ...devices['Desktop Chrome'] },
+      },
+      {
+        name: 'firefox',
+        use: { ...devices['Desktop Firefox'] },
+      },
+      {
+        name: 'webkit',
+        use: { ...devices['Desktop Safari'] },
+      },
+      /* Test against mobile viewports. */
+      {
+        name: 'Mobile Chrome',
+        use: { ...devices['Pixel 5'] },
+      },
+      {
+        name: 'Mobile Safari',
+        use: { ...devices['iPhone 12'] },
+      },
+    ],
 
   /* Run your local dev server before starting the tests */
   // Allow disabling the dev server in constrained environments (e.g. CI/sandboxes)
