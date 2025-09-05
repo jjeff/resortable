@@ -36,6 +36,7 @@ export * from './types/index.js'
 import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
+import { AnimationManager } from './animation/AnimationManager.js'
 import { SortableOptions, type SortableEvents } from './types/index.js'
 import { toArray as domToArray } from './utils/dom.js'
 
@@ -144,6 +145,7 @@ export class Sortable {
   public readonly dropZone: DropZone
   public dragManager: DragManager // Made non-readonly to allow replacement
   public readonly eventSystem: EventSystem<SortableEvents>
+  private animationManager: AnimationManager
 
   /**
    * Creates a new Sortable instance
@@ -180,7 +182,14 @@ export class Sortable {
     // Track this instance
     sortableInstances.set(element, this)
 
-    this.dropZone = new DropZone(this.element)
+    // Create animation manager first
+    this.animationManager = new AnimationManager({
+      animation: this.options.animation,
+      easing: this.options.easing,
+    })
+
+    // Pass animation manager to DropZone
+    this.dropZone = new DropZone(this.element, this.animationManager)
     this.eventSystem = new EventSystem<SortableEvents>()
     const groupName = resolveGroupName(this.options.group)
     this.dragManager = new DragManager(
@@ -411,6 +420,15 @@ export class Sortable {
         this.dragManager.groupName = resolveGroupName(
           value as SortableOptions['group']
         )
+        break
+
+      case 'animation':
+      case 'easing':
+        // Update animation manager options
+        this.animationManager.updateOptions({
+          animation: name === 'animation' ? (value as number) : undefined,
+          easing: name === 'easing' ? (value as string) : undefined,
+        })
         break
     }
   }

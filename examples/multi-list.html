@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi List - Resortable</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      max-width: 1200px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    
+    .lists-container {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+    }
+    
+    .list-wrapper {
+      flex: 1;
+      max-width: 400px;
+    }
+    
+    .list-wrapper h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    
+    .sortable-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      min-height: 300px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    
+    .sortable-item {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 8px 0;
+      cursor: move;
+      transition: background-color 0.2s;
+      user-select: none;
+    }
+    
+    .sortable-item:hover {
+      background: #f5f5f5;
+    }
+    
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #c8e6ff;
+    }
+    
+    .sortable-chosen {
+      background: #e3f2fd;
+      border-color: #2196f3;
+    }
+    
+    .sortable-drag {
+      opacity: 0.5;
+    }
+    
+    #list1 .sortable-item {
+      border-left: 4px solid #4caf50;
+    }
+    
+    #list2 .sortable-item {
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multi-List Drag & Drop</h1>
+  
+  <div class="lists-container">
+    <div class="list-wrapper">
+      <h2>List 1</h2>
+      <ul id="list1" class="sortable-list">
+        <li class="sortable-item">List 1 - Item 1</li>
+        <li class="sortable-item">List 1 - Item 2</li>
+        <li class="sortable-item">List 1 - Item 3</li>
+      </ul>
+    </div>
+    
+    <div class="list-wrapper">
+      <h2>List 2</h2>
+      <ul id="list2" class="sortable-list">
+        <li class="sortable-item">List 2 - Item 1</li>
+        <li class="sortable-item">List 2 - Item 2</li>
+        <li class="sortable-item">List 2 - Item 3</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { Sortable } from '../dist/sortable.es.js'
+    
+    // Make Sortable available globally for tests
+    window.Sortable = Sortable
+    
+    // Create sortable instances with shared group
+    const sortable1 = new Sortable(document.getElementById('list1'), {
+      group: 'shared',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: (evt) => {
+        console.log('List 1 - Moved from', evt.oldIndex, 'to', evt.newIndex)
+      },
+      onAdd: (evt) => {
+        console.log('Added to List 1 from List 2')
+      },
+      onRemove: (evt) => {
+        console.log('Removed from List 1 to List 2')
+      }
+    })
+    
+    const sortable2 = new Sortable(document.getElementById('list2'), {
+      group: 'shared',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: (evt) => {
+        console.log('List 2 - Moved from', evt.oldIndex, 'to', evt.newIndex)
+      },
+      onAdd: (evt) => {
+        console.log('Added to List 2 from List 1')
+      },
+      onRemove: (evt) => {
+        console.log('Removed from List 2 to List 1')
+      }
+    })
+  </script>
+</body>
+</html>

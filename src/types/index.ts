@@ -40,21 +40,6 @@
  */
 export interface SortableOptions {
   /**
-   * Animation duration in milliseconds when sorting
-   * @defaultValue 150
-   *
-   * @example
-   * ```typescript
-   * // Smooth 300ms animation
-   * { animation: 300 }
-   *
-   * // No animation
-   * { animation: 0 }
-   * ```
-   */
-  animation?: number
-
-  /**
    * CSS class applied to the ghost element during drag
    * @defaultValue 'sortable-ghost'
    *
@@ -76,6 +61,24 @@ export interface SortableOptions {
    * @defaultValue 'sortable-drag'
    */
   dragClass?: string
+
+  /**
+   * Animation duration in milliseconds. Set to 0 to disable animations.
+   * @defaultValue 150
+   */
+  animation?: number
+
+  /**
+   * CSS easing function for animations
+   * @defaultValue 'cubic-bezier(0.4, 0.0, 0.2, 1)'
+   *
+   * @example
+   * ```typescript
+   * { easing: 'ease-in-out' }
+   * { easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)' }
+   * ```
+   */
+  easing?: string
 
   /**
    * Group name or configuration for sharing items between lists
