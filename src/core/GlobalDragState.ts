@@ -107,6 +107,16 @@ class GlobalDragStateManager {
       }
     }
 
+    // Fire unchoose event before end
+    activeDrag.eventSystem.emit('unchoose', {
+      item: activeDrag.item,
+      items: [activeDrag.item],
+      from: activeDrag.fromZone,
+      to: putTarget?.zone || activeDrag.fromZone,
+      oldIndex: activeDrag.startIndex,
+      newIndex: -1,
+    })
+
     // Fire end event
     const finalIndex = activeDrag.item.parentElement
       ? Array.from(activeDrag.item.parentElement.children).indexOf(

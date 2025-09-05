@@ -33,6 +33,41 @@ export class DragManager {
   private invertSwap: boolean
   private invertedSwapThreshold?: number
   private direction: 'vertical' | 'horizontal'
+  // Fallback system properties - to be fully implemented in future phase
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _forceFallback: boolean
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackClass?: string
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackOnBody: boolean
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackTolerance: number
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackOffsetX: number
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackOffsetY: number
+  // @ts-expect-error - Will be implemented in fallback system
+
+  private _fallbackClone: HTMLElement | null = null
+  // @ts-expect-error - Will be implemented in visual customization
+
+  private _dragoverBubble: boolean
+  // @ts-expect-error - Will be implemented in visual customization
+
+  private _removeCloneOnHide: boolean
+  // @ts-expect-error - Will be implemented in visual customization
+
+  private _emptyInsertThreshold: number
+  private preventOnFilter: boolean
+  // @ts-expect-error - Will be implemented in data management
+
+  private _dataIdAttr: string
 
   constructor(
     public zone: DropZone,
@@ -54,6 +89,17 @@ export class DragManager {
       invertSwap?: boolean
       invertedSwapThreshold?: number
       direction?: 'vertical' | 'horizontal'
+      forceFallback?: boolean
+      fallbackClass?: string
+      fallbackOnBody?: boolean
+      fallbackTolerance?: number
+      fallbackOffsetX?: number
+      fallbackOffsetY?: number
+      dragoverBubble?: boolean
+      removeCloneOnHide?: boolean
+      emptyInsertThreshold?: number
+      preventOnFilter?: boolean
+      dataIdAttr?: string
     }
   ) {
     // Register this drag manager in the global registry
@@ -79,6 +125,23 @@ export class DragManager {
     this.invertSwap = options?.invertSwap ?? false
     this.invertedSwapThreshold = options?.invertedSwapThreshold
     this.direction = options?.direction ?? 'vertical'
+
+    // Initialize fallback options (to be fully implemented)
+    this._forceFallback = options?.forceFallback ?? false
+    this._fallbackClass = options?.fallbackClass
+    this._fallbackOnBody = options?.fallbackOnBody ?? false
+    this._fallbackTolerance = options?.fallbackTolerance ?? 0
+    this._fallbackOffsetX = options?.fallbackOffsetX ?? 0
+    this._fallbackOffsetY = options?.fallbackOffsetY ?? 0
+
+    // Initialize visual customization options
+    this._dragoverBubble = options?.dragoverBubble ?? false
+    this._removeCloneOnHide = options?.removeCloneOnHide ?? true
+    this._emptyInsertThreshold = options?.emptyInsertThreshold ?? 5
+
+    // Initialize other options
+    this.preventOnFilter = options?.preventOnFilter ?? true
+    this._dataIdAttr = options?.dataIdAttr ?? 'data-id'
 
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
@@ -778,6 +841,10 @@ export class DragManager {
 
     // Check filter option - if event target matches filter, prevent drag
     if (this.filter && eventTarget.matches(this.filter)) {
+      // Prevent default if configured
+      if (this.preventOnFilter) {
+        event.preventDefault()
+      }
       // Call onFilter callback if provided
       if (this.onFilter) {
         this.onFilter(event)

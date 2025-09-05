@@ -44,9 +44,13 @@ export function insertAt(
 }
 
 /** Convert children to array of data-id or index */
-export function toArray(parent: HTMLElement): string[] {
+export function toArray(parent: HTMLElement, dataIdAttr = 'data-id'): string[] {
   return Array.from(parent.children).map((child, i) => {
     const el = child as HTMLElement
-    return el.dataset.id ?? String(i)
+    // Remove 'data-' prefix if present
+    const attrName = dataIdAttr.startsWith('data-')
+      ? dataIdAttr.slice(5)
+      : dataIdAttr
+    return el.dataset[attrName] ?? el.getAttribute(dataIdAttr) ?? String(i)
   })
 }
