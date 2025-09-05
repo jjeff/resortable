@@ -8,6 +8,11 @@ import { test, expect } from '@playwright/test'
 test.describe('Animation System - Visual Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/examples/simple-list.html')
+    
+    // Wait for Sortable to be loaded on window
+    await page.waitForFunction(() => {
+      return typeof (window as any).Sortable !== 'undefined'
+    }, { timeout: 5000 })
   })
 
   test('should apply animation classes and styles', async ({ page }) => {
