@@ -223,6 +223,9 @@ export class Sortable {
         emptyInsertThreshold: this.options.emptyInsertThreshold,
         preventOnFilter: this.options.preventOnFilter,
         dataIdAttr: this.options.dataIdAttr,
+        ghostClass: this.options.ghostClass,
+        chosenClass: this.options.chosenClass,
+        dragClass: this.options.dragClass,
       }
     )
     this.dragManager.attach()
@@ -409,6 +412,9 @@ export class Sortable {
             invertSwap: this.options.invertSwap,
             invertedSwapThreshold: this.options.invertedSwapThreshold,
             direction: this.options.direction,
+            ghostClass: this.options.ghostClass,
+            chosenClass: this.options.chosenClass,
+            dragClass: this.options.dragClass,
           }
         )
         this.dragManager.attach()
