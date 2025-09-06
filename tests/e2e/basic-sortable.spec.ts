@@ -4,19 +4,17 @@ test.describe('Basic Sortable Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
 
-    // Open developer section if it's not already visible
-    const basicList = page.locator('#basic-list')
-    const isVisible = await basicList.isVisible()
-    
-    if (!isVisible) {
-      // Click to open the developer section
-      await page.locator('.collapsible-header').click()
-      await page.waitForSelector('#basic-list', {
-        state: 'visible',
-        timeout: 5000,
-      })
-    }
-    
+    // Always click to open the developer section to ensure it's visible
+    // The collapsible starts closed by default
+    await page.locator('.collapsible-header').click()
+
+    // Wait for the basic list to be visible
+    await page.waitForSelector('#basic-list', {
+      state: 'visible',
+      timeout: 10000,
+    })
+
+    // Verify items are present
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })
 

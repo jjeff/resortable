@@ -86,6 +86,12 @@ test.describe('Showcase Page Functionality', () => {
     // Open developer section
     await page.locator('.collapsible-header').click()
 
+    // Wait for the section to be visible
+    await page.waitForSelector('#basic-list', {
+      state: 'visible',
+      timeout: 10000,
+    })
+
     const basicList = page.locator('#basic-list')
     await expect(basicList).toBeVisible()
 

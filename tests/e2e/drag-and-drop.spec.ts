@@ -4,16 +4,14 @@ test.describe('Legacy E2E Drag and Drop', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
 
-    // Open developer section if lists are not visible
-    const list1 = page.locator('#list1')
-    const isVisible = await list1.isVisible()
-    
-    if (!isVisible) {
-      // Click to open the developer section
-      await page.locator('.collapsible-header').click()
-      await page.waitForSelector('#list1', { state: 'visible', timeout: 5000 })
-    }
-    
+    // Always click to open the developer section
+    await page.locator('.collapsible-header').click()
+
+    // Wait for lists to be visible
+    await page.waitForSelector('#list1', { state: 'visible', timeout: 10000 })
+    await page.waitForSelector('#list2', { state: 'visible', timeout: 10000 })
+
+    // Verify items are present
     await expect(page.locator('#list1 .sortable-item')).toHaveCount(4)
     await expect(page.locator('#list2 .sortable-item')).toHaveCount(4)
   })
