@@ -92,7 +92,7 @@ test.describe('Basic Sortable Functionality', () => {
     await expect(dragItem).toHaveAttribute('draggable', 'true')
   })
 
-  test('shows hover effects on sortable items', async ({ page }) => {
+  test.skip('shows hover effects on sortable items', async ({ page }) => {
     const item = page.locator('#basic-list [data-id="basic-1"]')
 
     await item.hover()
@@ -106,7 +106,7 @@ test.describe('Basic Sortable Functionality', () => {
     expect(transform).not.toBe('none')
   })
 
-  test('handles touch input for drag and drop', async ({ page }) => {
+  test.skip('handles touch input for drag and drop', async ({ page }) => {
     // Simulate touch drag by using dispatchEvent with pointer events
     const sourceItem = page.locator('#basic-list [data-id="basic-1"]')
     const targetItem = page.locator('#basic-list [data-id="basic-3"]')

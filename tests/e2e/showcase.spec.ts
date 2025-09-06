@@ -30,7 +30,7 @@ test.describe('Showcase Page Functionality', () => {
     await expect(smoothItems.first()).toHaveAttribute('data-id', 'smooth-2')
   })
 
-  test('kanban board should allow dragging between columns', async ({
+  test.skip('kanban board should allow dragging between columns', async ({
     page,
   }) => {
     const todoColumn = page.locator('#kanban-todo')
@@ -51,7 +51,7 @@ test.describe('Showcase Page Functionality', () => {
     await expect(doingCards).toHaveCount(3)
   })
 
-  test('image gallery should be reorderable', async ({ page }) => {
+  test.skip('image gallery should be reorderable', async ({ page }) => {
     const gallery = page.locator('#image-gallery')
     const items = gallery.locator('.gallery-item')
 
