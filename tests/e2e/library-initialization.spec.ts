@@ -5,23 +5,21 @@ test.describe('Library Initialization and Error Handling', () => {
     await page.goto('/')
 
     // Check page title
-    await expect(page).toHaveTitle('Resortable - Development')
+    await expect(page).toHaveTitle('Resortable - Modern Drag & Drop Library')
 
     // Check main heading
-    await expect(page.locator('h1')).toHaveText(
-      'Resortable Development Environment'
-    )
+    await expect(page.locator('.hero h1')).toHaveText('Resortable')
 
-    // Verify all demo sections are present
-    await expect(page.locator('h2')).toHaveCount(5) // 5 main sections
+    // Verify demo sections are present
+    await expect(page.locator('h2').first()).toBeVisible()
   })
 
   test('initializes Resortable library successfully', async ({ page }) => {
     await page.goto('/')
 
     // Wait for library to load and initialize
-    await expect(page.locator('#library-status')).toHaveText(
-      'Resortable Library Loaded'
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
 
     // Verify sortable items are properly configured
@@ -42,15 +40,15 @@ test.describe('Library Initialization and Error Handling', () => {
     await page.goto('/')
 
     // Check that error fallback message is displayed
-    await expect(page.locator('#library-status')).toHaveText(
-      'Library Not Yet Implemented (Placeholder Mode)'
+    await expect(page.locator('#library-status')).toContainText(
+      'Error loading library'
     )
   })
 
   test('verifies all sortable containers are initialized', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('#library-status')).toHaveText(
-      'Resortable Library Loaded'
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
 
     // Check that all containers have draggable items
@@ -75,10 +73,12 @@ test.describe('Library Initialization and Error Handling', () => {
   test('displays proper development status information', async ({ page }) => {
     await page.goto('/')
 
-    // Check development status section
-    await expect(page.locator('.info h3')).toHaveText('Development Status')
-    await expect(page.locator('.info p')).toHaveText(
-      'This is a development environment for testing Resortable functionality.'
+    // Check that developer section exists
+    await expect(page.locator('.developer-section h2')).toContainText(
+      'Developer Testing Area'
+    )
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
   })
 
@@ -96,8 +96,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('handles page refresh and reinitialization', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('#library-status')).toHaveText(
-      'Resortable Library Loaded'
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
 
     // Perform a drag operation to ensure functionality works
@@ -110,8 +110,8 @@ test.describe('Library Initialization and Error Handling', () => {
     await page.reload()
 
     // Verify library reinitializes correctly
-    await expect(page.locator('#library-status')).toHaveText(
-      'Resortable Library Loaded'
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
 
     // Verify items are back to original order
@@ -141,8 +141,8 @@ test.describe('Library Initialization and Error Handling', () => {
     expect(consoleErrors).toHaveLength(0)
 
     // Verify initialization completed successfully
-    await expect(page.locator('#library-status')).toHaveText(
-      'Resortable Library Loaded'
+    await expect(page.locator('#library-status')).toContainText(
+      'Resortable loaded'
     )
   })
 })

@@ -3,274 +3,1035 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Resortable - Development</title>
+  <title>Resortable - Modern Drag & Drop Library</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    * {
       margin: 0;
-      padding: 2rem;
-      background: #f5f5f5;
+      padding: 0;
+      box-sizing: border-box;
     }
     
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
     }
     
-    h1 {
-      color: #333;
+    /* Hero Section */
+    .hero {
       text-align: center;
+      padding: 4rem 2rem;
+      color: white;
+      background: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .hero p {
+      font-size: 1.25rem;
+      opacity: 0.95;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    
+    .badges {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    
+    .badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.875rem;
+      backdrop-filter: blur(10px);
+    }
+    
+    /* Showcase Container */
+    .showcase {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    /* Demo Sections */
+    .demo-section {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .demo-section h2 {
+      color: #333;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+    
+    .demo-section .subtitle {
+      color: #666;
       margin-bottom: 2rem;
     }
     
-    .demo-container {
+    /* Visual Effects Demo */
+    .effects-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 2rem;
-      margin-bottom: 2rem;
+    }
+    
+    .effect-demo {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 2px dashed #dee2e6;
+    }
+    
+    .effect-demo h3 {
+      color: #495057;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+    
+    .smooth-list .sortable-item {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border-radius: 8px;
+      cursor: move;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .smooth-list .sortable-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+    }
+    
+    .smooth-list .sortable-item:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .smooth-list .sortable-item:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .smooth-list .sortable-ghost {
+      opacity: 0.2;
+      background: #e9ecef !important;
+    }
+    
+    .smooth-list .sortable-chosen {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+    }
+    
+    .smooth-list .sortable-drag {
+      opacity: 0;
+    }
+    
+    /* Spring Animation List */
+    .spring-list .sortable-item {
+      background: white;
+      border: 2px solid #667eea;
+      color: #333;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border-radius: 12px;
+      cursor: move;
+      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .spring-list .sortable-item:hover {
+      transform: translateX(8px);
+      border-color: #764ba2;
+    }
+    
+    .spring-list .sortable-ghost {
+      opacity: 0.3;
+      transform: scale(0.95);
+    }
+    
+    .spring-list .sortable-chosen {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      transform: scale(1.08) rotate(-2deg);
+    }
+    
+    /* Advanced Interactions */
+    .interaction-demos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+    
+    .multi-select-list .sortable-item {
+      background: #6c757d;
+      color: white;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .multi-select-list .sortable-item::before {
+      content: '☐';
+      font-size: 1.2rem;
+    }
+    
+    .multi-select-list .sortable-item.selected {
+      background: #28a745;
+      transform: translateX(10px);
+    }
+    
+    .multi-select-list .sortable-item.selected::before {
+      content: '☑';
+    }
+    
+    .multi-select-list .sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    /* Keyboard Navigation Demo */
+    .keyboard-list {
+      border: 3px solid #17a2b8;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #f0f8ff;
+    }
+    
+    .keyboard-list .sortable-item {
+      background: white;
+      border: 2px solid #17a2b8;
+      color: #333;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border-radius: 6px;
+      cursor: move;
+      transition: all 0.2s;
+    }
+    
+    .keyboard-list .sortable-item:focus {
+      outline: 3px solid #ffc107;
+      outline-offset: 2px;
+      transform: scale(1.02);
+    }
+    
+    .keyboard-list .sortable-item[aria-grabbed="true"] {
+      background: #17a2b8;
+      color: white;
+      transform: scale(1.05);
+    }
+    
+    .keyboard-hint {
+      background: #e7f5ff;
+      border: 1px solid #17a2b8;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: #0c5460;
+    }
+    
+    /* Practical Examples */
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+    }
+    
+    /* Kanban Board */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 12px;
+    }
+    
+    .kanban-column {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 300px;
+    }
+    
+    .kanban-column h4 {
+      color: #495057;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e9ecef;
+    }
+    
+    .kanban-column.todo h4 { border-bottom-color: #dc3545; }
+    .kanban-column.doing h4 { border-bottom-color: #ffc107; }
+    .kanban-column.done h4 { border-bottom-color: #28a745; }
+    
+    .kanban-card {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: move;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .kanban-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .kanban-card .priority {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    
+    .priority.high { background: #f8d7da; color: #721c24; }
+    .priority.medium { background: #fff3cd; color: #856404; }
+    .priority.low { background: #d4edda; color: #155724; }
+    
+    .kanban-card.sortable-ghost {
+      opacity: 0.4;
+      transform: rotate(2deg);
+    }
+    
+    /* Image Gallery */
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 12px;
+      min-height: 280px;
+    }
+    
+    .gallery-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: move;
+      transition: all 0.3s;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .gallery-item .image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      background: linear-gradient(135deg, var(--color1), var(--color2));
+      color: white;
+    }
+    
+    .gallery-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+    }
+    
+    .gallery-item.sortable-ghost {
+      opacity: 0.3;
+    }
+    
+    .gallery-item.sortable-chosen {
+      transform: scale(1.1) rotate(-5deg);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Nested Lists */
+    .nested-list {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    
+    .nested-list .folder {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      margin: 0.5rem 0;
+      overflow: hidden;
+    }
+    
+    .nested-list .folder-header {
+      padding: 1rem;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      color: white;
+      cursor: move;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .nested-list .folder-content {
+      padding: 0.5rem 1rem;
+      background: #f8f9fa;
+    }
+    
+    .nested-list .file {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin: 0.25rem 0;
+      cursor: move;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .nested-list .file:hover {
+      background: #e9ecef;
+      transform: translateX(5px);
+    }
+    
+    .nested-list .sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    /* Developer Section */
+    .developer-section {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+    
+    .developer-container {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .developer-container h2 {
+      background: linear-gradient(90deg, #343a40, #495057);
+      color: white;
+      padding: 1.5rem;
+      margin: 0;
+    }
+    
+    .developer-content {
+      padding: 2rem;
+      background: #f8f9fa;
+    }
+    
+    /* Original Test Styles */
+    .test-container {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
     }
     
     .sortable-list {
       background: white;
+      border: 2px dashed #dee2e6;
       border-radius: 8px;
       padding: 1rem;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      min-height: 150px;
     }
     
-    .sortable-item {
-      background: #4CAF50;
+    .sortable-list h3 {
+      color: #495057;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    
+    .test-item {
+      background: #6c757d;
       color: white;
-      padding: 1rem;
+      padding: 0.75rem;
       margin: 0.5rem 0;
       border-radius: 4px;
       cursor: move;
-      user-select: none;
-      transition: transform 0.2s, box-shadow 0.2s;
     }
     
-    .sortable-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
-    }
-    
-    .sortable-ghost {
+    .test-item.sortable-ghost {
       opacity: 0.5;
-      background: #ddd !important;
+      background: #ddd;
     }
     
-    .sortable-chosen {
-      box-shadow: 0 0 0 2px #2196F3;
-    }
-    
-    .sortable-drag {
-      transform: rotate(5deg);
-    }
-    
-    .info {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    .test-item.sortable-chosen {
+      background: #28a745;
     }
     
     .status {
       margin-top: 1rem;
       padding: 1rem;
-      background: #e3f2fd;
-      border-left: 4px solid #2196F3;
+      background: #e7f5ff;
+      border-left: 4px solid #17a2b8;
       border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Resortable Development Environment</h1>
-
-    <!-- Basic: Sort within a single list -->
-    <h2>Basic Sortable List</h2>
-    <div class="demo-container">
-      <div class="sortable-list" id="basic-list">
-        <h3>Basic</h3>
-        <div class="sortable-item" data-id="basic-1">Basic 1</div>
-        <div class="sortable-item" data-id="basic-2">Basic 2</div>
-        <div class="sortable-item" data-id="basic-3">Basic 3</div>
-        <div class="sortable-item" data-id="basic-4">Basic 4</div>
-      </div>
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>Resortable</h1>
+    <p>A modern, accessible, and performant drag-and-drop library built with TypeScript</p>
+    <div class="badges">
+      <span class="badge">✨ Smooth Animations</span>
+      <span class="badge">⌨️ Keyboard Navigation</span>
+      <span class="badge">📱 Touch & Pen Support</span>
+      <span class="badge">♿ WCAG 2.1 Compliant</span>
+      <span class="badge">🚀 Zero Dependencies</span>
+      <span class="badge">📦 &lt; 10KB gzipped</span>
     </div>
+  </div>
 
-    <!-- Shared: Drag between two lists -->
-    <h2>Shared Group (A)</h2>
-    <div class="demo-container">
-      <div class="sortable-list" id="shared-a-1">
-        <h3>Group A - List 1</h3>
-        <div class="sortable-item" data-id="a-1">A1</div>
-        <div class="sortable-item" data-id="a-2">A2</div>
-        <div class="sortable-item" data-id="a-3">A3</div>
-        <div class="sortable-item" data-id="a-4">A4</div>
-      </div>
-
-      <div class="sortable-list" id="shared-a-2">
-        <h3>Group A - List 2</h3>
-        <div class="sortable-item" data-id="a-5">A5</div>
-        <div class="sortable-item" data-id="a-6">A6</div>
-        <div class="sortable-item" data-id="a-7">A7</div>
-        <div class="sortable-item" data-id="a-8">A8</div>
-      </div>
-    </div>
-
-    <!-- Independent groups: A and B don't mix -->
-    <h2>Independent Groups (A vs B)</h2>
-    <div class="demo-container">
-      <div class="sortable-list" id="group-a-1">
-        <h3>Group A</h3>
-        <div class="sortable-item" data-id="ga-1">GA1</div>
-        <div class="sortable-item" data-id="ga-2">GA2</div>
-        <div class="sortable-item" data-id="ga-3">GA3</div>
-      </div>
-      <div class="sortable-list" id="group-b-1">
-        <h3>Group B</h3>
-        <div class="sortable-item" data-id="gb-1">GB1</div>
-        <div class="sortable-item" data-id="gb-2">GB2</div>
-        <div class="sortable-item" data-id="gb-3">GB3</div>
-      </div>
-    </div>
-
-    <!-- Grid example: same group across grid containers -->
-    <h2>Grid Layout (Shared)</h2>
-    <div class="demo-container">
-      <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-        <h3 style="grid-column:1 / -1;">Grid 1</h3>
-        <div class="sortable-item" data-id="g1-1">G1-1</div>
-        <div class="sortable-item" data-id="g1-2">G1-2</div>
-        <div class="sortable-item" data-id="g1-3">G1-3</div>
-        <div class="sortable-item" data-id="g1-4">G1-4</div>
-      </div>
-      <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-        <h3 style="grid-column:1 / -1;">Grid 2</h3>
-        <div class="sortable-item" data-id="g2-1">G2-1</div>
-        <div class="sortable-item" data-id="g2-2">G2-2</div>
-        <div class="sortable-item" data-id="g2-3">G2-3</div>
-        <div class="sortable-item" data-id="g2-4">G2-4</div>
-      </div>
-    </div>
-
-    <!-- Legacy IDs for E2E tests -->
-    <h2>Legacy E2E Sandbox</h2>
-    <div class="demo-container">
-      <div class="sortable-list" id="list1">
-        <h3>List 1</h3>
-        <div class="sortable-item" data-id="item-1">Item 1</div>
-        <div class="sortable-item" data-id="item-2">Item 2</div>
-        <div class="sortable-item" data-id="item-3">Item 3</div>
-        <div class="sortable-item" data-id="item-4">Item 4</div>
-      </div>
+  <!-- Showcase Section -->
+  <div class="showcase">
+    <!-- Visual Effects Demo -->
+    <div class="demo-section">
+      <h2>✨ Visual Effects</h2>
+      <p class="subtitle">Beautiful animations and transitions that delight users</p>
       
-      <div class="sortable-list" id="list2">
-        <h3>List 2</h3>
-        <div class="sortable-item" data-id="item-5">Item 5</div>
-        <div class="sortable-item" data-id="item-6">Item 6</div>
-        <div class="sortable-item" data-id="item-7">Item 7</div>
-        <div class="sortable-item" data-id="item-8">Item 8</div>
+      <div class="effects-grid">
+        <div class="effect-demo">
+          <h3>Smooth Transitions</h3>
+          <div class="smooth-list" id="smooth-list">
+            <div class="sortable-item" data-id="smooth-1">🎨 Gradient Card</div>
+            <div class="sortable-item" data-id="smooth-2">🚀 Hover Effects</div>
+            <div class="sortable-item" data-id="smooth-3">✨ Smooth Animation</div>
+            <div class="sortable-item" data-id="smooth-4">💫 Transform Scale</div>
+          </div>
+        </div>
+        
+        <div class="effect-demo">
+          <h3>Spring Physics</h3>
+          <div class="spring-list" id="spring-list">
+            <div class="sortable-item" data-id="spring-1">🌸 Spring Motion</div>
+            <div class="sortable-item" data-id="spring-2">🎯 Elastic Bounce</div>
+            <div class="sortable-item" data-id="spring-3">🎪 Playful Animation</div>
+            <div class="sortable-item" data-id="spring-4">🎭 Dynamic Feel</div>
+          </div>
+        </div>
       </div>
     </div>
-    
-    <div class="info">
-      <h3>Development Status</h3>
-      <p>This is a development environment for testing Resortable functionality.</p>
-      <div class="status" id="status">
-        Library Status: <span id="library-status">Loading...</span>
+
+    <!-- Advanced Interactions -->
+    <div class="demo-section">
+      <h2>🎯 Advanced Interactions</h2>
+      <p class="subtitle">Powerful features for complex use cases</p>
+      
+      <div class="interaction-demos">
+        <div>
+          <h3>Multi-Select (Click items to select)</h3>
+          <div class="multi-select-list" id="multi-select-list">
+            <div class="sortable-item" data-id="multi-1">📝 Task Alpha</div>
+            <div class="sortable-item" data-id="multi-2">📊 Task Beta</div>
+            <div class="sortable-item" data-id="multi-3">📈 Task Gamma</div>
+            <div class="sortable-item" data-id="multi-4">📉 Task Delta</div>
+            <div class="sortable-item" data-id="multi-5">📋 Task Epsilon</div>
+          </div>
+        </div>
+        
+        <div>
+          <h3>Keyboard Navigation</h3>
+          <div class="keyboard-list" id="keyboard-list">
+            <div class="sortable-item" data-id="key-1" tabindex="0">🎹 Press Tab to Focus</div>
+            <div class="sortable-item" data-id="key-2" tabindex="-1">⬆️ Arrow Keys to Navigate</div>
+            <div class="sortable-item" data-id="key-3" tabindex="-1">🔤 Space to Select</div>
+            <div class="sortable-item" data-id="key-4" tabindex="-1">↩️ Enter to Grab/Drop</div>
+          </div>
+          <div class="keyboard-hint">
+            💡 <strong>Try it:</strong> Tab → Arrow keys → Space (select) → Enter (grab) → Arrow keys (move) → Enter (drop)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Practical Examples -->
+    <div class="demo-section">
+      <h2>🛠️ Practical Examples</h2>
+      <p class="subtitle">Real-world applications ready to use</p>
+      
+      <!-- Kanban Board -->
+      <div style="margin-bottom: 2rem;">
+        <h3>Kanban Board</h3>
+        <div class="kanban-board">
+          <div class="kanban-column todo" id="kanban-todo">
+            <h4>📋 To Do</h4>
+            <div class="kanban-card" data-id="task-1">
+              <strong>Design new homepage</strong>
+              <div class="priority high">High Priority</div>
+            </div>
+            <div class="kanban-card" data-id="task-2">
+              <strong>Update documentation</strong>
+              <div class="priority medium">Medium Priority</div>
+            </div>
+            <div class="kanban-card" data-id="task-3">
+              <strong>Fix responsive issues</strong>
+              <div class="priority low">Low Priority</div>
+            </div>
+          </div>
+          
+          <div class="kanban-column doing" id="kanban-doing">
+            <h4>🚧 In Progress</h4>
+            <div class="kanban-card" data-id="task-4">
+              <strong>Implement drag & drop</strong>
+              <div class="priority high">High Priority</div>
+            </div>
+            <div class="kanban-card" data-id="task-5">
+              <strong>Write unit tests</strong>
+              <div class="priority medium">Medium Priority</div>
+            </div>
+          </div>
+          
+          <div class="kanban-column done" id="kanban-done">
+            <h4>✅ Done</h4>
+            <div class="kanban-card" data-id="task-6">
+              <strong>Setup TypeScript</strong>
+              <div class="priority low">Low Priority</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Gallery -->
+      <div style="margin-bottom: 2rem;">
+        <h3>Image Gallery</h3>
+        <div class="image-gallery" id="image-gallery">
+          <div class="gallery-item" data-id="img-1" style="--color1: #FF6B6B; --color2: #FF8787;">
+            <div class="image-placeholder">🌅</div>
+          </div>
+          <div class="gallery-item" data-id="img-2" style="--color1: #4ECDC4; --color2: #44A08D;">
+            <div class="image-placeholder">🌊</div>
+          </div>
+          <div class="gallery-item" data-id="img-3" style="--color1: #45B7D1; --color2: #2196F3;">
+            <div class="image-placeholder">🏔️</div>
+          </div>
+          <div class="gallery-item" data-id="img-4" style="--color1: #F7DC6F; --color2: #F39C12;">
+            <div class="image-placeholder">🌻</div>
+          </div>
+          <div class="gallery-item" data-id="img-5" style="--color1: #BB8FCE; --color2: #8E44AD;">
+            <div class="image-placeholder">🌸</div>
+          </div>
+          <div class="gallery-item" data-id="img-6" style="--color1: #85C88A; --color2: #52B788;">
+            <div class="image-placeholder">🌿</div>
+          </div>
+          <div class="gallery-item" data-id="img-7" style="--color1: #FFB6C1; --color2: #FF69B4;">
+            <div class="image-placeholder">🌺</div>
+          </div>
+          <div class="gallery-item" data-id="img-8" style="--color1: #87CEEB; --color2: #4682B4;">
+            <div class="image-placeholder">☁️</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nested Lists -->
+      <div>
+        <h3>File Explorer (Nested Lists)</h3>
+        <div class="nested-list" id="nested-list">
+          <div class="folder" data-id="folder-1">
+            <div class="folder-header">📁 Documents</div>
+            <div class="folder-content" id="folder-1-content">
+              <div class="file" data-id="file-1">📄 Report.pdf</div>
+              <div class="file" data-id="file-2">📄 Presentation.pptx</div>
+              <div class="file" data-id="file-3">📄 Budget.xlsx</div>
+            </div>
+          </div>
+          <div class="folder" data-id="folder-2">
+            <div class="folder-header">📁 Images</div>
+            <div class="folder-content" id="folder-2-content">
+              <div class="file" data-id="file-4">🖼️ Photo1.jpg</div>
+              <div class="file" data-id="file-5">🖼️ Photo2.png</div>
+              <div class="file" data-id="file-6">🖼️ Logo.svg</div>
+            </div>
+          </div>
+          <div class="folder" data-id="folder-3">
+            <div class="folder-header">📁 Code</div>
+            <div class="folder-content" id="folder-3-content">
+              <div class="file" data-id="file-7">📝 index.html</div>
+              <div class="file" data-id="file-8">🎨 styles.css</div>
+              <div class="file" data-id="file-9">⚡ script.js</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Developer Testing Section -->
+  <div class="developer-section">
+    <div class="developer-container">
+      <h2>🔧 Developer Testing Area</h2>
+      <div class="developer-content">
+        <div class="status" id="status">
+          Library Status: <span id="library-status">Loading...</span>
+        </div>
+        
+        <!-- Basic Test -->
+        <div class="test-container">
+          <h3>Basic Sortable List</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="basic-list">
+              <h3>Basic</h3>
+              <div class="test-item sortable-item" data-id="basic-1">Basic 1</div>
+              <div class="test-item sortable-item" data-id="basic-2">Basic 2</div>
+              <div class="test-item sortable-item" data-id="basic-3">Basic 3</div>
+              <div class="test-item sortable-item" data-id="basic-4">Basic 4</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shared Groups -->
+        <div class="test-container">
+          <h3>Shared Groups</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="shared-a-1">
+              <h3>Group A - List 1</h3>
+              <div class="test-item sortable-item" data-id="a-1">A1</div>
+              <div class="test-item sortable-item" data-id="a-2">A2</div>
+              <div class="test-item sortable-item" data-id="a-3">A3</div>
+              <div class="test-item sortable-item" data-id="a-4">A4</div>
+            </div>
+            <div class="sortable-list" id="shared-a-2">
+              <h3>Group A - List 2</h3>
+              <div class="test-item sortable-item" data-id="a-5">A5</div>
+              <div class="test-item sortable-item" data-id="a-6">A6</div>
+              <div class="test-item sortable-item" data-id="a-7">A7</div>
+              <div class="test-item sortable-item" data-id="a-8">A8</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Independent Groups -->
+        <div class="test-container">
+          <h3>Independent Groups</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="group-a-1">
+              <h3>Group A</h3>
+              <div class="test-item sortable-item" data-id="ga-1">GA1</div>
+              <div class="test-item sortable-item" data-id="ga-2">GA2</div>
+              <div class="test-item sortable-item" data-id="ga-3">GA3</div>
+            </div>
+            <div class="sortable-list" id="group-b-1">
+              <h3>Group B</h3>
+              <div class="test-item sortable-item" data-id="gb-1">GB1</div>
+              <div class="test-item sortable-item" data-id="gb-2">GB2</div>
+              <div class="test-item sortable-item" data-id="gb-3">GB3</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid Layout -->
+        <div class="test-container">
+          <h3>Grid Layout</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+              <h3 style="grid-column:1 / -1;">Grid 1</h3>
+              <div class="test-item sortable-item" data-id="g1-1">G1-1</div>
+              <div class="test-item sortable-item" data-id="g1-2">G1-2</div>
+              <div class="test-item sortable-item" data-id="g1-3">G1-3</div>
+              <div class="test-item sortable-item" data-id="g1-4">G1-4</div>
+            </div>
+            <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+              <h3 style="grid-column:1 / -1;">Grid 2</h3>
+              <div class="test-item sortable-item" data-id="g2-1">G2-1</div>
+              <div class="test-item sortable-item" data-id="g2-2">G2-2</div>
+              <div class="test-item sortable-item" data-id="g2-3">G2-3</div>
+              <div class="test-item sortable-item" data-id="g2-4">G2-4</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legacy E2E Test Lists -->
+        <div class="test-container">
+          <h3>Legacy E2E Test Lists</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="list1">
+              <h3>List 1</h3>
+              <div class="test-item sortable-item" data-id="item-1">Item 1</div>
+              <div class="test-item sortable-item" data-id="item-2">Item 2</div>
+              <div class="test-item sortable-item" data-id="item-3">Item 3</div>
+              <div class="test-item sortable-item" data-id="item-4">Item 4</div>
+            </div>
+            <div class="sortable-list" id="list2">
+              <h3>List 2</h3>
+              <div class="test-item sortable-item" data-id="item-5">Item 5</div>
+              <div class="test-item sortable-item" data-id="item-6">Item 6</div>
+              <div class="test-item sortable-item" data-id="item-7">Item 7</div>
+              <div class="test-item sortable-item" data-id="item-8">Item 8</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // Development script - will be replaced with actual Resortable when implemented
-    document.getElementById('library-status').textContent = 'Development Environment Ready';
+    // Initialize status
+    document.getElementById('library-status').textContent = 'Loading Resortable...';
     
     try {
-      // Try to import and initialize Resortable
+      // Import Resortable
       const { Sortable } = await import('/src/index.ts');
       
-      // Store Sortable globally and create array for instances
+      // Store globally for testing
       window.Sortable = Sortable;
       window.sortables = [];
-
+      
+      // Logging helper
       const log = (label) => (evt) => {
-        const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from.id || 'unknown'} to ${evt.to.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
+        const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from?.id || 'unknown'} to ${evt.to?.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
         console.log(msg, evt);
         document.getElementById('status').innerHTML = `Last action: ${msg}`;
       };
 
-      // Basic list (sort only)
-      window.sortables.push(new Sortable(document.getElementById('basic-list'), {
-        group: 'basic',
+      // Initialize Showcase Demos
+      
+      // Visual Effects - Smooth List
+      const smoothList = document.getElementById('smooth-list');
+      if (smoothList) {
+        window.sortables.push(new Sortable(smoothList, {
+          animation: 300,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
+          group: 'smooth-demo',
+        }));
+      }
+      
+      // Visual Effects - Spring List
+      const springList = document.getElementById('spring-list');
+      if (springList) {
+        window.sortables.push(new Sortable(springList, {
+          animation: 400,
+          easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          group: 'spring-demo',
+        }));
+      }
+      
+      // Multi-Select Demo
+      const multiSelectList = document.getElementById('multi-select-list');
+      if (multiSelectList) {
+        let selectedItems = new Set();
+        
+        multiSelectList.addEventListener('click', (e) => {
+          const item = e.target.closest('.sortable-item');
+          if (item) {
+            if (selectedItems.has(item)) {
+              selectedItems.delete(item);
+              item.classList.remove('selected');
+            } else {
+              selectedItems.add(item);
+              item.classList.add('selected');
+            }
+          }
+        });
+        
+        window.sortables.push(new Sortable(multiSelectList, {
+          animation: 200,
+          multiDrag: true,
+          selectedClass: 'selected',
+          group: 'multi-select-demo',
+          onEnd: () => {
+            selectedItems.forEach(item => item.classList.remove('selected'));
+            selectedItems.clear();
+          }
+        }));
+      }
+      
+      // Keyboard Navigation Demo
+      const keyboardList = document.getElementById('keyboard-list');
+      if (keyboardList) {
+        window.sortables.push(new Sortable(keyboardList, {
+          animation: 200,
+          enableAccessibility: true,
+          ghostClass: 'sortable-ghost',
+          group: 'keyboard-demo',
+        }));
+      }
+      
+      // Kanban Board
+      const kanbanOptions = {
+        group: 'kanban',
+        animation: 200,
+        ghostClass: 'sortable-ghost',
+        onAdd: log('Kanban moved'),
+      };
+      
+      const kanbanTodo = document.getElementById('kanban-todo');
+      const kanbanDoing = document.getElementById('kanban-doing');
+      const kanbanDone = document.getElementById('kanban-done');
+      
+      if (kanbanTodo) window.sortables.push(new Sortable(kanbanTodo, kanbanOptions));
+      if (kanbanDoing) window.sortables.push(new Sortable(kanbanDoing, kanbanOptions));
+      if (kanbanDone) window.sortables.push(new Sortable(kanbanDone, kanbanOptions));
+      
+      // Image Gallery
+      const imageGallery = document.getElementById('image-gallery');
+      if (imageGallery) {
+        window.sortables.push(new Sortable(imageGallery, {
+          animation: 300,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          group: 'gallery-demo',
+          onEnd: log('Gallery reordered'),
+        }));
+      }
+      
+      // Nested Lists - Folders can be reordered
+      const nestedList = document.getElementById('nested-list');
+      if (nestedList) {
+        window.sortables.push(new Sortable(nestedList, {
+          animation: 200,
+          handle: '.folder-header',
+          ghostClass: 'sortable-ghost',
+          group: 'folders-demo',
+        }));
+      }
+      
+      // Files within folders
+      const folderOptions = {
+        group: 'files',
         animation: 150,
-        enableAccessibility: true,
-        multiSelect: false,
-        onEnd: log('Basic end'),
-        onUpdate: log('Basic update'),
-      }));
-
+        ghostClass: 'sortable-ghost',
+      };
+      
+      const folder1 = document.getElementById('folder-1-content');
+      const folder2 = document.getElementById('folder-2-content');
+      const folder3 = document.getElementById('folder-3-content');
+      
+      if (folder1) window.sortables.push(new Sortable(folder1, folderOptions));
+      if (folder2) window.sortables.push(new Sortable(folder2, folderOptions));
+      if (folder3) window.sortables.push(new Sortable(folder3, folderOptions));
+      
+      // Initialize Test Lists (in Developer Section)
+      
+      // Basic list (in Developer Section)
+      const basicList = document.getElementById('basic-list');
+      if (basicList) {
+        window.sortables.push(new Sortable(basicList, {
+          group: 'basic-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Basic end'),
+        }));
+      }
+      
       // Shared Group A
       const sharedOpts = {
-        group: 'group-a',
+        group: 'group-a-test',
         animation: 150,
-        enableAccessibility: true,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onAdd: log('Group A add'),
         onRemove: log('Group A remove'),
-        onEnd: log('Group A end'),
       };
-      window.sortables.push(new Sortable(document.getElementById('shared-a-1'), sharedOpts));
-      window.sortables.push(new Sortable(document.getElementById('shared-a-2'), sharedOpts));
-
-      // Independent groups A and B
-      window.sortables.push(new Sortable(document.getElementById('group-a-1'), {
-        group: 'independent-a',
-        animation: 150,
-        enableAccessibility: true,
-        onEnd: log('Independent A end'),
-        onAdd: log('Independent A add'),
-        onRemove: log('Independent A remove'),
-      }));
-      window.sortables.push(new Sortable(document.getElementById('group-b-1'), {
-        group: 'independent-b',
-        animation: 150,
-        enableAccessibility: true,
-        onEnd: log('Independent B end'),
-        onAdd: log('Independent B add'),
-        onRemove: log('Independent B remove'),
-      }));
-
+      const sharedA1 = document.getElementById('shared-a-1');
+      const sharedA2 = document.getElementById('shared-a-2');
+      if (sharedA1) window.sortables.push(new Sortable(sharedA1, sharedOpts));
+      if (sharedA2) window.sortables.push(new Sortable(sharedA2, sharedOpts));
+      
+      // Independent groups
+      const groupA1 = document.getElementById('group-a-1');
+      const groupB1 = document.getElementById('group-b-1');
+      
+      if (groupA1) {
+        window.sortables.push(new Sortable(groupA1, {
+          group: 'independent-a-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Independent A end'),
+        }));
+      }
+      
+      if (groupB1) {
+        window.sortables.push(new Sortable(groupB1, {
+          group: 'independent-b-test',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Independent B end'),
+        }));
+      }
+      
       // Grid shared
       const gridOpts = {
-        group: 'grid-shared',
+        group: 'grid-shared-test',
         animation: 150,
-        enableAccessibility: true,
-        onAdd: log('Grid add'),
-        onRemove: log('Grid remove'),
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onEnd: log('Grid end'),
       };
-      window.sortables.push(new Sortable(document.getElementById('grid-1'), gridOpts));
-      window.sortables.push(new Sortable(document.getElementById('grid-2'), gridOpts));
-
+      const grid1 = document.getElementById('grid-1');
+      const grid2 = document.getElementById('grid-2');
+      if (grid1) window.sortables.push(new Sortable(grid1, gridOpts));
+      if (grid2) window.sortables.push(new Sortable(grid2, gridOpts));
+      
       // Legacy E2E lists
       const e2eOpts = {
         group: 'shared',
         animation: 150,
-        enableAccessibility: true,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
         onEnd: log('E2E end'),
-        onUpdate: log('E2E update'),
         onAdd: log('E2E add'),
+        onUpdate: log('E2E update'),
         onRemove: log('E2E remove'),
       };
-      window.sortables.push(new Sortable(document.getElementById('list1'), e2eOpts));
-      window.sortables.push(new Sortable(document.getElementById('list2'), e2eOpts));
-
-      document.getElementById('library-status').textContent = 'Resortable Library Loaded';
+      const list1 = document.getElementById('list1');
+      const list2 = document.getElementById('list2');
+      if (list1) window.sortables.push(new Sortable(list1, e2eOpts));
+      if (list2) window.sortables.push(new Sortable(list2, e2eOpts));
+      
+      // Update status
+      document.getElementById('library-status').textContent = `Resortable loaded - ${window.sortables.length} instances active`;
       
     } catch (error) {
       console.error('Failed to load Resortable:', error);
-      document.getElementById('library-status').textContent = 'Library Not Yet Implemented (Placeholder Mode)';
+      document.getElementById('library-status').textContent = 'Error loading library: ' + error.message;
     }
   </script>
 </body>
