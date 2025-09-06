@@ -432,49 +432,23 @@
       padding: 0 2rem;
     }
     
-    .collapsible {
+    .developer-container {
       background: white;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
     
-    .collapsible-header {
+    .developer-container h2 {
       background: linear-gradient(90deg, #343a40, #495057);
       color: white;
       padding: 1.5rem;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.3s;
-    }
-    
-    .collapsible-header:hover {
-      background: linear-gradient(90deg, #495057, #6c757d);
-    }
-    
-    .collapsible-header h2 {
       margin: 0;
     }
     
-    .toggle-icon {
-      font-size: 1.5rem;
-      transition: transform 0.3s;
-    }
-    
-    .collapsible-content {
+    .developer-content {
       padding: 2rem;
-      display: none;
       background: #f8f9fa;
-    }
-    
-    .collapsible.active .toggle-icon {
-      transform: rotate(180deg);
-    }
-    
-    .collapsible.active .collapsible-content {
-      display: block;
     }
     
     /* Original Test Styles */
@@ -722,14 +696,11 @@
     </div>
   </div>
 
-  <!-- Developer Testing Section (Collapsible) -->
+  <!-- Developer Testing Section -->
   <div class="developer-section">
-    <div class="collapsible" id="developer-collapsible">
-      <div class="collapsible-header" onclick="toggleDeveloperSection()">
-        <h2>🔧 Developer Testing Area</h2>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div class="collapsible-content">
+    <div class="developer-container">
+      <h2>🔧 Developer Testing Area</h2>
+      <div class="developer-content">
         <div class="status" id="status">
           Library Status: <span id="library-status">Loading...</span>
         </div>
@@ -834,12 +805,6 @@
   </div>
 
   <script type="module">
-    // Toggle developer section
-    window.toggleDeveloperSection = function() {
-      const collapsible = document.querySelector('.collapsible');
-      collapsible.classList.toggle('active');
-    }
-    
     // Initialize status
     document.getElementById('library-status').textContent = 'Loading Resortable...';
     

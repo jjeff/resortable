@@ -64,34 +64,9 @@ test.describe('Showcase Page Functionality', () => {
     await expect(items.first()).toHaveAttribute('data-id', 'img-2')
   })
 
-  test('developer section should be collapsible', async ({ page }) => {
-    const devSection = page.locator('.collapsible-content')
-    const toggleButton = page.locator('.collapsible-header')
-
-    // Initially hidden
-    await expect(devSection).not.toBeVisible()
-
-    // Click to show
-    await toggleButton.click()
-    await expect(devSection).toBeVisible()
-
-    // Click to hide again
-    await toggleButton.click()
-    await expect(devSection).not.toBeVisible()
-  })
-
   test('basic list in developer section should remain functional', async ({
     page,
   }) => {
-    // Open developer section
-    await page.locator('.collapsible-header').click()
-
-    // Wait for the section to be visible
-    await page.waitForSelector('#basic-list', {
-      state: 'visible',
-      timeout: 10000,
-    })
-
     const basicList = page.locator('#basic-list')
     await expect(basicList).toBeVisible()
 
