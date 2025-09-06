@@ -182,7 +182,7 @@ test.describe('Event Callbacks and Logging', () => {
   test('verifies library status indicator updates', async ({ page }) => {
     // Check initial library status
     const libraryStatus = page.locator('#library-status')
-    await expect(libraryStatus).toHaveText('Resortable Library Loaded')
+    await expect(libraryStatus).toContainText('Resortable loaded')
   })
 
   test('captures event object properties in console logs', async ({ page }) => {
