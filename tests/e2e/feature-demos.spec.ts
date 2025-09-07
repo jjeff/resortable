@@ -95,9 +95,9 @@ test.describe('Feature Demos', () => {
     }) => {
       const input = page.locator('#filter-list input').first()
 
-      // Type in input
+      // Clear and type in input
       await input.click()
-      await input.type('Test text')
+      await input.fill('Test text')
 
       const value = await input.inputValue()
       expect(value).toBe('Test text')

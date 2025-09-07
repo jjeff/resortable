@@ -1,3 +1,4 @@
+import { dragAndDropWithAnimation } from './helpers/animations'
 import { expect, test } from '@playwright/test'
 
 test.describe('Independent Groups Functionality', () => {
@@ -24,7 +25,8 @@ test.describe('Independent Groups Functionality', () => {
   })
 
   test('allows sorting within Group A', async ({ page }) => {
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-a-1 [data-id="ga-1"]',
       '#group-a-1 [data-id="ga-3"]'
     )
@@ -36,7 +38,8 @@ test.describe('Independent Groups Functionality', () => {
   })
 
   test('allows sorting within Group B', async ({ page }) => {
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-b-1 [data-id="gb-3"]',
       '#group-b-1 [data-id="gb-1"]'
     )
@@ -49,7 +52,8 @@ test.describe('Independent Groups Functionality', () => {
 
   test('prevents moving items between independent groups', async ({ page }) => {
     // Attempt to drag from Group A to Group B
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-a-1 [data-id="ga-1"]',
       '#group-b-1 [data-id="gb-2"]'
     )
@@ -65,7 +69,8 @@ test.describe('Independent Groups Functionality', () => {
 
   test('prevents moving items from Group B to Group A', async ({ page }) => {
     // Attempt to drag from Group B to Group A
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-b-1 [data-id="gb-2"]',
       '#group-a-1 [data-id="ga-1"]'
     )
@@ -83,19 +88,22 @@ test.describe('Independent Groups Functionality', () => {
     page,
   }) => {
     // Sort within Group A
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-a-1 [data-id="ga-2"]',
       '#group-a-1 [data-id="ga-1"]'
     )
 
     // Sort within Group B
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-b-1 [data-id="gb-1"]',
       '#group-b-1 [data-id="gb-3"]'
     )
 
     // Attempt cross-group drag again
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-a-1 [data-id="ga-3"]',
       '#group-b-1 [data-id="gb-2"]'
     )

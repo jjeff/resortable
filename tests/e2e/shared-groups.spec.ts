@@ -1,3 +1,4 @@
+import { dragAndDropWithAnimation } from './helpers/animations'
 import { expect, test } from '@playwright/test'
 
 test.describe('Shared Group Functionality', () => {
@@ -23,7 +24,8 @@ test.describe('Shared Group Functionality', () => {
 
   test('moves items between shared group lists', async ({ page }) => {
     // Drag item from first list to second list
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-1 [data-id="a-1"]',
       '#shared-a-2 [data-id="a-6"]'
     )
@@ -44,7 +46,8 @@ test.describe('Shared Group Functionality', () => {
 
   test('maintains sorting within shared groups', async ({ page }) => {
     // First move an item within the same list
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-1 [data-id="a-2"]',
       '#shared-a-1 [data-id="a-4"]'
     )
@@ -59,13 +62,15 @@ test.describe('Shared Group Functionality', () => {
 
   test('handles complex cross-list operations', async ({ page }) => {
     // Move item from list 1 to list 2
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-1 [data-id="a-2"]',
       '#shared-a-2 [data-id="a-7"]'
     )
 
     // Move item from list 2 to list 1
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-2 [data-id="a-6"]',
       '#shared-a-1 [data-id="a-1"]'
     )
@@ -88,7 +93,8 @@ test.describe('Shared Group Functionality', () => {
       .textContent()
 
     // Move the item
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-1 [data-id="a-1"]',
       '#shared-a-2 [data-id="a-5"]'
     )
