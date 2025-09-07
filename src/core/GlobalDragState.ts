@@ -13,13 +13,15 @@ interface DragManager {
 
 interface ActiveDrag {
   id: string // Unique identifier for this drag (e.g., pointerId)
-  item: HTMLElement
+  item: HTMLElement // Primary drag item (for compatibility)
+  items: HTMLElement[] // All dragged items (for multi-drag support)
   fromZone: HTMLElement
   fromDragManager: DragManager
   groupName: string
   startIndex: number
   eventSystem: SortableEventSystem
   clone?: HTMLElement // Cloned element for clone operations
+  clones?: HTMLElement[] // All cloned elements for multi-drag clone operations
   pullMode?: 'move' | 'clone' // How this item was pulled
 }
 
@@ -41,7 +43,7 @@ class GlobalDragStateManager {
   /** Start a drag operation */
   public startDrag(
     dragId: string,
-    item: HTMLElement,
+    items: HTMLElement[],
     fromZone: HTMLElement,
     fromDragManager: DragManager,
     groupName: string,
@@ -50,7 +52,8 @@ class GlobalDragStateManager {
   ): void {
     this.activeDrags.set(dragId, {
       id: dragId,
-      item,
+      item: items[0], // Primary item for compatibility
+      items, // All dragged items
       fromZone,
       fromDragManager,
       groupName,
@@ -134,7 +137,7 @@ class GlobalDragStateManager {
         // Fire clone event on source
         activeDrag.eventSystem.emit('clone', {
           item: activeDrag.item,
-          items: [activeDrag.item],
+          items: activeDrag.items,
           from: activeDrag.fromZone,
           to: putTarget.zone,
           oldIndex: activeDrag.startIndex,
@@ -147,7 +150,7 @@ class GlobalDragStateManager {
         if (putTarget.dragManager.events !== activeDrag.eventSystem) {
           putTarget.dragManager.events.emit('add', {
             item: targetItem,
-            items: [targetItem],
+            items: activeDrag.clones || [targetItem],
             from: activeDrag.fromZone,
             to: putTarget.zone,
             oldIndex: activeDrag.startIndex,
@@ -164,7 +167,7 @@ class GlobalDragStateManager {
         // Fire remove event on source
         activeDrag.eventSystem.emit('remove', {
           item: activeDrag.item,
-          items: [activeDrag.item],
+          items: activeDrag.items,
           from: activeDrag.fromZone,
           to: putTarget.zone,
           oldIndex: activeDrag.startIndex,
@@ -176,7 +179,7 @@ class GlobalDragStateManager {
         if (putTarget.dragManager.events !== activeDrag.eventSystem) {
           putTarget.dragManager.events.emit('add', {
             item: activeDrag.item,
-            items: [activeDrag.item],
+            items: activeDrag.items,
             from: activeDrag.fromZone,
             to: putTarget.zone,
             oldIndex: activeDrag.startIndex,
@@ -190,7 +193,7 @@ class GlobalDragStateManager {
     // Fire unchoose event before end
     activeDrag.eventSystem.emit('unchoose', {
       item: activeDrag.item,
-      items: [activeDrag.item],
+      items: activeDrag.items,
       from: activeDrag.fromZone,
       to: putTarget?.zone || activeDrag.fromZone,
       oldIndex: activeDrag.startIndex,
@@ -206,7 +209,7 @@ class GlobalDragStateManager {
 
     activeDrag.eventSystem.emit('end', {
       item: activeDrag.item,
-      items: [activeDrag.item],
+      items: activeDrag.items,
       from: activeDrag.fromZone,
       to: putTarget?.zone || activeDrag.fromZone,
       oldIndex: activeDrag.startIndex,

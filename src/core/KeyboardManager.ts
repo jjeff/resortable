@@ -281,7 +281,7 @@ export class KeyboardManager {
     const dragId = 'keyboard-drag'
     globalDragState.startDrag(
       dragId,
-      selected[0],
+      selected,
       this.container,
       { zone: this.zone, events: this.events },
       this.groupName,

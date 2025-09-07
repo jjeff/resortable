@@ -20,6 +20,7 @@ export class DragManager {
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
+  private draggedItems: HTMLElement[] = []
   private selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
   private multiDragVisualManager: MultiDragVisualManager
@@ -282,7 +283,7 @@ export class DragManager {
     const dragId = 'html5-drag'
     globalDragState.startDrag(
       dragId,
-      target,
+      draggedItems,
       this.zone.element,
       this,
       this.groupManager.getName(),
@@ -773,6 +774,7 @@ export class DragManager {
       // This is expected for synthetic pointer events in Firefox - continue without capture
     }
     this.dragElement = target
+    this.draggedItems = draggedItems
     this.isPointerDragging = true
     this.activePointerId = e.pointerId
     this.startIndex = this.zone.getIndex(target)
@@ -786,7 +788,7 @@ export class DragManager {
     const dragId = `pointer-${this.activePointerId}`
     globalDragState.startDrag(
       dragId,
-      target,
+      draggedItems,
       this.zone.element,
       this,
       this.groupManager.getName(),
@@ -863,8 +865,8 @@ export class DragManager {
     if (this.dragElement.parentElement !== targetZoneElement) {
       // Simple group compatibility check based on the zone element and current group
       if (this.canDropInZone(targetZoneElement)) {
-        // Insert at the position of the hovered item
-        targetZoneElement.insertBefore(this.dragElement, over)
+        // Insert all dragged items at the position of the hovered item
+        this.insertItemGroup(this.draggedItems, targetZoneElement, over)
 
         // We need to find the actual DragManager instance for the target zone
         // For now, create a minimal put target that will trigger the events
@@ -963,18 +965,16 @@ export class DragManager {
             fromZone.querySelectorAll(this.draggable)
           )
 
-          // Insert at original position
+          // Insert all dragged items at original position
           if (this.startIndex >= itemsAfterRemoval.length) {
             // If original index is at or beyond the end, append
-            fromZone.appendChild(this.dragElement)
+            this.insertItemGroup(this.draggedItems, fromZone, null)
           } else {
             // Insert before the item that's now at our original index
-            const beforeElement = itemsAfterRemoval[this.startIndex]
-            if (beforeElement) {
-              fromZone.insertBefore(this.dragElement, beforeElement)
-            } else {
-              fromZone.appendChild(this.dragElement)
-            }
+            const beforeElement = itemsAfterRemoval[
+              this.startIndex
+            ] as HTMLElement
+            this.insertItemGroup(this.draggedItems, fromZone, beforeElement)
           }
         }
       }
@@ -997,11 +997,41 @@ export class DragManager {
     this.isPointerDragging = false
     this.activePointerId = null
     this.dragElement = null
+    this.draggedItems = []
   }
 
   /** Find the DragManager instance that manages a specific zone */
   private findDragManagerForZone(targetZone: HTMLElement): DragManager | null {
     return dragManagerRegistry.get(targetZone) || null
+  }
+
+  /** Insert multiple items as a group, maintaining their relative order */
+  private insertItemGroup(
+    items: HTMLElement[],
+    targetParent: HTMLElement,
+    beforeElement: HTMLElement | null
+  ): void {
+    // Sort items by their current DOM order to maintain relative positions
+    const sortedItems = items.slice().sort((a, b) => {
+      if (
+        a.parentElement &&
+        b.parentElement &&
+        a.parentElement === b.parentElement
+      ) {
+        const children = Array.from(a.parentElement.children)
+        return children.indexOf(a) - children.indexOf(b)
+      }
+      return 0 // If different parents, maintain array order
+    })
+
+    // Insert items in order
+    for (const item of sortedItems) {
+      if (beforeElement && beforeElement.parentElement === targetParent) {
+        targetParent.insertBefore(item, beforeElement)
+      } else {
+        targetParent.appendChild(item)
+      }
+    }
   }
 
   /** Get the selection manager for this drag manager */
