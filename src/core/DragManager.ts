@@ -120,6 +120,8 @@ export class DragManager {
 
     // Initialize draggable selector and delay options
     this.draggable = options?.draggable || '.sortable-item'
+    // Set the draggable selector on the drop zone
+    this.zone.setDraggableSelector(this.draggable)
     this.delay = options?.delay || 0
     this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
     this.touchStartThreshold = options?.touchStartThreshold || 5
@@ -345,7 +347,7 @@ export class DragManager {
     if (!activeDrag) return
 
     const dragItem = activeDrag.item
-    const over = (e.target as HTMLElement).closest('.sortable-item')
+    const over = (e.target as HTMLElement).closest(this.draggable)
 
     // Handle cross-zone dragging
     if (dragItem.parentElement !== this.zone.element) {
@@ -668,7 +670,7 @@ export class DragManager {
 
     // Find the element under the mouse cursor
     const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY)
-    const over = elementUnderMouse?.closest('.sortable-item') as HTMLElement
+    const over = elementUnderMouse?.closest(this.draggable) as HTMLElement
 
     if (!over) return
 
@@ -765,7 +767,7 @@ export class DragManager {
         // Move the element back to its original position
         const fromZone = activeDrag.fromZone
         // Get only sortable items, not all children
-        const items = Array.from(fromZone.querySelectorAll('.sortable-item'))
+        const items = Array.from(fromZone.querySelectorAll(this.draggable))
         const currentIndex = items.indexOf(this.dragElement)
 
         // Only revert if the element has actually moved
@@ -777,7 +779,7 @@ export class DragManager {
 
           // Get the current list of sortable items after removal
           const itemsAfterRemoval = Array.from(
-            fromZone.querySelectorAll('.sortable-item')
+            fromZone.querySelectorAll(this.draggable)
           )
 
           // Insert at original position

@@ -7,6 +7,7 @@ import type { AnimationManager } from '../animation/AnimationManager.js'
  */
 export class DropZone {
   private animationManager?: AnimationManager
+  private draggableSelector: string = '.sortable-item'
 
   constructor(
     public readonly element: HTMLElement,
@@ -15,9 +16,14 @@ export class DropZone {
     this.animationManager = animationManager
   }
 
-  /** Get sortable items (only elements with sortable-item class) */
+  /** Set the selector for draggable items */
+  public setDraggableSelector(selector: string): void {
+    this.draggableSelector = selector
+  }
+
+  /** Get sortable items (only elements matching the draggable selector) */
   public getItems(): HTMLElement[] {
-    return Array.from(this.element.querySelectorAll('.sortable-item'))
+    return Array.from(this.element.querySelectorAll(this.draggableSelector))
   }
 
   /** Get index of an item within container */
@@ -45,7 +51,7 @@ export class DropZone {
     const sortableIndicesWithoutCurrent = allChildren
       .map((child, index) => {
         if (index === currentDOMIndex) return -1 // Skip current item
-        return child.classList.contains('sortable-item') ? index : -1
+        return child.matches(this.draggableSelector) ? index : -1
       })
       .filter((index) => index !== -1)
 
