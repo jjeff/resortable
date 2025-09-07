@@ -20,20 +20,24 @@ export class AnimationManager {
    * @param callback - Function that performs the actual DOM reordering
    */
   public animateReorder(elements: HTMLElement[], callback: () => void): void {
+    console.log(`[AnimationManager] animateReorder called with ${elements.length} elements, duration: ${this.animationDuration}ms`)
     if (this.animationDuration === 0) {
       // Skip animation if duration is 0
+      console.log('[AnimationManager] Animation disabled (duration=0)')
       callback()
       return
     }
 
     // First: Capture initial positions
     const initialPositions = this.capturePositions(elements)
+    console.log(`[AnimationManager] Captured ${initialPositions.size} initial positions`)
 
     // Last: Execute the DOM change
     callback()
 
     // Invert: Calculate the delta and apply inverse transform
     // Play: Animate back to neutral
+    let animatedCount = 0
     elements.forEach((element) => {
       const initial = initialPositions.get(element)
       if (!initial) return
@@ -44,28 +48,37 @@ export class AnimationManager {
 
       // Skip if element hasn't moved
       if (deltaX === 0 && deltaY === 0) return
+      
+      animatedCount++
+      console.log(`[AnimationManager] Animating element ${animatedCount}: deltaX=${deltaX}, deltaY=${deltaY}`)
 
       // Cancel any existing animation on this element
       this.cancelAnimation(element)
 
       // Use Web Animations API for smooth FLIP animation
-      const animation = element.animate(
-        [
-          { transform: `translate(${deltaX}px, ${deltaY}px)` },
-          { transform: 'translate(0, 0)' },
-        ],
-        {
-          duration: this.animationDuration,
-          easing: this.easing,
-        }
-      )
+      try {
+        const animation = element.animate(
+          [
+            { transform: `translate(${deltaX}px, ${deltaY}px)` },
+            { transform: 'translate(0, 0)' },
+          ],
+          {
+            duration: this.animationDuration,
+            easing: this.easing,
+          }
+        )
 
-      this.activeAnimations.set(element, animation)
+        this.activeAnimations.set(element, animation)
+        console.log(`[AnimationManager] Started animation for element`)
 
-      // Clean up after animation
-      animation.addEventListener('finish', () => {
-        this.activeAnimations.delete(element)
-      })
+        // Clean up after animation
+        animation.addEventListener('finish', () => {
+          console.log(`[AnimationManager] Animation finished`)
+          this.activeAnimations.delete(element)
+        })
+      } catch (error) {
+        console.error('[AnimationManager] Error creating animation:', error)
+      }
     })
   }
 

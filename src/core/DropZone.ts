@@ -82,12 +82,14 @@ export class DropZone {
     if (this.animationManager) {
       // Get all sortable items that might be affected by this move
       const affectedItems = this.getItems()
+      console.log(`[DropZone] Animating move with ${affectedItems.length} affected items`)
 
       // Use FLIP animation for smooth reordering
       this.animationManager.animateReorder(affectedItems, () => {
         insertAt(this.element, item, targetDOMIndex)
       })
     } else {
+      console.log('[DropZone] No animation manager, doing instant move')
       // No animation, just do the move
       insertAt(this.element, item, targetDOMIndex)
     }

@@ -278,8 +278,10 @@ export class DragManager {
     // Create ghost element (but for HTML5 drag, we'll use it as a placeholder)
     // The actual dragging visual is handled by the browser
     const placeholder = this.ghostManager.createPlaceholder(target)
+    console.log('[DragManager] Created placeholder:', placeholder)
     // Insert placeholder where the item was
     target.parentElement?.insertBefore(placeholder, target)
+    console.log('[DragManager] Inserted placeholder into DOM')
 
     // Apply chosen class to the dragged element
     target.classList.add(this.ghostManager.getChosenClass())
@@ -482,13 +484,18 @@ export class DragManager {
 
   private onDrop = (e: DragEvent): void => {
     e.preventDefault()
+    console.log('[DragManager] onDrop called')
     
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
-    if (!activeDrag) return
+    if (!activeDrag) {
+      console.log('[DragManager] No active drag found')
+      return
+    }
     
     const dragItem = activeDrag.item
     const placeholder = this.ghostManager.getPlaceholderElement()
+    console.log('[DragManager] Placeholder in onDrop:', placeholder)
     
     if (placeholder && placeholder.parentElement === this.zone.element) {
       // Get the target index based on placeholder position
@@ -512,8 +519,11 @@ export class DragManager {
       }
       
       // Perform the actual move with animation
+      console.log(`[DragManager] Moving item from index ${currentIndex} to ${targetIndex}`)
       if (currentIndex !== targetIndex) {
         this.zone.move(dragItem, targetIndex)
+      } else {
+        console.log('[DragManager] Item already at target position, no move needed')
       }
     }
   }
