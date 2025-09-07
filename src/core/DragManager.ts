@@ -277,9 +277,12 @@ export class DragManager {
 
     // Create ghost element (but for HTML5 drag, we'll use it as a placeholder)
     // The actual dragging visual is handled by the browser
-    this.ghostManager.createPlaceholder(target)
+    const placeholder = this.ghostManager.createPlaceholder(target)
+    // Insert placeholder where the item was
+    target.parentElement?.insertBefore(placeholder, target)
 
     // Apply chosen class to the dragged element
+    target.classList.add(this.ghostManager.getChosenClass())
     const ghost = this.ghostManager.createGhost(target, e)
 
     // For HTML5 drag API, we can optionally set the drag image
@@ -289,6 +292,8 @@ export class DragManager {
       // Set drag data
       e.dataTransfer.setData('text/plain', '')
       e.dataTransfer.effectAllowed = 'move'
+      // Apply drag class to the original element
+      target.classList.add(this.ghostManager.getDragClass())
     }
 
     // Then emit start event
@@ -422,7 +427,25 @@ export class DragManager {
       targetIndex = overIndex
     }
 
-    this.zone.move(dragItem, targetIndex)
+    // During drag, just move the placeholder, not the actual item
+    // The actual move will happen on drop
+    const placeholder = this.ghostManager.getPlaceholderElement()
+    if (placeholder && placeholder.parentElement) {
+      // Move the placeholder to show where the item will drop
+      const targetElement = this.zone.getItems()[targetIndex]
+      if (targetElement && targetElement !== placeholder) {
+        if (dragIndex < overIndex) {
+          // Moving down - insert after target
+          targetElement.parentElement?.insertBefore(placeholder, targetElement.nextSibling)
+        } else {
+          // Moving up - insert before target
+          targetElement.parentElement?.insertBefore(placeholder, targetElement)
+        }
+      }
+    }
+    
+    // Don't actually move the item yet, just track where it should go
+    // this.zone.move(dragItem, targetIndex) // Commented out - will do on drop
 
     // Emit sort event (always fired when sorting changes)
     this.events.emit('sort', {
@@ -459,6 +482,40 @@ export class DragManager {
 
   private onDrop = (e: DragEvent): void => {
     e.preventDefault()
+    
+    const dragId = 'html5-drag'
+    const activeDrag = globalDragState.getActiveDrag(dragId)
+    if (!activeDrag) return
+    
+    const dragItem = activeDrag.item
+    const placeholder = this.ghostManager.getPlaceholderElement()
+    
+    if (placeholder && placeholder.parentElement === this.zone.element) {
+      // Get the target index based on placeholder position
+      const items = this.zone.getItems()
+      const placeholderIndex = Array.from(this.zone.element.children).indexOf(placeholder)
+      
+      // Remove the placeholder
+      placeholder.remove()
+      
+      // Now calculate where to insert the dragged item
+      // We need to account for the fact that the dragged item might be in the list
+      const currentIndex = items.indexOf(dragItem)
+      let targetIndex = 0
+      
+      // Count how many draggable items come before the placeholder position
+      const children = Array.from(this.zone.element.children)
+      for (let i = 0; i < placeholderIndex && i < children.length; i++) {
+        if (children[i].matches(this.draggable) && children[i] !== dragItem) {
+          targetIndex++
+        }
+      }
+      
+      // Perform the actual move with animation
+      if (currentIndex !== targetIndex) {
+        this.zone.move(dragItem, targetIndex)
+      }
+    }
   }
 
   private onDragEnd = (): void => {

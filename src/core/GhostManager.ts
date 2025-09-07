@@ -224,4 +224,18 @@ export class GhostManager {
   getPlaceholderElement(): HTMLElement | null {
     return this.placeholderElement
   }
+
+  /**
+   * Gets the chosen class name
+   */
+  getChosenClass(): string {
+    return this.chosenClass
+  }
+
+  /**
+   * Gets the drag class name
+   */
+  getDragClass(): string {
+    return this.dragClass
+  }
 }
