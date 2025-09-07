@@ -4,7 +4,10 @@
     "networkidle",
     "reorderable",
     "Resortable",
-    "tsparser"
+    "Rollup",
+    "tsparser",
+    "Unchoose",
+    "viewports"
   ],
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",

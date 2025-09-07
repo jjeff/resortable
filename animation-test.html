@@ -50,15 +50,23 @@
     .sortable-ghost {
       opacity: 0.4;
       background: #c8ebfb;
+      box-sizing: border-box;
     }
     
     .sortable-chosen {
       background: #e8f5e9;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+      /* Ensure consistent dimensions */
+      transform: none !important;
     }
     
     .sortable-drag {
       opacity: 0;
+      box-sizing: border-box;
+      /* Maintain exact dimensions when dragging */
+      transform: none !important;
+      transition: none !important;
     }
     
     .controls {

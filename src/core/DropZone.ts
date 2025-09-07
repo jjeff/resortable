@@ -1,5 +1,5 @@
-import { insertAt } from '../utils/dom.js'
 import type { AnimationManager } from '../animation/AnimationManager.js'
+import { insertAt } from '../utils/dom.js'
 
 /**
  * Manages sortable container and basic DOM operations
