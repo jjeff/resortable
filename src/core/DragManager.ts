@@ -889,32 +889,14 @@ export class DragManager {
           )
         }
       }
-    } else if (over !== this.dragElement) {
-      // Same zone movement - use DropZone.move() for animations
-      const currentItems = this.zone.getItems()
-      const currentIndex = currentItems.indexOf(this.dragElement)
-      const targetIndex = currentItems.indexOf(over)
-
-      if (
-        currentIndex !== -1 &&
-        targetIndex !== -1 &&
-        currentIndex !== targetIndex
-      ) {
-        // Use the DropZone's move method to get animations
-        this.zone.move(this.dragElement, targetIndex)
-
-        // Only emit update if it's within the original zone
-        if (activeDrag.fromZone === targetZoneElement) {
-          this.events.emit('update', {
-            item: this.dragElement,
-            items: [this.dragElement],
-            from: targetZoneElement,
-            to: targetZoneElement,
-            oldIndex: this.startIndex,
-            newIndex: targetIndex,
-          })
-        }
-      }
+    } else if (over !== this.dragElement && !this.draggedItems.includes(over)) {
+      // Same zone movement - handle group reordering
+      this.moveItemGroupWithinZone(
+        this.draggedItems,
+        over,
+        targetZoneElement,
+        activeDrag
+      )
     }
   }
 
@@ -1031,6 +1013,48 @@ export class DragManager {
       } else {
         targetParent.appendChild(item)
       }
+    }
+  }
+
+  /** Move multiple items within the same zone, maintaining their relative order */
+  private moveItemGroupWithinZone(
+    items: HTMLElement[],
+    targetElement: HTMLElement,
+    zone: HTMLElement,
+    activeDrag: { fromZone?: HTMLElement }
+  ): void {
+    const allItems = this.zone.getItems()
+    const targetIndex = allItems.indexOf(targetElement)
+
+    if (targetIndex === -1) return
+
+    // Calculate where to insert the group
+    // If we're dragging down, insert after the target
+    // If we're dragging up, insert before the target
+    const primaryItem = items[0]
+    const currentIndex = allItems.indexOf(primaryItem)
+
+    if (currentIndex === -1) return
+
+    const insertAfter = currentIndex < targetIndex
+    const insertionElement = insertAfter
+      ? targetElement.nextSibling
+      : targetElement
+
+    // Use the existing insertItemGroup method for consistent behavior
+    this.insertItemGroup(items, zone, insertionElement as HTMLElement)
+
+    // Emit update event for the primary item (maintaining compatibility)
+    if (activeDrag.fromZone && activeDrag.fromZone === zone) {
+      const newIndex = this.zone.getItems().indexOf(primaryItem)
+      this.events.emit('update', {
+        item: primaryItem,
+        items,
+        from: zone,
+        to: zone,
+        oldIndex: this.startIndex,
+        newIndex,
+      })
     }
   }
 
