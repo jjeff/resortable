@@ -844,6 +844,7 @@
       if (smoothList) {
         window.sortables.push(new Sortable(smoothList, {
           animation: 300,
+          draggable: '.sortable-item',
           easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
@@ -857,6 +858,7 @@
       if (springList) {
         window.sortables.push(new Sortable(springList, {
           animation: 400,
+          draggable: '.sortable-item',
           easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
@@ -884,6 +886,7 @@
         
         window.sortables.push(new Sortable(multiSelectList, {
           animation: 200,
+          draggable: '.sortable-item',
           multiDrag: true,
           selectedClass: 'selected',
           group: 'multi-select-demo',
@@ -899,6 +902,7 @@
       if (keyboardList) {
         window.sortables.push(new Sortable(keyboardList, {
           animation: 200,
+          draggable: '.sortable-item',
           enableAccessibility: true,
           ghostClass: 'sortable-ghost',
           group: 'keyboard-demo',
@@ -909,6 +913,7 @@
       const kanbanOptions = {
         group: 'kanban',
         animation: 200,
+        draggable: '.kanban-card',
         ghostClass: 'sortable-ghost',
         onAdd: log('Kanban moved'),
       };
@@ -926,6 +931,7 @@
       if (imageGallery) {
         window.sortables.push(new Sortable(imageGallery, {
           animation: 300,
+          draggable: '.gallery-item',
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           group: 'gallery-demo',
@@ -938,6 +944,7 @@
       if (nestedList) {
         window.sortables.push(new Sortable(nestedList, {
           animation: 200,
+          draggable: '.folder',
           handle: '.folder-header',
           ghostClass: 'sortable-ghost',
           group: 'folders-demo',
@@ -948,6 +955,7 @@
       const folderOptions = {
         group: 'files',
         animation: 150,
+        draggable: '.file',
         ghostClass: 'sortable-ghost',
       };
       
