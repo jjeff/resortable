@@ -31,6 +31,12 @@ describe('GroupManager', () => {
       expect(groupManager.canPull()).toBe(true)
     })
 
+    it('should only allow pulling to same group for simple string groups', () => {
+      const groupManager = new GroupManager('test-group')
+      expect(groupManager.canPullTo('test-group')).toBe(true)
+      expect(groupManager.canPullTo('other-group')).toBe(false)
+    })
+
     it('should detect clone mode correctly', () => {
       const cloneGroup = new GroupManager({ name: 'clone', pull: 'clone' })
       expect(cloneGroup.shouldClone()).toBe(true)
@@ -110,6 +116,12 @@ describe('GroupManager', () => {
         name: 'target',
         put: ['other'],
       })
+      expect(GroupManager.areCompatible(sourceGroup, targetGroup)).toBe(false)
+    })
+
+    it('should reject simple string groups with different names', () => {
+      const sourceGroup = new GroupManager('group-a')
+      const targetGroup = new GroupManager('group-b')
       expect(GroupManager.areCompatible(sourceGroup, targetGroup)).toBe(false)
     })
   })
