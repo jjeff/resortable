@@ -207,6 +207,9 @@ export class DragManager {
     el.addEventListener('pointerdown', this.onPointerDown)
     // Note: pointermove and pointerup are attached to document in onPointerDown
 
+    // Click event for multi-selection
+    el.addEventListener('click', this.onClick)
+
     // Attach accessibility features
     if (this.enableAccessibility) {
       this.keyboardManager.attach()
@@ -229,6 +232,9 @@ export class DragManager {
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
     // Document listeners are removed in onPointerUp
+
+    // Remove click event
+    el.removeEventListener('click', this.onClick)
 
     // Cancel any pending drag delay
     this.cancelDragDelay()
@@ -659,6 +665,38 @@ export class DragManager {
     if (!this.zone.element.contains(e.relatedTarget as Node)) {
       const dragId = 'html5-drag'
       globalDragState.clearPutTarget(dragId)
+    }
+  }
+
+  /** Handle click events for multi-selection */
+  private onClick = (e: MouseEvent): void => {
+    // Only handle clicks on draggable items
+    const target = (e.target as HTMLElement)?.closest(
+      this.draggable
+    ) as HTMLElement
+    if (!target || target.parentElement !== this.zone.element) return
+
+    // Check if the element is draggable
+    if (!this.isDraggable(target)) return
+
+    // Check for modifier keys - support both Ctrl (Windows/Linux) and Cmd (Mac)
+    const isMultiSelect = e.ctrlKey || e.metaKey
+    const isRangeSelect = e.shiftKey
+
+    if (isRangeSelect && this.selectionManager.getLastSelected()) {
+      // Shift+Click: Select range
+      e.preventDefault()
+      const lastSelected = this.selectionManager.getLastSelected()
+      if (lastSelected) {
+        this.selectionManager.selectRange(lastSelected, target)
+      }
+    } else if (isMultiSelect) {
+      // Ctrl/Cmd+Click: Toggle selection
+      e.preventDefault()
+      this.selectionManager.toggle(target)
+    } else {
+      // Regular click: Clear other selections and select this item
+      this.selectionManager.select(target)
     }
   }
 
