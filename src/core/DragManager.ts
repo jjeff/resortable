@@ -4,6 +4,7 @@ import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
 import { SelectionManager } from './SelectionManager.js'
 import { KeyboardManager } from './KeyboardManager.js'
+import { GhostManager } from './GhostManager.js'
 
 // Global registry of DragManager instances for cross-zone operations
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
@@ -68,6 +69,7 @@ export class DragManager {
   // @ts-expect-error - Will be implemented in data management
 
   private _dataIdAttr: string
+  private ghostManager: GhostManager
 
   constructor(
     public zone: DropZone,
@@ -100,6 +102,9 @@ export class DragManager {
       emptyInsertThreshold?: number
       preventOnFilter?: boolean
       dataIdAttr?: string
+      ghostClass?: string
+      chosenClass?: string
+      dragClass?: string
     }
   ) {
     // Register this drag manager in the global registry
@@ -115,6 +120,8 @@ export class DragManager {
 
     // Initialize draggable selector and delay options
     this.draggable = options?.draggable || '.sortable-item'
+    // Set the draggable selector on the drop zone
+    this.zone.setDraggableSelector(this.draggable)
     this.delay = options?.delay || 0
     this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
     this.touchStartThreshold = options?.touchStartThreshold || 5
@@ -142,6 +149,13 @@ export class DragManager {
     // Initialize other options
     this.preventOnFilter = options?.preventOnFilter ?? true
     this._dataIdAttr = options?.dataIdAttr ?? 'data-id'
+
+    // Initialize ghost manager with classes
+    this.ghostManager = new GhostManager(
+      options?.ghostClass,
+      options?.chosenClass,
+      options?.dragClass
+    )
 
     // Initialize selection manager
     this.selectionManager = new SelectionManager(
@@ -260,12 +274,25 @@ export class DragManager {
     }
     // Emit choose event first
     this.events.emit('choose', evt)
-    // Then emit start event
-    this.events.emit('start', evt)
-    if (e.dataTransfer) {
+
+    // Create ghost element (but for HTML5 drag, we'll use it as a placeholder)
+    // The actual dragging visual is handled by the browser
+    this.ghostManager.createPlaceholder(target)
+
+    // Apply chosen class to the dragged element
+    const ghost = this.ghostManager.createGhost(target, e)
+
+    // For HTML5 drag API, we can optionally set the drag image
+    if (e.dataTransfer && ghost) {
+      // Hide the ghost since browser will show its own drag image
+      ghost.style.display = 'none'
+      // Set drag data
       e.dataTransfer.setData('text/plain', '')
       e.dataTransfer.effectAllowed = 'move'
     }
+
+    // Then emit start event
+    this.events.emit('start', evt)
   }
 
   /**
@@ -320,12 +347,29 @@ export class DragManager {
     if (!activeDrag) return
 
     const dragItem = activeDrag.item
-    const over = (e.target as HTMLElement).closest('.sortable-item')
+    const over = (e.target as HTMLElement).closest(this.draggable)
 
     // Handle cross-zone dragging
     if (dragItem.parentElement !== this.zone.element) {
       // Move item to this zone if not already here
       this.zone.element.appendChild(dragItem)
+    }
+
+    // Update placeholder position
+    if (over instanceof HTMLElement && over !== dragItem) {
+      const placeholder = this.ghostManager.getPlaceholderElement()
+      if (placeholder) {
+        // Insert placeholder at the potential drop position
+        const overIndex = this.zone.getIndex(over)
+        const dragIndex = this.zone.getIndex(dragItem)
+        if (dragIndex < overIndex) {
+          // Dragging down - insert after
+          over.parentElement?.insertBefore(placeholder, over.nextSibling)
+        } else {
+          // Dragging up - insert before
+          over.parentElement?.insertBefore(placeholder, over)
+        }
+      }
     }
 
     if (
@@ -420,6 +464,13 @@ export class DragManager {
   private onDragEnd = (): void => {
     // Global drag state handles the end event and cleanup
     const dragId = 'html5-drag'
+    const activeDrag = globalDragState.getActiveDrag(dragId)
+
+    // Clean up ghost elements
+    if (activeDrag) {
+      this.ghostManager.destroy(activeDrag.item)
+    }
+
     globalDragState.endDrag(dragId)
     this.startIndex = -1
   }
@@ -588,6 +639,11 @@ export class DragManager {
     }
     // Emit choose event first
     this.events.emit('choose', evt)
+
+    // Create ghost element for visual feedback
+    this.ghostManager.createGhost(target, e)
+    this.ghostManager.createPlaceholder(target)
+
     // Then emit start event
     this.events.emit('start', evt)
   }
@@ -605,13 +661,16 @@ export class DragManager {
 
     e.preventDefault()
 
+    // Update ghost position to follow cursor
+    this.ghostManager.updateGhostPosition(e.clientX, e.clientY)
+
     const dragId = `pointer-${this.activePointerId}`
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
     // Find the element under the mouse cursor
     const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY)
-    const over = elementUnderMouse?.closest('.sortable-item') as HTMLElement
+    const over = elementUnderMouse?.closest(this.draggable) as HTMLElement
 
     if (!over) return
 
@@ -708,7 +767,7 @@ export class DragManager {
         // Move the element back to its original position
         const fromZone = activeDrag.fromZone
         // Get only sortable items, not all children
-        const items = Array.from(fromZone.querySelectorAll('.sortable-item'))
+        const items = Array.from(fromZone.querySelectorAll(this.draggable))
         const currentIndex = items.indexOf(this.dragElement)
 
         // Only revert if the element has actually moved
@@ -720,7 +779,7 @@ export class DragManager {
 
           // Get the current list of sortable items after removal
           const itemsAfterRemoval = Array.from(
-            fromZone.querySelectorAll('.sortable-item')
+            fromZone.querySelectorAll(this.draggable)
           )
 
           // Insert at original position
@@ -738,6 +797,11 @@ export class DragManager {
           }
         }
       }
+    }
+
+    // Clean up ghost elements
+    if (this.dragElement) {
+      this.ghostManager.destroy(this.dragElement)
     }
 
     // Global drag state handles the end event and cleanup
