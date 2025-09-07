@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animation Test - Resortable</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 2rem;
+    }
+    
+    .test-container {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .test-item {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      cursor: move;
+      user-select: none;
+      position: relative;
+    }
+    
+    .test-item::before {
+      content: '☰';
+      position: absolute;
+      left: 8px;
+      color: #999;
+    }
+    
+    .test-item span {
+      margin-left: 1.5rem;
+    }
+    
+    /* Animation classes */
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #c8ebfb;
+      box-sizing: border-box;
+    }
+    
+    .sortable-chosen {
+      background: #e8f5e9;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+      /* Ensure consistent dimensions */
+      transform: none !important;
+    }
+    
+    .sortable-drag {
+      opacity: 0;
+      box-sizing: border-box;
+      /* Maintain exact dimensions when dragging */
+      transform: none !important;
+      transition: none !important;
+    }
+    
+    .controls {
+      margin: 2rem 0;
+      padding: 1rem;
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+    
+    .controls label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    
+    .controls input[type="range"] {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    
+    .controls output {
+      font-weight: bold;
+      color: #2196F3;
+    }
+    
+    button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    
+    button:hover {
+      background: #1976D2;
+    }
+    
+    .status {
+      padding: 1rem;
+      background: #e3f2fd;
+      border-radius: 4px;
+      margin-top: 1rem;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎬 Animation Test</h1>
+  
+  <div class="controls">
+    <label>
+      Animation Duration: <output id="duration-output">150</output>ms
+      <input type="range" id="duration-slider" min="0" max="1000" step="50" value="150">
+    </label>
+    
+    <label>
+      Easing Function:
+      <select id="easing-select">
+        <option value="cubic-bezier(0.4, 0.0, 0.2, 1)">Material Design (default)</option>
+        <option value="ease">Ease</option>
+        <option value="ease-in">Ease In</option>
+        <option value="ease-out">Ease Out</option>
+        <option value="ease-in-out">Ease In Out</option>
+        <option value="linear">Linear</option>
+        <option value="cubic-bezier(0.68, -0.55, 0.265, 1.55)">Elastic</option>
+        <option value="cubic-bezier(0.175, 0.885, 0.32, 1.275)">Back</option>
+      </select>
+    </label>
+    
+    <div style="margin-top: 1rem;">
+      <button id="apply-settings">Apply Settings</button>
+      <button id="reset-settings">Reset to Default</button>
+      <button id="disable-animation">Disable Animation</button>
+    </div>
+  </div>
+  
+  <div class="test-container">
+    <h2>Test List - Drag items to see animations</h2>
+    <div id="test-list">
+      <div class="test-item sortable-item"><span>🍎 Apple</span></div>
+      <div class="test-item sortable-item"><span>🍌 Banana</span></div>
+      <div class="test-item sortable-item"><span>🍊 Orange</span></div>
+      <div class="test-item sortable-item"><span>🍇 Grapes</span></div>
+      <div class="test-item sortable-item"><span>🍓 Strawberry</span></div>
+      <div class="test-item sortable-item"><span>🥝 Kiwi</span></div>
+      <div class="test-item sortable-item"><span>🍑 Peach</span></div>
+      <div class="test-item sortable-item"><span>🍒 Cherry</span></div>
+    </div>
+  </div>
+  
+  <div class="status" id="status">
+    Initializing...
+  </div>
+  
+  <script type="module">
+    import { Sortable } from './src/index.ts';
+    
+    let sortableInstance;
+    const statusEl = document.getElementById('status');
+    const durationSlider = document.getElementById('duration-slider');
+    const durationOutput = document.getElementById('duration-output');
+    const easingSelect = document.getElementById('easing-select');
+    
+    // Update duration display
+    durationSlider.addEventListener('input', () => {
+      durationOutput.textContent = durationSlider.value;
+    });
+    
+    // Initialize sortable with default settings
+    function initSortable(animation = 150, easing = 'cubic-bezier(0.4, 0.0, 0.2, 1)') {
+      // Destroy existing instance if any
+      if (sortableInstance) {
+        sortableInstance.destroy();
+      }
+      
+      const testList = document.getElementById('test-list');
+      sortableInstance = new Sortable(testList, {
+        animation: animation,
+        easing: easing,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        onStart: (evt) => {
+          statusEl.textContent = `Started dragging: ${evt.item.textContent.trim()}`;
+        },
+        onEnd: (evt) => {
+          statusEl.textContent = `Moved "${evt.item.textContent.trim()}" from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`;
+        }
+      });
+      
+      statusEl.textContent = `Sortable initialized | Animation: ${animation}ms | Easing: ${easing}`;
+    }
+    
+    // Apply settings button
+    document.getElementById('apply-settings').addEventListener('click', () => {
+      const duration = parseInt(durationSlider.value);
+      const easing = easingSelect.value;
+      initSortable(duration, easing);
+    });
+    
+    // Reset settings button
+    document.getElementById('reset-settings').addEventListener('click', () => {
+      durationSlider.value = 150;
+      durationOutput.textContent = 150;
+      easingSelect.value = 'cubic-bezier(0.4, 0.0, 0.2, 1)';
+      initSortable(150, 'cubic-bezier(0.4, 0.0, 0.2, 1)');
+    });
+    
+    // Disable animation button
+    document.getElementById('disable-animation').addEventListener('click', () => {
+      durationSlider.value = 0;
+      durationOutput.textContent = 0;
+      initSortable(0, easingSelect.value);
+    });
+    
+    // Initialize with defaults
+    initSortable();
+  </script>
+</body>
+</html>

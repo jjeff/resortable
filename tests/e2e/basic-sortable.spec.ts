@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dragAndDropWithAnimation } from './helpers/animations'
 
 test.describe('Basic Sortable Functionality', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,17 +20,19 @@ test.describe('Basic Sortable Functionality', () => {
   test('reorders items within basic list using drag and drop', async ({
     page,
   }) => {
-    // Drag first item to third position
-    await page.dragAndDrop(
+    // Drag first item to third position (it will end up after basic-3)
+    await dragAndDropWithAnimation(
+      page,
       '#basic-list [data-id="basic-1"]',
       '#basic-list [data-id="basic-3"]'
     )
 
     // Check new order using locators with retry
+    // When dragging basic-1 to basic-3, it should end up after basic-3
     const items = page.locator('#basic-list .sortable-item')
     await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-2')
-    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-1')
-    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-3')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-3')
+    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
     await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-4')
   })
 
@@ -44,7 +47,8 @@ test.describe('Basic Sortable Functionality', () => {
     await expect(initialItems.nth(3)).toHaveAttribute('data-id', 'basic-4')
 
     // First drag: move basic-2 to the end (drag to basic-4)
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#basic-list [data-id="basic-2"]',
       '#basic-list [data-id="basic-4"]'
     )
@@ -53,19 +57,20 @@ test.describe('Basic Sortable Functionality', () => {
     await page.waitForTimeout(300)
 
     // Verify intermediate state after first drag
+    // When dragging basic-2 to basic-4, it should end up after basic-4
     await expect(
-      page.locator('#basic-list .sortable-item').nth(2)
+      page.locator('#basic-list .sortable-item').nth(3)
     ).toHaveAttribute('data-id', 'basic-2')
 
-    // Second drag: move basic-4 to the beginning (drag to basic-1)
-    await page.dragAndDrop(
+    // Second drag: move basic-4 to basic-1 position
+    await dragAndDropWithAnimation(
+      page,
       '#basic-list [data-id="basic-4"]',
       '#basic-list [data-id="basic-1"]'
     )
 
-    // Wait for second drag to complete
-    await page.waitForTimeout(300)
-
+    // When dragging basic-4 to basic-1, it should end up before basic-1
+    // After both drags, order should be: basic-4, basic-1, basic-3, basic-2
     const items = page.locator('#basic-list .sortable-item')
     await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-4')
     await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-1')

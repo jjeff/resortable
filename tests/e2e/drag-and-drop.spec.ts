@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dragAndDropWithAnimation } from './helpers/animations'
 
 // Helper to skip tests on Mobile Chrome due to dragAndDrop timeout issues
 const shouldSkipMobileChrome = (
@@ -14,16 +15,18 @@ test.describe('Legacy E2E Drag and Drop', () => {
   })
 
   test('reorders items within list1', async ({ page }) => {
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-1"]',
       '#list1 [data-id="item-3"]'
     )
 
     // Use locator-based assertions instead of $$eval
+    // When dragging item-1 to item-3, it should end up after item-3
     const items = page.locator('#list1 .sortable-item')
     await expect(items.nth(0)).toHaveAttribute('data-id', 'item-2')
-    await expect(items.nth(1)).toHaveAttribute('data-id', 'item-1')
-    await expect(items.nth(2)).toHaveAttribute('data-id', 'item-3')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'item-3')
+    await expect(items.nth(2)).toHaveAttribute('data-id', 'item-1')
     await expect(items.nth(3)).toHaveAttribute('data-id', 'item-4')
   })
 

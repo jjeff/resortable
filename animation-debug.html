@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animation Debug - Resortable</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .sortable-item {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 0.5rem 0;
+      cursor: move;
+      font-size: 1.2em;
+      transition: all 0.3s ease;
+    }
+    
+    .sortable-item:hover {
+      border-color: #4CAF50;
+    }
+    
+    /* Make animations VERY visible */
+    .sortable-ghost {
+      opacity: 0.3;
+      background: #ffeb3b !important;
+      border: 3px dashed #ff5722 !important;
+      transform: scale(0.95);
+    }
+    
+    .sortable-chosen {
+      background: #e3f2fd !important;
+      border-color: #2196F3 !important;
+      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+      transform: scale(1.02);
+    }
+    
+    .sortable-drag {
+      opacity: 0.5;
+    }
+    
+    /* Force animations to be visible */
+    .animating {
+      background: #4CAF50 !important;
+      transition: all 1s ease !important;
+    }
+    
+    #log {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9em;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      padding: 0.25rem;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+    
+    button:hover {
+      background: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Animation Debug Test</h1>
+  
+  <button id="clear-log">Clear Log</button>
+  <button id="test-animation">Test Animation Directly</button>
+  
+  <div id="list">
+    <div class="sortable-item" data-id="1">🍎 Item 1 - Apple</div>
+    <div class="sortable-item" data-id="2">🍌 Item 2 - Banana</div>
+    <div class="sortable-item" data-id="3">🍊 Item 3 - Orange</div>
+    <div class="sortable-item" data-id="4">🍇 Item 4 - Grapes</div>
+    <div class="sortable-item" data-id="5">🍓 Item 5 - Strawberry</div>
+  </div>
+  
+  <div id="log">
+    <div class="log-entry">Waiting for events...</div>
+  </div>
+  
+  <script type="module">
+    import { Sortable } from './src/index.ts';
+    
+    const logEl = document.getElementById('log');
+    const listEl = document.getElementById('list');
+    
+    function log(message, data = null) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${message}`;
+      if (data) {
+        entry.textContent += ` - ${JSON.stringify(data)}`;
+      }
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+      
+      // Also log to console
+      console.log(message, data || '');
+    }
+    
+    // Clear log button
+    document.getElementById('clear-log').addEventListener('click', () => {
+      logEl.innerHTML = '<div class="log-entry">Log cleared</div>';
+    });
+    
+    // Test animation directly button
+    document.getElementById('test-animation').addEventListener('click', () => {
+      log('Testing Web Animations API directly...');
+      
+      const items = listEl.querySelectorAll('.sortable-item');
+      items.forEach((item, index) => {
+        // Add visual indicator
+        item.classList.add('animating');
+        
+        // Animate using Web Animations API
+        const animation = item.animate([
+          { transform: 'translateX(0px)', background: '#fff' },
+          { transform: 'translateX(50px)', background: '#4CAF50' },
+          { transform: 'translateX(0px)', background: '#fff' }
+        ], {
+          duration: 1000,
+          easing: 'ease-in-out',
+          delay: index * 100
+        });
+        
+        animation.onfinish = () => {
+          item.classList.remove('animating');
+          log(`Animation finished for item ${index + 1}`);
+        };
+      });
+    });
+    
+    try {
+      // Initialize Sortable with extensive logging
+      const sortable = new Sortable(listEl, {
+        animation: 500, // Make it longer to be more visible
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        
+        onStart: (evt) => {
+          log('onStart', {
+            item: evt.item.textContent.trim(),
+            index: evt.oldIndex
+          });
+        },
+        
+        onEnd: (evt) => {
+          log('onEnd', {
+            from: evt.oldIndex,
+            to: evt.newIndex
+          });
+        },
+        
+        onAdd: (evt) => {
+          log('onAdd', {
+            from: evt.from.id,
+            to: evt.to.id,
+            newIndex: evt.newIndex
+          });
+        },
+        
+        onUpdate: (evt) => {
+          log('onUpdate', {
+            from: evt.oldIndex,
+            to: evt.newIndex
+          });
+        },
+        
+        onSort: (evt) => {
+          log('onSort', {
+            from: evt.oldIndex,
+            to: evt.newIndex
+          });
+        },
+        
+        onRemove: (evt) => {
+          log('onRemove', {
+            from: evt.from.id,
+            oldIndex: evt.oldIndex
+          });
+        },
+        
+        onChoose: (evt) => {
+          log('onChoose', {
+            item: evt.item.textContent.trim()
+          });
+        },
+        
+        onUnchoose: (evt) => {
+          log('onUnchoose', {
+            item: evt.item.textContent.trim()
+          });
+        },
+        
+        onChange: (evt) => {
+          log('onChange', {
+            from: evt.oldIndex,
+            to: evt.newIndex
+          });
+        }
+      });
+      
+      log('Sortable initialized successfully');
+      
+      // Add manual animation test on each item
+      listEl.addEventListener('dblclick', (e) => {
+        const item = e.target.closest('.sortable-item');
+        if (item) {
+          log('Double-clicked item, animating...');
+          item.animate([
+            { transform: 'scale(1) rotate(0deg)' },
+            { transform: 'scale(1.2) rotate(5deg)' },
+            { transform: 'scale(1) rotate(0deg)' }
+          ], {
+            duration: 500,
+            easing: 'ease-in-out'
+          });
+        }
+      });
+      
+    } catch (error) {
+      log('ERROR: ' + error.message);
+      console.error(error);
+    }
+  </script>
+</body>
+</html>

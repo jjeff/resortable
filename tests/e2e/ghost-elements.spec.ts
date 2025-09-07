@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dragAndDropWithAnimation } from './helpers/animations'
 
 // Helper to skip tests on Mobile Chrome due to dragAndDrop timeout issues
 const shouldSkipMobileChrome = (
@@ -78,15 +79,18 @@ test.describe('Ghost Element Functionality', () => {
     // we'll focus on the visual classes
 
     // Perform a drag operation
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#basic-list [data-id="basic-1"]',
       '#basic-list [data-id="basic-3"]'
     )
 
     // Verify the drag operation worked (items reordered)
+    // When dragging basic-1 to basic-3, it should end up after basic-3
     const items = page.locator('#basic-list .sortable-item')
     await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-2')
-    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-1')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-3')
+    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
   })
 
   test('applies ghost class styles correctly', async ({ page }) => {

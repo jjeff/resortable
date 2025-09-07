@@ -1,3 +1,4 @@
+import { dragAndDropWithAnimation } from './helpers/animations'
 import { expect, test } from '@playwright/test'
 
 // Helper to skip tests on Mobile Chrome due to dragAndDrop timeout issues
@@ -28,7 +29,8 @@ test.describe('Event Callbacks and Logging', () => {
     })
 
     // Perform drag operation in basic list
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#basic-list [data-id="basic-1"]',
       '#basic-list [data-id="basic-3"]'
     )
@@ -53,7 +55,8 @@ test.describe('Event Callbacks and Logging', () => {
       'Skipping on Mobile Chrome due to dragAndDrop timeout'
     )
     // Perform drag operation
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-1"]',
       '#list2 [data-id="item-5"]'
     )
@@ -88,7 +91,8 @@ test.describe('Event Callbacks and Logging', () => {
     })
 
     // Move item from list1 to list2
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-2"]',
       '#list2 [data-id="item-6"]'
     )
@@ -117,7 +121,8 @@ test.describe('Event Callbacks and Logging', () => {
     })
 
     // Reorder within same list
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-3"]',
       '#list1 [data-id="item-1"]'
     )
@@ -140,7 +145,8 @@ test.describe('Event Callbacks and Logging', () => {
     })
 
     // Move first item to third position
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-1"]',
       '#list1 [data-id="item-3"]'
     )
@@ -171,7 +177,8 @@ test.describe('Event Callbacks and Logging', () => {
     })
 
     // Test shared group operation
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#shared-a-1 [data-id="a-1"]',
       '#shared-a-2 [data-id="a-5"]'
     )
@@ -179,7 +186,8 @@ test.describe('Event Callbacks and Logging', () => {
     await page.waitForTimeout(200)
 
     // Test independent group operation (should still log within group)
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#group-a-1 [data-id="ga-1"]',
       '#group-a-1 [data-id="ga-3"]'
     )
@@ -219,7 +227,8 @@ test.describe('Event Callbacks and Logging', () => {
     // we'll just verify the drag operation works and status is updated
 
     // Perform drag operation
-    await page.dragAndDrop(
+    await dragAndDropWithAnimation(
+      page,
       '#list1 [data-id="item-2"]',
       '#list2 [data-id="item-6"]'
     )

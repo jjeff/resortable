@@ -33,10 +33,10 @@
  */
 
 export * from './types/index.js'
+import { AnimationManager } from './animation/AnimationManager.js'
 import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
-import { AnimationManager } from './animation/AnimationManager.js'
 import { SortableOptions, type SortableEvents } from './types/index.js'
 import { toArray as domToArray } from './utils/dom.js'
 
@@ -469,6 +469,7 @@ export class SortableError extends Error {
  */
 const defaultOptions: SortableOptions = {
   animation: 150,
+  easing: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
   ghostClass: 'sortable-ghost',
   chosenClass: 'sortable-chosen',
   dragClass: 'sortable-drag',
