@@ -37,15 +37,70 @@ export class GhostManager {
     // Clone the dragged element
     this.ghostElement = draggedElement.cloneNode(true) as HTMLElement
 
-    // Apply ghost styling
+    // Get computed styles from the original element
+    const computedStyle = window.getComputedStyle(draggedElement)
+    const rect = draggedElement.getBoundingClientRect()
+
+    // Copy important computed styles to preserve appearance
+    // We need to copy these because the clone loses context-dependent styles
+    const stylesToCopy = [
+      'background',
+      'backgroundColor',
+      'backgroundImage',
+      'backgroundSize',
+      'backgroundPosition',
+      'backgroundRepeat',
+      'border',
+      'borderRadius',
+      'boxShadow',
+      'color',
+      'font',
+      'fontSize',
+      'fontWeight',
+      'lineHeight',
+      'padding',
+      'textAlign',
+      'textDecoration',
+      'textTransform',
+      'letterSpacing',
+      'wordSpacing',
+      'whiteSpace',
+      'width',
+      'height',
+      'minWidth',
+      'minHeight',
+      'maxWidth',
+      'maxHeight',
+    ]
+
+    // Apply computed styles to ghost element
+    stylesToCopy.forEach((prop) => {
+      if (this.ghostElement) {
+        const styleValue = computedStyle.getPropertyValue(
+          prop.replace(/([A-Z])/g, '-$1').toLowerCase()
+        )
+        this.ghostElement.style.setProperty(
+          prop.replace(/([A-Z])/g, '-$1').toLowerCase(),
+          styleValue
+        )
+      }
+    })
+
+    // Set the exact dimensions to match the original
+    this.ghostElement.style.width = `${rect.width}px`
+    this.ghostElement.style.height = `${rect.height}px`
+
+    // Apply ghost-specific styling (these override the copied styles)
     this.ghostElement.classList.add(this.ghostClass)
     this.ghostElement.style.position = 'fixed'
     this.ghostElement.style.pointerEvents = 'none'
     this.ghostElement.style.zIndex = '100000'
-    this.ghostElement.style.opacity = '0.5'
+    this.ghostElement.style.opacity = '0.8' // Slightly higher opacity to see the styles better
+    this.ghostElement.style.margin = '0' // Reset margin as it's positioned absolutely
+    this.ghostElement.style.transform = 'none' // Reset any transforms
+    this.ghostElement.style.transition = 'none' // Disable transitions during drag
 
     // Calculate offset from cursor to element top-left
-    const rect = draggedElement.getBoundingClientRect()
     this.offsetX = event.clientX - rect.left
     this.offsetY = event.clientY - rect.top
 
