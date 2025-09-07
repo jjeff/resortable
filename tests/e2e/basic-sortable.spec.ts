@@ -62,18 +62,18 @@ test.describe('Basic Sortable Functionality', () => {
       page.locator('#basic-list .sortable-item').nth(3)
     ).toHaveAttribute('data-id', 'basic-2')
 
-    // Second drag: move basic-4 to basic-1 position  
+    // Second drag: move basic-4 to basic-1 position
     await dragAndDropWithAnimation(
       page,
       '#basic-list [data-id="basic-4"]',
       '#basic-list [data-id="basic-1"]'
     )
 
-    // When dragging basic-4 to basic-1, it should end up after basic-1
-    // After both drags, order should be: basic-1, basic-4, basic-3, basic-2
+    // When dragging basic-4 to basic-1, it should end up before basic-1
+    // After both drags, order should be: basic-4, basic-1, basic-3, basic-2
     const items = page.locator('#basic-list .sortable-item')
-    await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-1')
-    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-4')
+    await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-4')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-1')
     await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-3')
     await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
   })

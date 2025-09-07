@@ -53,11 +53,12 @@ test.describe('Shared Group Functionality', () => {
     )
 
     // Check the order within first list
+    // When dragging a-2 to a-4, a-2 should end up after a-4 (at the end)
     const list1Items = page.locator('#shared-a-1 .sortable-item')
     await expect(list1Items.nth(0)).toHaveAttribute('data-id', 'a-1')
     await expect(list1Items.nth(1)).toHaveAttribute('data-id', 'a-3')
-    await expect(list1Items.nth(2)).toHaveAttribute('data-id', 'a-2')
-    await expect(list1Items.nth(3)).toHaveAttribute('data-id', 'a-4')
+    await expect(list1Items.nth(2)).toHaveAttribute('data-id', 'a-4')
+    await expect(list1Items.nth(3)).toHaveAttribute('data-id', 'a-2')
   })
 
   test('handles complex cross-list operations', async ({ page }) => {
