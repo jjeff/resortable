@@ -48,18 +48,7 @@ export class AnimationManager {
       // Cancel any existing animation on this element
       this.cancelAnimation(element)
 
-      // Apply inverse transform instantly
-      element.style.transform = `translate(${deltaX}px, ${deltaY}px)`
-      element.style.transition = ''
-
-      // Force reflow
-      element.offsetHeight // eslint-disable-line @typescript-eslint/no-unused-expressions
-
-      // Animate back to neutral
-      element.style.transition = `transform ${this.animationDuration}ms ${this.easing}`
-      element.style.transform = ''
-
-      // Store animation for potential cancellation
+      // Use Web Animations API for smooth FLIP animation
       const animation = element.animate(
         [
           { transform: `translate(${deltaX}px, ${deltaY}px)` },
@@ -75,8 +64,6 @@ export class AnimationManager {
 
       // Clean up after animation
       animation.addEventListener('finish', () => {
-        element.style.transform = ''
-        element.style.transition = ''
         this.activeAnimations.delete(element)
       })
     })
