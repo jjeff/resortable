@@ -468,14 +468,14 @@
             <h3>Configuration</h3>
             <div class="code-sample">
 <span class="keyword">new</span> <span class="property">Sortable</span>(element, {
-  <span class="property">filter</span>: <span class="string">'.disabled, input, button'</span>,
+  <span class="comment">// Use draggable selector to exclude disabled items</span>
+  <span class="property">draggable</span>: <span class="string">'.filter-item:not(.disabled)'</span>,
+  <span class="comment">// Filter prevents drag from these elements</span>
+  <span class="property">filter</span>: <span class="string">'input, button'</span>,
   <span class="property">preventOnFilter</span>: <span class="keyword">true</span>,
   <span class="property">onFilter</span>: <span class="keyword">function</span>(evt) {
     <span class="comment">// Called when filtered element is clicked</span>
-    <span class="keyword">const</span> item = evt.target;
-    <span class="keyword">if</span> (item.classList.contains(<span class="string">'disabled'</span>)) {
-      console.log(<span class="string">'Disabled item clicked'</span>);
-    }
+    console.log(<span class="string">'Filtered:'</span>, evt.target);
   }
 });
             </div>
@@ -588,8 +588,8 @@ folders.forEach(folder => {
     <!-- Clone/Pull Demo -->
     <div class="demo-card">
       <div class="demo-header">
-        <h2>🔄 Cloning Items Between Lists</h2>
-        <p>Clone items when dragging between lists instead of moving them</p>
+        <h2>🔄 Shared Lists <span class="badge beta">Clone Coming Soon</span></h2>
+        <p>Move items between lists (cloning feature planned for next release)</p>
       </div>
       <div class="demo-content">
         <div class="demo-grid">
@@ -610,17 +610,16 @@ folders.forEach(folder => {
           </div>
         </div>
         <div class="code-sample" style="margin-top: 1.5rem;">
-<span class="comment">// Source list - items are cloned when dragged out</span>
+<span class="comment">// NOTE: Cloning feature is planned for next release</span>
+<span class="comment">// Currently using shared group (items move, not clone)</span>
 <span class="keyword">new</span> <span class="property">Sortable</span>(sourceList, {
-  <span class="property">group</span>: {
-    <span class="property">name</span>: <span class="string">'clone-demo'</span>,
-    <span class="property">pull</span>: <span class="string">'clone'</span>, <span class="comment">// Clone instead of move</span>
-    <span class="property">put</span>: <span class="keyword">false</span> <span class="comment">// Don't accept items back</span>
-  },
+  <span class="property">group</span>: <span class="string">'clone-demo'</span>,
+  <span class="comment">// TODO: When implemented, use:</span>
+  <span class="comment">// group: { name: 'clone-demo', pull: 'clone', put: false }</span>
   <span class="property">sort</span>: <span class="keyword">false</span> <span class="comment">// Disable sorting in source</span>
 });
 
-<span class="comment">// Target list - accepts cloned items</span>
+<span class="comment">// Target list - accepts items</span>
 <span class="keyword">new</span> <span class="property">Sortable</span>(targetList, {
   <span class="property">group</span>: <span class="string">'clone-demo'</span>
 });
@@ -631,8 +630,8 @@ folders.forEach(folder => {
     <!-- Multi-Drag Demo -->
     <div class="demo-card">
       <div class="demo-header">
-        <h2>✨ Multi-Drag Selection <span class="badge beta">Beta</span></h2>
-        <p>Select and drag multiple items at once</p>
+        <h2>✨ Multi-Drag Selection <span class="badge beta">Coming Soon</span></h2>
+        <p>Multi-drag functionality is planned for the next release</p>
       </div>
       <div class="demo-content">
         <div class="demo-grid">
@@ -643,7 +642,7 @@ folders.forEach(folder => {
                 <span>📦 Package 1 - Click to select</span>
               </div>
               <div class="filter-item" data-id="multi-2">
-                <span>📦 Package 2 - Ctrl/Cmd+Click for multi</span>
+                <span>📦 Package 2 - Shift+Click for multi-select</span>
               </div>
               <div class="filter-item" data-id="multi-3">
                 <span>📦 Package 3 - Drag any selected item</span>
@@ -667,11 +666,11 @@ folders.forEach(folder => {
   }
 });
 
-<span class="comment">// Features:</span>
-<span class="comment">// - Click to select/deselect</span>
-<span class="comment">// - Ctrl/Cmd+Click for multiple</span>
-<span class="comment">// - Drag any selected item</span>
-<span class="comment">// - Visual feedback with selectedClass</span>
+<span class="comment">// NOTE: Multi-drag feature is planned for next release</span>
+<span class="comment">// Currently this is a visual demo only</span>
+<span class="comment">// - Click to highlight single item</span>
+<span class="comment">// - Shift+Click to highlight multiple</span>
+<span class="comment">// - Actual multi-drag coming soon</span>
             </div>
           </div>
         </div>
@@ -703,16 +702,14 @@ folders.forEach(folder => {
     const filterList = document.getElementById('filter-list');
     if (filterList) {
       window.sortables.push(new Sortable(filterList, {
-        filter: '.disabled, input, button',
+        // Only allow dragging of non-disabled items
+        draggable: '.filter-item:not(.disabled)',
+        filter: 'input, button', // Prevent drag when clicking these elements
         preventOnFilter: true,
         animation: 150,
         ghostClass: 'sortable-ghost',
-        draggable: '.filter-item',
         onFilter: function(evt) {
-          const item = evt.target;
-          if (item.classList?.contains('disabled')) {
-            console.log('Attempted to drag disabled item');
-          }
+          console.log('Clicked on filtered element:', evt.target.tagName);
         }
       }));
     }
@@ -752,17 +749,13 @@ folders.forEach(folder => {
       }));
     }
     
-    // Clone Demo
+    // Clone Demo - Note: Cloning not yet implemented, using shared group for now
     const cloneSource = document.getElementById('clone-source');
     const cloneTarget = document.getElementById('clone-target');
     
     if (cloneSource) {
       window.sortables.push(new Sortable(cloneSource, {
-        group: {
-          name: 'clone-demo',
-          pull: 'clone',
-          put: false // Don't allow items to be put back
-        },
+        group: 'clone-demo', // TODO: When cloning is implemented, use { name: 'clone-demo', pull: 'clone', put: false }
         sort: false, // Disable sorting within the source list
         animation: 150,
         ghostClass: 'sortable-ghost',
@@ -779,17 +772,26 @@ folders.forEach(folder => {
       }));
     }
     
-    // Multi-Drag Demo
+    // Multi-Drag Demo - Note: Multi-drag not yet fully implemented
     const multiDragList = document.getElementById('multidrag-list');
     if (multiDragList) {
-      let selectedItems = new Set();
+      // For now, just a regular sortable list
+      // Multi-select and multi-drag will be added in next release
+      window.sortables.push(new Sortable(multiDragList, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.filter-item'
+      }));
       
-      // Add click handler for selection
+      // Visual demo of selection (non-functional for drag)
+      let selectedItems = new Set();
       multiDragList.addEventListener('click', (e) => {
         const item = e.target.closest('.filter-item');
         if (item && !e.target.matches('input, button')) {
-          if (e.ctrlKey || e.metaKey) {
-            // Multi-select with Ctrl/Cmd
+          e.preventDefault();
+          
+          if (e.shiftKey) {
+            // Toggle selection for demo purposes
             if (selectedItems.has(item)) {
               selectedItems.delete(item);
               item.style.background = '';
@@ -806,19 +808,6 @@ folders.forEach(folder => {
           }
         }
       });
-      
-      window.sortables.push(new Sortable(multiDragList, {
-        multiDrag: true,
-        selectedClass: 'selected',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        draggable: '.filter-item',
-        onEnd: () => {
-          // Clear selection after drag
-          selectedItems.forEach(el => el.style.background = '');
-          selectedItems.clear();
-        }
-      }));
     }
     
     console.log(`Resortable demos loaded - ${window.sortables.length} instances active`);
