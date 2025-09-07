@@ -226,6 +226,7 @@ mapped to implementation phases.
 - [x] **group** - Group configuration for sharing items between lists
   - [x] Basic group name string support (Phase 2)
   - [x] Group object configuration (name, pull, put) (Phase 2)
+  - [ ] **Clone functionality** (`pull: 'clone'`) - Not yet implemented (Phase 4)
   - [ ] `revertClone` option (Phase 5)
 - [x] **sort** - Enable/disable sorting within list (Phase 2)
 - [x] **delay** - Time in milliseconds to define when sorting should start (Phase 2.4) ✅ Implemented
@@ -308,8 +309,8 @@ mapped to implementation phases.
   - [ ] Edge detection and thresholds
 - [ ] **MultiDrag** - Multi-item selection and dragging (Phase 4)
   - [x] Multi-item selection with keyboard (Phase 2.3) ✅ Implemented
-  - [x] Multi-item selection with mouse (Phase 2.3) ✅ Implemented
-  - [x] Multi-item dragging support (Phase 2.3) ✅ Implemented
+  - [x] Multi-item selection with mouse (Phase 2.3) ✅ Implemented (Shift+Click)
+  - [ ] Multi-item dragging support (Phase 4) ⚠️ Selection works, dragging not yet implemented
   - [ ] Plugin API compatibility (Phase 4)
 - [ ] **Swap** - Swap-based sorting instead of insertion (Phase 4)
 - [ ] **OnSpill** - Handle drag operations outside sortable areas (Phase 4)
@@ -719,15 +720,25 @@ Animation system successfully implemented with FLIP technique for smooth transit
 - Unit tests passing (20/20 animation tests)
 - Ready for code review and merge
 
-### Phase 4: Plugin Architecture (Weeks 12-14)
+### Phase 4: Plugin Architecture & Clone Feature (Weeks 12-14)
 
-**Goal**: Extensible plugin system
+**Goal**: Extensible plugin system and clone functionality
 
 #### Tasks:
 
+- [ ] **Implement Clone Functionality** (Priority)
+  - [ ] Add support for `group.pull: 'clone'` option
+  - [ ] Implement element cloning during cross-list drag operations
+  - [ ] Ensure cloned elements retain original in source list
+  - [ ] Add visual feedback for clone operations
+  - [ ] Create comprehensive tests for cloning behavior
+  - [ ] Update demo page with functional clone examples
 - [ ] Design and implement PluginSystem
 - [ ] Migrate AutoScroll plugin
-- [ ] Migrate MultiDrag plugin
+- [ ] Complete MultiDrag plugin implementation
+  - [ ] Fix multi-item dragging (currently only selection works)
+  - [ ] Add proper keyboard modifiers for selection
+  - [ ] Implement drag of multiple selected items
 - [ ] Migrate Swap plugin
 - [ ] Create plugin development guide
 - [ ] Add plugin testing utilities
@@ -1181,14 +1192,22 @@ The core implementation phase revealed several key insights that shaped the arch
 
 ### Recent Development Progress (December 2024)
 
-**Latest Accomplishment: Phase 2.3 Accessibility Complete (branch: `phase-2.3/accessibility-improvements`)**
+**Latest Accomplishment: Enhanced Feature Demos (branch: `fix/better-demo`)**
+
+- ✅ Created comprehensive demo page (demo.html) showcasing all implemented features
+- ✅ Added demos for: handles, filters, nested lists, delay, shared groups, multi-selection
+- ✅ Included code samples and descriptions for each feature demo
+- ✅ Created comprehensive E2E tests for all feature demos
+- ✅ Fixed filter implementation to use draggable selector approach
+- ✅ Updated multi-selection to use Shift+Click to avoid context menu conflicts
+- ✅ Clarified that clone functionality is not yet implemented
+
+**Previous: Phase 2.3 Accessibility Complete**
 
 - ✅ Implemented comprehensive keyboard navigation system
 - ✅ Added multi-item selection with keyboard and mouse support
 - ✅ Integrated complete ARIA attributes and screen reader support
 - ✅ Created 9 comprehensive E2E tests for accessibility features
-- ✅ Fixed all TypeScript and ESLint errors
-- ✅ Successfully merged with main branch
 
 **Previous Milestones:**
 
@@ -1275,21 +1294,51 @@ The robust tooling foundation ensures that all new code will have:
 This establishes Resortable as a modern, professional open-source project ready for collaborative development and
 long-term maintenance.
 
-## Next Steps: Phase 2.4 Handle, Filter & Core Utilities
+## Next Steps: Phase 4 - Clone Feature & Plugin Architecture
 
-### ✅ Completed (December 2024)
+### 🎯 Priority: Clone Functionality Implementation
 
-1. **Handle Option Implementation** ✅
-   - Added `handle` selector support to DragManager
-   - Drag restricted to handle elements only
-   - Keyboard and pointer event compatibility verified
-   - Comprehensive tests created (some browser-specific issues noted)
+**Why Priority**: User testing revealed that clone functionality (`group.pull: 'clone'`) is expected but not yet implemented. This is a core Sortable.js feature that many users rely on.
 
-2. **Filter System** ✅
-   - Implemented filter selector to exclude elements from dragging
-   - Added onFilter callback for filtered element interactions
-   - Drag operations prevented on filtered elements
-   - Tests created with various selectors
+#### Implementation Tasks:
+
+1. **Core Clone Logic**
+   - Modify DragManager to detect `pull: 'clone'` configuration
+   - Implement element cloning in GlobalDragState
+   - Keep original element in source list during drag
+   - Create clone element for insertion in target list
+
+2. **Visual Feedback**
+   - Show clone ghost during drag operations
+   - Maintain original element visibility in source
+   - Add visual indicators for clone mode
+
+3. **Event Handling**
+   - Trigger `onClone` callback when cloning occurs
+   - Update event data to include clone information
+   - Ensure proper cleanup of clone elements
+
+4. **Testing & Documentation**
+   - Update demo page with functional clone examples
+   - Create E2E tests for clone operations
+   - Document clone behavior and options
+
+### ✅ Recently Completed Features
+
+1. **Comprehensive Feature Demos** ✅
+   - Created demo.html with all implemented features
+   - Added code samples and descriptions
+   - Implemented E2E tests for demos
+
+2. **Handle & Filter Options** ✅
+   - Handle selector restricts drag initiation
+   - Filter using draggable selector approach
+   - Full keyboard and pointer event support
+
+3. **Delay Options** ✅
+   - Drag delay for preventing accidental drags
+   - Touch-specific delay settings
+   - Movement threshold before drag starts
 
 ### 🎯 Immediate Priorities (Remaining Week 1)
 
