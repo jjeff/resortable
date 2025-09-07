@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Drag Test</title>
+  <style>
+    body {
+      font-family: system-ui;
+      padding: 2rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    .sortable-item {
+      background: white;
+      border: 2px solid #ddd;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      cursor: move;
+      border-radius: 4px;
+    }
+    
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #e0e0e0;
+    }
+    
+    .sortable-chosen {
+      background: #f0f8ff;
+      border-color: #4CAF50;
+    }
+    
+    #status {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Drag Test</h1>
+  
+  <div id="list">
+    <div class="sortable-item">Item 1</div>
+    <div class="sortable-item">Item 2</div>
+    <div class="sortable-item">Item 3</div>
+    <div class="sortable-item">Item 4</div>
+    <div class="sortable-item">Item 5</div>
+  </div>
+  
+  <div id="status">Initializing...</div>
+  
+  <script type="module">
+    import { Sortable } from './dist/sortable.es.js';
+    
+    const list = document.getElementById('list');
+    const status = document.getElementById('status');
+    
+    // Check if items have draggable attribute
+    const checkDraggable = () => {
+      const items = list.querySelectorAll('.sortable-item');
+      const draggableCount = Array.from(items).filter(item => item.draggable).length;
+      return `${draggableCount}/${items.length} items are draggable`;
+    };
+    
+    try {
+      const sortable = new Sortable(list, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onStart: (evt) => {
+          status.textContent = `Dragging: ${evt.item.textContent}`;
+        },
+        onEnd: (evt) => {
+          status.textContent = `Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}. ${checkDraggable()}`;
+        }
+      });
+      
+      // Check initial state
+      status.textContent = `Initialized. ${checkDraggable()}`;
+      
+      // Log items for debugging
+      const items = list.querySelectorAll('.sortable-item');
+      items.forEach((item, index) => {
+        console.log(`Item ${index + 1}: draggable=${item.draggable}`);
+      });
+      
+    } catch (error) {
+      status.textContent = `Error: ${error.message}`;
+      console.error(error);
+    }
+  </script>
+</body>
+</html>

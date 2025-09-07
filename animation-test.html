@@ -139,14 +139,14 @@
   <div class="test-container">
     <h2>Test List - Drag items to see animations</h2>
     <div id="test-list">
-      <div class="test-item"><span>🍎 Apple</span></div>
-      <div class="test-item"><span>🍌 Banana</span></div>
-      <div class="test-item"><span>🍊 Orange</span></div>
-      <div class="test-item"><span>🍇 Grapes</span></div>
-      <div class="test-item"><span>🍓 Strawberry</span></div>
-      <div class="test-item"><span>🥝 Kiwi</span></div>
-      <div class="test-item"><span>🍑 Peach</span></div>
-      <div class="test-item"><span>🍒 Cherry</span></div>
+      <div class="test-item sortable-item"><span>🍎 Apple</span></div>
+      <div class="test-item sortable-item"><span>🍌 Banana</span></div>
+      <div class="test-item sortable-item"><span>🍊 Orange</span></div>
+      <div class="test-item sortable-item"><span>🍇 Grapes</span></div>
+      <div class="test-item sortable-item"><span>🍓 Strawberry</span></div>
+      <div class="test-item sortable-item"><span>🥝 Kiwi</span></div>
+      <div class="test-item sortable-item"><span>🍑 Peach</span></div>
+      <div class="test-item sortable-item"><span>🍒 Cherry</span></div>
     </div>
   </div>
   
@@ -179,7 +179,6 @@
       sortableInstance = new Sortable(testList, {
         animation: animation,
         easing: easing,
-        draggable: '.test-item',
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
         dragClass: 'sortable-drag',
