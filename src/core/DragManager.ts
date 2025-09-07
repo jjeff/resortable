@@ -1,10 +1,11 @@
-import { SortableEvent } from '../types/index.js'
+import { SortableEvent, SortableGroup } from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
 import { SelectionManager } from './SelectionManager.js'
 import { KeyboardManager } from './KeyboardManager.js'
 import { GhostManager } from './GhostManager.js'
+import { GroupManager } from './GroupManager.js'
 
 // Global registry of DragManager instances for cross-zone operations
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
@@ -71,10 +72,12 @@ export class DragManager {
   private _dataIdAttr: string
   private ghostManager: GhostManager
 
+  private groupManager: GroupManager
+
   constructor(
     public zone: DropZone,
     public events: SortableEventSystem,
-    public groupName: string,
+    groupConfig: string | SortableGroup | undefined,
     options?: {
       enableAccessibility?: boolean
       multiSelect?: boolean
@@ -107,6 +110,9 @@ export class DragManager {
       dragClass?: string
     }
   ) {
+    // Initialize group manager
+    this.groupManager = new GroupManager(groupConfig)
+
     // Register this drag manager in the global registry
     dragManagerRegistry.set(this.zone.element, this)
 
@@ -174,7 +180,7 @@ export class DragManager {
       this.zone,
       this.selectionManager,
       this.events,
-      this.groupName
+      this.groupManager.getName()
     )
   }
 
@@ -259,7 +265,7 @@ export class DragManager {
       target,
       this.zone.element,
       this,
-      this.groupName,
+      this.groupManager.getName(),
       this.startIndex,
       this.events
     )
@@ -344,20 +350,51 @@ export class DragManager {
 
     // Check if we can accept the current drag (HTML5 drag events don't have pointer IDs)
     const dragId = 'html5-drag'
-    if (!globalDragState.canAcceptDrop(dragId, this.groupName)) {
+    if (!globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
       return
     }
 
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
-    const dragItem = activeDrag.item
+    // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
+    const isDifferentZone = activeDrag.item.parentElement !== this.zone.element
+    if (isDifferentZone) {
+      globalDragState.setPutTarget(
+        dragId,
+        this.zone.element,
+        this,
+        this.groupManager.getName()
+      )
+    }
+
+    const originalItem = activeDrag.item
+    // Determine which item to use for positioning (original or clone)
+    let dragItem = originalItem
+    if (
+      activeDrag.pullMode === 'clone' &&
+      activeDrag.clone &&
+      activeDrag.clone.parentElement === this.zone.element
+    ) {
+      dragItem = activeDrag.clone
+    }
+
     const over = (e.target as HTMLElement).closest(this.draggable)
 
     // Handle cross-zone dragging
-    if (dragItem.parentElement !== this.zone.element) {
-      // Move item to this zone if not already here
-      this.zone.element.appendChild(dragItem)
+    if (originalItem.parentElement !== this.zone.element) {
+      // Check if this is a clone operation
+      let itemToInsert = originalItem
+      if (activeDrag.pullMode === 'clone' && activeDrag.clone) {
+        // Use the clone for display in the target zone
+        itemToInsert = activeDrag.clone
+        dragItem = itemToInsert // Update reference for subsequent operations
+      }
+
+      // Move item (or clone) to this zone if not already here
+      if (itemToInsert.parentElement !== this.zone.element) {
+        this.zone.element.appendChild(itemToInsert)
+      }
     }
 
     // Update placeholder position
@@ -398,10 +435,10 @@ export class DragManager {
       return // Don't swap if threshold not met
     }
 
-    // Create MoveEvent for onMove callback
+    // Create MoveEvent for onMove callback (always use original item for events)
     const moveEvent: import('../types/index.js').MoveEvent = {
-      item: dragItem,
-      items: [dragItem],
+      item: originalItem,
+      items: [originalItem],
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: dragIndex,
@@ -450,10 +487,10 @@ export class DragManager {
     // Don't actually move the item yet, just track where it should go
     // this.zone.move(dragItem, targetIndex) // Commented out - will do on drop
 
-    // Emit sort event (always fired when sorting changes)
+    // Emit sort event (always fired when sorting changes) - use original item for events
     this.events.emit('sort', {
-      item: dragItem,
-      items: [dragItem],
+      item: originalItem,
+      items: [originalItem],
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: dragIndex,
@@ -463,8 +500,8 @@ export class DragManager {
     // Only emit update if it's within the same zone originally
     if (activeDrag.fromZone === this.zone.element) {
       this.events.emit('update', {
-        item: dragItem,
-        items: [dragItem],
+        item: originalItem,
+        items: [originalItem],
         from: this.zone.element,
         to: this.zone.element,
         oldIndex: dragIndex,
@@ -473,8 +510,8 @@ export class DragManager {
 
       // Emit change event when order changes within same list
       this.events.emit('change', {
-        item: dragItem,
-        items: [dragItem],
+        item: originalItem,
+        items: [originalItem],
         from: this.zone.element,
         to: this.zone.element,
         oldIndex: dragIndex,
@@ -490,7 +527,7 @@ export class DragManager {
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
-    const dragItem = activeDrag.item
+    const originalItem = activeDrag.item
     const placeholder = this.ghostManager.getPlaceholderElement()
 
     if (placeholder && placeholder.parentElement === this.zone.element) {
@@ -503,22 +540,45 @@ export class DragManager {
       // Remove the placeholder
       placeholder.remove()
 
-      // Now calculate where to insert the dragged item
-      // We need to account for the fact that the dragged item might be in the list
-      const currentIndex = items.indexOf(dragItem)
+      // Determine which item to use (original or clone)
+      let itemToPlace = originalItem
+      const isDifferentZone = originalItem.parentElement !== this.zone.element
+      if (
+        isDifferentZone &&
+        activeDrag.pullMode === 'clone' &&
+        activeDrag.clone
+      ) {
+        // For cross-zone clone operations, use the clone
+        itemToPlace = activeDrag.clone
+      }
+
+      // Now calculate where to insert the item
+      const currentIndex = items.indexOf(itemToPlace)
       let targetIndex = 0
 
       // Count how many draggable items come before the placeholder position
       const children = Array.from(this.zone.element.children)
       for (let i = 0; i < placeholderIndex && i < children.length; i++) {
-        if (children[i].matches(this.draggable) && children[i] !== dragItem) {
+        if (
+          children[i].matches(this.draggable) &&
+          children[i] !== itemToPlace
+        ) {
           targetIndex++
         }
       }
 
-      // Perform the actual move with animation
-      if (currentIndex !== targetIndex) {
-        this.zone.move(dragItem, targetIndex)
+      // Perform the actual placement with animation
+      if (currentIndex !== targetIndex || itemToPlace !== originalItem) {
+        // For clone operations, we need to handle positioning differently
+        if (itemToPlace === activeDrag.clone) {
+          // For clones, use the zone's move method to position correctly
+          if (currentIndex !== targetIndex) {
+            this.zone.move(itemToPlace, targetIndex)
+          }
+        } else if (currentIndex !== targetIndex) {
+          // Move existing item to new position
+          this.zone.move(itemToPlace, targetIndex)
+        }
       }
     }
   }
@@ -540,12 +600,12 @@ export class DragManager {
   private onDragEnter = (e: DragEvent): void => {
     e.preventDefault()
     const dragId = 'html5-drag'
-    if (globalDragState.canAcceptDrop(dragId, this.groupName)) {
+    if (globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
       globalDragState.setPutTarget(
         dragId,
         this.zone.element,
         this,
-        this.groupName
+        this.groupManager.getName()
       )
     }
   }
@@ -686,7 +746,7 @@ export class DragManager {
       target,
       this.zone.element,
       this,
-      this.groupName,
+      this.groupManager.getName(),
       this.startIndex,
       this.events
     )
@@ -764,7 +824,7 @@ export class DragManager {
             dragId,
             targetZoneElement,
             targetDragManager,
-            targetDragManager.groupName
+            targetDragManager.groupManager.getName()
           )
         } else {
           // Fallback: use current drag manager but with target zone
@@ -772,7 +832,7 @@ export class DragManager {
             dragId,
             targetZoneElement,
             this,
-            this.groupName
+            this.groupManager.getName()
           )
         }
       }
@@ -900,6 +960,11 @@ export class DragManager {
     return this.keyboardManager
   }
 
+  /** Get the group manager for this drag manager */
+  public getGroupManager(): GroupManager {
+    return this.groupManager
+  }
+
   /** Check if we can drop in a target zone based on group compatibility */
   private canDropInZone(targetZone: HTMLElement): boolean {
     const targetDragManager = this.findDragManagerForZone(targetZone)
@@ -911,7 +976,10 @@ export class DragManager {
     // Use proper group compatibility check
     if (this.activePointerId !== null) {
       const dragId = `pointer-${this.activePointerId}`
-      return globalDragState.canAcceptDrop(dragId, targetDragManager.groupName)
+      return globalDragState.canAcceptDrop(
+        dragId,
+        targetDragManager.groupManager.getName()
+      )
     }
     return false
   }
@@ -928,7 +996,7 @@ export class DragManager {
     if (targetZone === this.zone.element) return true
 
     // Simple group matching based on common patterns
-    const currentGroup = this.groupName
+    const currentGroup = this.groupManager.getName()
     const zoneId = targetZone.id
 
     // Hardcoded group mappings based on the HTML structure

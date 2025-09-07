@@ -191,11 +191,10 @@ export class Sortable {
     // Pass animation manager to DropZone
     this.dropZone = new DropZone(this.element, this.animationManager)
     this.eventSystem = new EventSystem<SortableEvents>()
-    const groupName = resolveGroupName(this.options.group)
     this.dragManager = new DragManager(
       this.dropZone,
       this.eventSystem,
-      groupName,
+      this.options.group,
       {
         enableAccessibility: this.options.enableAccessibility,
         multiSelect: this.options.multiDrag,
@@ -391,11 +390,10 @@ export class Sortable {
       case 'direction': {
         // Re-create drag manager with new options
         this.dragManager.detach()
-        const groupName = resolveGroupName(this.options.group)
         this.dragManager = new DragManager(
           this.dropZone,
           this.eventSystem,
-          groupName,
+          this.options.group,
           {
             enableAccessibility: this.options.enableAccessibility,
             multiSelect: this.options.multiDrag,
@@ -422,10 +420,34 @@ export class Sortable {
       }
 
       case 'group':
-        // Update group name in drag manager
-        this.dragManager.groupName = resolveGroupName(
-          value as SortableOptions['group']
+        // Re-create drag manager with new group configuration
+        this.dragManager.detach()
+        this.dragManager = new DragManager(
+          this.dropZone,
+          this.eventSystem,
+          value as SortableOptions['group'],
+          {
+            enableAccessibility: this.options.enableAccessibility,
+            multiSelect: this.options.multiDrag,
+            selectedClass: this.options.selectedClass,
+            focusClass: this.options.focusClass,
+            handle: this.options.handle,
+            filter: this.options.filter,
+            onFilter: this.options.onFilter,
+            draggable: this.options.draggable,
+            delay: this.options.delay,
+            delayOnTouchOnly: this.options.delayOnTouchOnly,
+            touchStartThreshold: this.options.touchStartThreshold,
+            swapThreshold: this.options.swapThreshold,
+            invertSwap: this.options.invertSwap,
+            invertedSwapThreshold: this.options.invertedSwapThreshold,
+            direction: this.options.direction,
+            ghostClass: this.options.ghostClass,
+            chosenClass: this.options.chosenClass,
+            dragClass: this.options.dragClass,
+          }
         )
+        this.dragManager.attach()
         break
 
       case 'animation':
@@ -480,11 +502,4 @@ const defaultOptions: SortableOptions = {
   enableAccessibility: true,
   selectedClass: 'sortable-selected',
   focusClass: 'sortable-focused',
-}
-
-/** Resolve the group name from group option */
-function resolveGroupName(group: SortableOptions['group']): string {
-  if (!group) return 'default'
-  if (typeof group === 'string') return group
-  return group.name || 'default'
 }
