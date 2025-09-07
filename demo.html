@@ -588,8 +588,8 @@ folders.forEach(folder => {
     <!-- Clone/Pull Demo -->
     <div class="demo-card">
       <div class="demo-header">
-        <h2>🔄 Shared Lists <span class="badge beta">Clone Coming Soon</span></h2>
-        <p>Move items between lists (cloning feature planned for next release)</p>
+        <h2>🔄 Shared Lists <span class="badge success">Clone Active</span></h2>
+        <p>Clone items from source list to target list - originals remain in place</p>
       </div>
       <div class="demo-content">
         <div class="demo-grid">
@@ -749,13 +749,13 @@ folders.forEach(folder => {
       }));
     }
     
-    // Clone Demo - Note: Cloning not yet implemented, using shared group for now
+    // Clone Demo - Items are cloned from source to target
     const cloneSource = document.getElementById('clone-source');
     const cloneTarget = document.getElementById('clone-target');
     
     if (cloneSource) {
       window.sortables.push(new Sortable(cloneSource, {
-        group: 'clone-demo', // TODO: When cloning is implemented, use { name: 'clone-demo', pull: 'clone', put: false }
+        group: { name: 'clone-demo', pull: 'clone', put: false },
         sort: false, // Disable sorting within the source list
         animation: 150,
         ghostClass: 'sortable-ghost',

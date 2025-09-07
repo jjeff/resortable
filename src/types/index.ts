@@ -534,10 +534,10 @@ export interface SortableEvent {
    * Pull mode used for this operation
    * @remarks
    * - `'clone'` when cloning
-   * - `true` when moving
+   * - `'move'` or `true` when moving
    * - `false` or undefined for same-list operations
    */
-  pullMode?: boolean | 'clone'
+  pullMode?: boolean | 'clone' | 'move'
 
   /**
    * Array of selected elements (multi-drag mode)

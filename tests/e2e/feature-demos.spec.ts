@@ -271,10 +271,8 @@ test.describe('Feature Demos', () => {
     })
   })
 
-  test.describe('Shared Lists (Clone Planned)', () => {
-    // @TODO: Cloning functionality is not implemented yet, and these drag operations
-    // are inconsistent across browsers - some don't move items as expected
-    test.skip('moves items between lists (cloning not yet implemented)', async ({
+  test.describe('Shared Lists (Clone Mode)', () => {
+    test.skip('clones items from source to target list (HTML5 drag integration issue)', async ({
       page,
     }) => {
       const sourceItem = page.locator('#clone-source .clone-item').first()
@@ -294,11 +292,11 @@ test.describe('Feature Demos', () => {
         '#clone-target'
       )
 
-      // Source should have one less item (moved, not cloned)
+      // Source should have the same number of items (cloned, not moved)
       const finalSourceCount = await page
         .locator('#clone-source .clone-item')
         .count()
-      expect(finalSourceCount).toBe(initialSourceCount - 1)
+      expect(finalSourceCount).toBe(initialSourceCount)
 
       // Target should have one more item
       const finalTargetCount = await page
@@ -311,6 +309,12 @@ test.describe('Feature Demos', () => {
         .locator('#clone-target .clone-item')
         .evaluateAll((els) => els.map((el) => el.textContent))
       expect(targetItems).toContain(sourceItemText)
+
+      // Original item should still be in source
+      const sourceItems = await page
+        .locator('#clone-source .clone-item')
+        .evaluateAll((els) => els.map((el) => el.textContent))
+      expect(sourceItems).toContain(sourceItemText)
     })
 
     // @TODO: Bidirectional drag functionality needs cloning to work properly

@@ -10,6 +10,6 @@ playwright-report/
 /blob-report/
 /playwright/.cache/
 
-# Core dump files
-core
-core.*
+# Core dump files (at root only)
+/core
+/core.*
