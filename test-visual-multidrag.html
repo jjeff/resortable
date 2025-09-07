@@ -97,6 +97,7 @@
 
         try {
             const sortable = new Sortable(document.getElementById('multidrag-list'), {
+                draggable: '.multidrag-item',
                 multiDrag: true,
                 selectedClass: 'sortable-chosen',
                 animation: 300,
@@ -107,10 +108,11 @@
                     log(`Drag ended: moved ${evt.items.length} item(s)`)
                 },
                 onSelect: (evt) => {
-                    log(`Item selected: ${evt.item.textContent}`)
-                },
-                onDeselect: (evt) => {
-                    log(`Item deselected: ${evt.item.textContent}`)
+                    if (evt.items.length === 0) {
+                        log(`All items deselected`)
+                    } else {
+                        log(`Selection changed: ${evt.items.length} item(s) selected`)
+                    }
                 }
             })
             

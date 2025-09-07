@@ -495,6 +495,7 @@ const defaultOptions: SortableOptions = {
   ghostClass: 'sortable-ghost',
   chosenClass: 'sortable-chosen',
   dragClass: 'sortable-drag',
+  draggable: '.sortable-item',
   group: 'default',
   sort: true,
   disabled: false,
