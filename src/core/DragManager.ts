@@ -6,6 +6,7 @@ import { SelectionManager } from './SelectionManager.js'
 import { KeyboardManager } from './KeyboardManager.js'
 import { GhostManager } from './GhostManager.js'
 import { GroupManager } from './GroupManager.js'
+import { MultiDragVisualManager } from './MultiDragVisualManager.js'
 
 // Global registry of DragManager instances for cross-zone operations
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
@@ -21,6 +22,7 @@ export class DragManager {
   private dragElement: HTMLElement | null = null
   private selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
+  private multiDragVisualManager: MultiDragVisualManager
   private enableAccessibility: boolean
   private handle?: string
   private filter?: string
@@ -108,6 +110,8 @@ export class DragManager {
       ghostClass?: string
       chosenClass?: string
       dragClass?: string
+      animation?: number
+      easing?: string
     }
   ) {
     // Initialize group manager
@@ -174,6 +178,9 @@ export class DragManager {
       }
     )
 
+    // Initialize multi-drag visual manager
+    this.multiDragVisualManager = new MultiDragVisualManager()
+
     // Initialize keyboard manager if accessibility is enabled
     this.keyboardManager = new KeyboardManager(
       this.zone.element,
@@ -226,6 +233,9 @@ export class DragManager {
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
 
+    // Clean up visual manager
+    this.multiDragVisualManager.destroy()
+
     // Detach accessibility features
     if (this.enableAccessibility) {
       this.keyboardManager.detach()
@@ -258,6 +268,16 @@ export class DragManager {
 
     this.startIndex = this.zone.getIndex(target)
 
+    // Get selected items if multiSelect is enabled (same logic as pointer events)
+    let draggedItems: HTMLElement[] = [target]
+    if (this.selectionManager.isSelected(target)) {
+      // If the target is already selected, drag all selected items
+      draggedItems = this.selectionManager.getSelected()
+    } else {
+      // Select the target item for dragging
+      this.selectionManager.select(target)
+    }
+
     // Register with global drag state using HTML5 drag API as ID
     const dragId = 'html5-drag'
     globalDragState.startDrag(
@@ -272,7 +292,7 @@ export class DragManager {
 
     const evt: SortableEvent = {
       item: target,
-      items: [target],
+      items: draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
@@ -291,13 +311,33 @@ export class DragManager {
     target.classList.add(this.ghostManager.getChosenClass())
     const ghost = this.ghostManager.createGhost(target, e)
 
-    // For HTML5 drag API, we can optionally set the drag image
+    // For HTML5 drag API, set up drag image and visual effects
     if (e.dataTransfer && ghost) {
       // Hide the ghost since browser will show its own drag image
       ghost.style.display = 'none'
+
       // Set drag data
       e.dataTransfer.setData('text/plain', '')
       e.dataTransfer.effectAllowed = 'move'
+
+      // Create composite drag image for multi-drag
+      if (draggedItems.length > 1) {
+        const compositeDragImage =
+          this.multiDragVisualManager.createCompositeDragImage(draggedItems)
+        if (compositeDragImage) {
+          this.multiDragVisualManager.setupNativeDragImage(
+            e.dataTransfer,
+            compositeDragImage
+          )
+        }
+
+        // Initiate visual folding for multi-drag
+        this.multiDragVisualManager
+          .initiateVisualFold(target, draggedItems)
+          // eslint-disable-next-line no-console
+          .catch((error) => console.error('Visual folding error:', error))
+      }
+
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())
     }
@@ -588,6 +628,9 @@ export class DragManager {
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
 
+    // Clean up visual folding
+    this.multiDragVisualManager.resetFolding()
+
     // Clean up ghost elements
     if (activeDrag) {
       this.ghostManager.destroy(activeDrag.item)
@@ -766,6 +809,14 @@ export class DragManager {
     this.ghostManager.createGhost(target, e)
     this.ghostManager.createPlaceholder(target)
 
+    // Initiate visual folding for multi-drag if multiple items selected
+    if (draggedItems.length > 1) {
+      this.multiDragVisualManager
+        .initiateVisualFold(target, draggedItems)
+        // eslint-disable-next-line no-console
+        .catch((error) => console.error('Visual folding error:', error))
+    }
+
     // Then emit start event
     this.events.emit('start', evt)
   }
@@ -928,6 +979,9 @@ export class DragManager {
         }
       }
     }
+
+    // Clean up visual folding
+    this.multiDragVisualManager.resetFolding()
 
     // Clean up ghost elements
     if (this.dragElement) {

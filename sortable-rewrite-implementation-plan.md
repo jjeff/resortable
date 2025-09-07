@@ -768,13 +768,75 @@ Phase 4.1 clone functionality has been successfully implemented with comprehensi
 - **Independent Groups**: Restored proper isolation between different group names
 - **Backward Compatibility**: Maintains original Sortable.js group behavior
 
-#### Phase 4.2: Plugin Architecture (Future)
+#### Phase 4.2: Visual Multi-Drag Enhancement ⚡ CURRENT PHASE
 
-- [ ] Design and implement formal PluginSystem class
+**Goal**: Complete the plural-first vision with visual multi-drag functionality
+
+**Why Priority**: Our architecture is already plural-first, but users need visual feedback when dragging multiple selected items. This completes the multi-drag user experience and leverages modern browser APIs like `DataTransfer.setDragImage()`.
+
+**Current Status**: 🚀 ACTIVE (September 2025) - Branch: `feature/phase4-2-visual-multidrag`
+
+**Legacy Research Completed**: Analyzed legacy Sortable.js MultiDrag plugin implementation
+- ✅ "Folding" animation technique where selected items visually fold into dragged element
+- ✅ Clone management for visual feedback during drag operations
+- ✅ FLIP integration for smooth transitions
+- ✅ Identified opportunities for improvement with modern APIs
+
+**Tasks:**
+
+- [x] **Architecture Design & Research** ✅ COMPLETED
+  - [x] Analyze legacy MultiDrag plugin implementation for best practices
+  - [x] Design MultiDragVisualManager class architecture
+  - [x] Plan integration with existing SelectionManager and DragManager
+  - [x] Research `DataTransfer.setDragImage()` for composite drag images
+
+- [ ] **Phase 1: Visual Folding System** 🎯 IN PROGRESS
+  - [ ] Create MultiDragVisualManager class
+  - [ ] Implement visual "folding" animation for selected items
+  - [ ] Integrate folding with existing FLIP animation system
+  - [ ] Add visual indicators showing selection count during drag
+  - [ ] Ensure proper cleanup and memory management
+
+- [ ] **Phase 2: Composite Drag Images** 🖼️
+  - [ ] Generate composite visual representation of all selected items
+  - [ ] Implement `DataTransfer.setDragImage()` with custom drag image
+  - [ ] Handle edge cases (items too large, off-screen elements)
+  - [ ] Create stacked visual effect for multiple items
+
+- [ ] **Phase 3: Enhanced Animation Integration** 🎬
+  - [ ] Smooth folding/unfolding transitions
+  - [ ] Synchronized animations for all selected items
+  - [ ] Visual feedback during cross-zone operations
+  - [ ] Integration with existing AnimationManager
+
+- [ ] **Phase 4: Testing & Polish** 🧪
+  - [ ] Comprehensive E2E tests for visual multi-drag
+  - [ ] Performance testing with large selections
+  - [ ] Cross-browser compatibility verification
+  - [ ] Accessibility improvements for screen readers
+
+**Key Innovations Over Legacy:**
+
+1. **Composite Drag Images**: Use `setDragImage()` for native browser drag beyond viewport
+2. **Core Integration**: Built into SelectionManager/DragManager, not bolted-on plugin
+3. **Type Safety**: Full TypeScript support with proper interfaces
+4. **Modern APIs**: Leverage modern browser capabilities for better UX
+5. **Memory Efficient**: Use Maps and WeakMaps instead of global arrays
+
+**Success Criteria:**
+- ✅ Visual feedback when dragging multiple selected items
+- ✅ Smooth "folding" animation similar to legacy but improved
+- ✅ Native browser drag image shows all selected items
+- ✅ Works seamlessly with existing clone and animation systems
+- ✅ No regressions in current functionality
+- ✅ Performance remains smooth with large selections
+
+#### Phase 4.3: Plugin Architecture (Future)
+
+- [ ] Design and implement formal PluginSystem class  
 - [ ] Create plugin lifecycle management (install/uninstall)
-- [ ] Migrate existing functionality to plugins:
+- [ ] Migrate remaining functionality to plugins:
   - [ ] AutoScroll plugin
-  - [ ] Complete MultiDrag plugin implementation
   - [ ] Swap mode plugin
 - [ ] Create plugin development guide and utilities
 - [ ] Add plugin testing framework

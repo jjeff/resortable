@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Multi-Drag Test</title>
+    <style>
+        .multidrag-container {
+            padding: 20px;
+            background: #f5f5f5;
+            margin: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .multidrag-item {
+            padding: 10px 15px;
+            background: white;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: grab;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .multidrag-item:hover {
+            background: #f0f8ff;
+            border-color: #007acc;
+        }
+        .multidrag-item.sortable-chosen {
+            background: #e3f2fd !important;
+            border-color: #1976d2 !important;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        }
+        .multidrag-item.sortable-drag {
+            opacity: 0.8;
+            transform: rotate(5deg);
+        }
+        .multidrag-item.sortable-ghost {
+            opacity: 0.3;
+            background: #ddd !important;
+            border-style: dashed;
+        }
+        .sortable-multidrag-composite {
+            position: absolute !important;
+            z-index: 10000 !important;
+            pointer-events: none;
+        }
+        .sortable-multidrag-count {
+            background: #007acc !important;
+            color: white !important;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visual Multi-Drag Test</h1>
+    <p>This page tests the Phase 4.2 visual multi-drag functionality.</p>
+    
+    <h2>Multi-Drag List</h2>
+    <div id="multidrag-list" class="multidrag-container">
+        <div class="multidrag-item" data-id="item-1">📋 Project Plan</div>
+        <div class="multidrag-item" data-id="item-2">✨ Feature Implementation</div>
+        <div class="multidrag-item" data-id="item-3">🧪 Testing Phase</div>
+        <div class="multidrag-item" data-id="item-4">📖 Documentation</div>
+        <div class="multidrag-item" data-id="item-5">🚀 Deployment</div>
+    </div>
+
+    <div id="debug-info">
+        <h3>Debug Information</h3>
+        <div id="debug-output"></div>
+    </div>
+
+    <script type="module">
+        import { Sortable } from './src/index.ts'
+
+        const debugOutput = document.getElementById('debug-output')
+        
+        function log(message) {
+            const div = document.createElement('div')
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`
+            debugOutput.appendChild(div)
+            console.log(message)
+        }
+
+        log('Initializing Visual Multi-Drag Test')
+
+        try {
+            const sortable = new Sortable(document.getElementById('multidrag-list'), {
+                multiDrag: true,
+                selectedClass: 'sortable-chosen',
+                animation: 300,
+                onStart: (evt) => {
+                    log(`Drag started: ${evt.items.length} item(s)`)
+                },
+                onEnd: (evt) => {
+                    log(`Drag ended: moved ${evt.items.length} item(s)`)
+                },
+                onSelect: (evt) => {
+                    log(`Item selected: ${evt.item.textContent}`)
+                },
+                onDeselect: (evt) => {
+                    log(`Item deselected: ${evt.item.textContent}`)
+                }
+            })
+            
+            log('Sortable initialized successfully')
+            log('✓ MultiDragVisualManager should be active')
+            log('✓ Try Ctrl+click to select multiple items, then drag')
+            
+        } catch (error) {
+            log(`Error: ${error.message}`)
+            console.error('Initialization error:', error)
+        }
+    </script>
+</body>
+</html>

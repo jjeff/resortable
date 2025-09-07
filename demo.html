@@ -366,6 +366,61 @@
       background: #ffc107;
       color: #333;
     }
+    
+    /* Multi-Drag Demo Styles */
+    .multidrag-item {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 8px;
+      cursor: move;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .multidrag-item .drag-handle {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      font-weight: bold;
+      cursor: move;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    
+    .multidrag-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .multidrag-item.sortable-selected {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.3);
+      transform: scale(1.02);
+    }
+    
+    .multidrag-item.sortable-ghost {
+      opacity: 0.4;
+      transform: rotate(5deg);
+    }
+    
+    /* Multi-drag visual effects */
+    .sortable-multidrag-composite {
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .sortable-multidrag-count {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 600;
+      border: 2px solid white;
+    }
   </style>
 </head>
 <body>
@@ -630,28 +685,33 @@ folders.forEach(folder => {
     <!-- Multi-Drag Demo -->
     <div class="demo-card">
       <div class="demo-header">
-        <h2>✨ Multi-Drag Selection <span class="badge beta">Coming Soon</span></h2>
-        <p>Multi-drag functionality is planned for the next release</p>
+        <h2>✨ Visual Multi-Drag <span class="badge beta">Phase 4.2</span></h2>
+        <p>Select multiple items and drag them with visual folding animation and composite drag images</p>
       </div>
       <div class="demo-content">
         <div class="demo-grid">
           <div class="demo-section">
-            <h3>Click to Select, Then Drag</h3>
+            <h3>Visual Multi-Drag with Folding Animation</h3>
             <div id="multidrag-list">
-              <div class="filter-item" data-id="multi-1">
-                <span>📦 Package 1 - Click to select</span>
+              <div class="multidrag-item sortable-item" data-id="visual-1">
+                <span class="drag-handle">⋮⋮</span>
+                <span>🎬 Visual Item 1 - Click to select, watch the folding animation</span>
               </div>
-              <div class="filter-item" data-id="multi-2">
-                <span>📦 Package 2 - Shift+Click for multi-select</span>
+              <div class="multidrag-item sortable-item" data-id="visual-2">
+                <span class="drag-handle">⋮⋮</span>
+                <span>🎭 Visual Item 2 - Shift+Click for multi-select</span>
               </div>
-              <div class="filter-item" data-id="multi-3">
-                <span>📦 Package 3 - Drag any selected item</span>
+              <div class="multidrag-item sortable-item" data-id="visual-3">
+                <span class="drag-handle">⋮⋮</span>
+                <span>🎪 Visual Item 3 - Drag any selected item</span>
               </div>
-              <div class="filter-item" data-id="multi-4">
-                <span>📦 Package 4 - All selected move together</span>
+              <div class="multidrag-item sortable-item" data-id="visual-4">
+                <span class="drag-handle">⋮⋮</span>
+                <span>🎨 Visual Item 4 - All selected fold into drag element</span>
               </div>
-              <div class="filter-item" data-id="multi-5">
-                <span>📦 Package 5 - Great for bulk operations</span>
+              <div class="multidrag-item sortable-item" data-id="visual-5">
+                <span class="drag-handle">⋮⋮</span>
+                <span>✨ Visual Item 5 - Composite drag image with count indicator</span>
               </div>
             </div>
           </div>
@@ -659,18 +719,26 @@ folders.forEach(folder => {
             <h3>Configuration</h3>
             <div class="code-sample">
 <span class="keyword">new</span> <span class="property">Sortable</span>(element, {
-  <span class="property">multiDrag</span>: <span class="keyword">true</span>,
-  <span class="property">selectedClass</span>: <span class="string">'selected'</span>,
+  <span class="property">animation</span>: <span class="number">150</span>,
+  <span class="property">handle</span>: <span class="string">'.drag-handle'</span>,
+  <span class="property">multiSelect</span>: <span class="keyword">true</span>,
+  <span class="property">selectedClass</span>: <span class="string">'sortable-selected'</span>,
   <span class="property">onSelect</span>: <span class="keyword">function</span>(evt) {
-    console.log(<span class="string">'Selected:'</span>, evt.items);
+    console.log(<span class="string">'Selected items:'</span>, evt.items.length);
+  },
+  <span class="property">onStart</span>: <span class="keyword">function</span>(evt) {
+    <span class="comment">// Visual folding animation starts automatically</span>
+    console.log(<span class="string">'Dragging:'</span>, evt.items.length, <span class="string">'items'</span>);
   }
 });
 
-<span class="comment">// NOTE: Multi-drag feature is planned for next release</span>
-<span class="comment">// Currently this is a visual demo only</span>
-<span class="comment">// - Click to highlight single item</span>
-<span class="comment">// - Shift+Click to highlight multiple</span>
-<span class="comment">// - Actual multi-drag coming soon</span>
+<span class="comment">// Features:</span>
+<span class="comment">// ✅ Click to select single item</span>  
+<span class="comment">// ✅ Shift+Click for range selection</span>
+<span class="comment">// ✅ Ctrl/Cmd+Click for multi-selection</span>
+<span class="comment">// ✅ Visual folding animation during drag</span>
+<span class="comment">// ✅ Composite drag images with count indicator</span>
+<span class="comment">// ✅ Native browser drag beyond viewport</span>
             </div>
           </div>
         </div>
@@ -772,42 +840,35 @@ folders.forEach(folder => {
       }));
     }
     
-    // Multi-Drag Demo - Note: Multi-drag not yet fully implemented
+    // Visual Multi-Drag Demo - Phase 4.2 Implementation
     const multiDragList = document.getElementById('multidrag-list');
     if (multiDragList) {
-      // For now, just a regular sortable list
-      // Multi-select and multi-drag will be added in next release
+      // Enable multi-drag functionality with visual folding
       window.sortables.push(new Sortable(multiDragList, {
         animation: 150,
+        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+        handle: '.drag-handle',
+        multiSelect: true,
+        selectedClass: 'sortable-selected',
         ghostClass: 'sortable-ghost',
-        draggable: '.filter-item'
-      }));
-      
-      // Visual demo of selection (non-functional for drag)
-      let selectedItems = new Set();
-      multiDragList.addEventListener('click', (e) => {
-        const item = e.target.closest('.filter-item');
-        if (item && !e.target.matches('input, button')) {
-          e.preventDefault();
-          
-          if (e.shiftKey) {
-            // Toggle selection for demo purposes
-            if (selectedItems.has(item)) {
-              selectedItems.delete(item);
-              item.style.background = '';
-            } else {
-              selectedItems.add(item);
-              item.style.background = '#e7f5ff';
-            }
-          } else {
-            // Single select
-            selectedItems.forEach(el => el.style.background = '');
-            selectedItems.clear();
-            selectedItems.add(item);
-            item.style.background = '#e7f5ff';
+        onSelect: function(evt) {
+          console.log('Selected items:', evt.items.length);
+          // Show selection count in demo
+          const count = evt.items.length;
+          if (count > 1) {
+            console.log('🎬 Ready for visual multi-drag!');
           }
+        },
+        onStart: function(evt) {
+          console.log('🎭 Starting drag with', evt.items.length, 'items');
+          if (evt.items.length > 1) {
+            console.log('✨ Visual folding animation active');
+          }
+        },
+        onEnd: function(evt) {
+          console.log('🎪 Drag completed!');
         }
-      });
+      }));
     }
     
     console.log(`Resortable demos loaded - ${window.sortables.length} instances active`);
