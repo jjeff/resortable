@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resortable - Comprehensive Feature Demos</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding-bottom: 4rem;
+    }
+    
+    /* Default Sortable Classes */
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #e9ecef !important;
+    }
+    
+    .sortable-chosen {
+      opacity: 1;
+    }
+    
+    .sortable-drag {
+      opacity: 0;
+    }
+    
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: white;
+      background: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .hero p {
+      font-size: 1.125rem;
+      opacity: 0.95;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    /* Demo Cards */
+    .demo-card {
+      background: white;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .demo-header {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      color: white;
+      padding: 1.5rem;
+    }
+    
+    .demo-header h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .demo-header p {
+      opacity: 0.9;
+      font-size: 0.875rem;
+    }
+    
+    .demo-content {
+      padding: 2rem;
+    }
+    
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .demo-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    
+    .demo-section h3 {
+      color: #495057;
+      margin-bottom: 1rem;
+      font-size: 1.125rem;
+    }
+    
+    /* Code Sample */
+    .code-sample {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 1.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    
+    .code-sample .comment {
+      color: #718096;
+      font-style: italic;
+    }
+    
+    .code-sample .keyword {
+      color: #f687b3;
+    }
+    
+    .code-sample .string {
+      color: #9ae6b4;
+    }
+    
+    .code-sample .property {
+      color: #90cdf4;
+    }
+    
+    /* Handle Demo Styles */
+    .handle-item {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.2s;
+    }
+    
+    .handle-item:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .drag-handle {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 0.5rem;
+      border-radius: 4px;
+      cursor: move;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .drag-handle::before {
+      content: '⋮⋮';
+      font-weight: bold;
+      letter-spacing: -0.25rem;
+    }
+    
+    .handle-content {
+      flex: 1;
+    }
+    
+    .handle-item.sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    /* Filter Demo Styles */
+    .filter-item {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: move;
+    }
+    
+    .filter-item.disabled {
+      background: #f8f9fa;
+      border-color: #adb5bd;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .filter-item input,
+    .filter-item button {
+      cursor: default;
+    }
+    
+    .filter-item button {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    
+    .filter-item button:hover {
+      background: #c82333;
+    }
+    
+    .filter-item.disabled button {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    
+    /* Nested Demo Styles */
+    .nested-container {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .nested-header {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      color: white;
+      padding: 0.75rem;
+      margin: -1rem -1rem 1rem -1rem;
+      border-radius: 6px 6px 0 0;
+      cursor: move;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .nested-item {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: move;
+      transition: all 0.2s;
+    }
+    
+    .nested-item:hover {
+      background: white;
+      transform: translateX(4px);
+    }
+    
+    .nested-container.sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    .nested-item.sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    /* Delay Demo Styles */
+    .delay-item {
+      background: linear-gradient(135deg, #4ecdc4, #44a08d);
+      color: white;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 8px;
+      cursor: move;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .delay-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(-100%);
+      transition: transform 0.3s;
+    }
+    
+    .delay-item:active::before {
+      transform: translateX(0);
+    }
+    
+    .delay-notice {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+    
+    /* Cloning Demo Styles */
+    .clone-source {
+      background: #e7f5ff;
+      border: 2px dashed #339af0;
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 150px;
+    }
+    
+    .clone-target {
+      background: #fff5f5;
+      border: 2px dashed #ff6b6b;
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 150px;
+    }
+    
+    .clone-item {
+      background: white;
+      border: 2px solid #495057;
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      cursor: move;
+      transition: all 0.2s;
+    }
+    
+    .clone-item:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Badge styles */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: #6c757d;
+      color: white;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+    }
+    
+    .badge.new {
+      background: #28a745;
+    }
+    
+    .badge.beta {
+      background: #ffc107;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>Resortable Feature Demos</h1>
+    <p>Comprehensive examples showcasing all the powerful features of Resortable</p>
+  </div>
+
+  <div class="container">
+    <!-- Handle Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>🎯 Drag Handles</h2>
+        <p>Restrict drag initiation to specific handle elements</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Try it out</h3>
+            <div id="handle-list">
+              <div class="handle-item" data-id="handle-1">
+                <div class="drag-handle">Drag</div>
+                <div class="handle-content">
+                  <strong>Item 1</strong> - Drag only from the handle
+                </div>
+              </div>
+              <div class="handle-item" data-id="handle-2">
+                <div class="drag-handle">Drag</div>
+                <div class="handle-content">
+                  <strong>Item 2</strong> - The rest of the item is not draggable
+                </div>
+              </div>
+              <div class="handle-item" data-id="handle-3">
+                <div class="drag-handle">Drag</div>
+                <div class="handle-content">
+                  <strong>Item 3</strong> - Perfect for lists with interactive content
+                </div>
+              </div>
+              <div class="handle-item" data-id="handle-4">
+                <div class="drag-handle">Drag</div>
+                <div class="handle-content">
+                  <strong>Item 4</strong> - Users can select text without triggering drag
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Configuration</h3>
+            <div class="code-sample">
+<span class="keyword">new</span> <span class="property">Sortable</span>(element, {
+  <span class="property">handle</span>: <span class="string">'.drag-handle'</span>,
+  <span class="property">animation</span>: <span class="string">150</span>,
+  <span class="property">ghostClass</span>: <span class="string">'sortable-ghost'</span>
+});
+
+<span class="comment">// HTML structure:</span>
+<span class="comment">// &lt;div class="handle-item"&gt;</span>
+<span class="comment">//   &lt;div class="drag-handle"&gt;⋮⋮&lt;/div&gt;</span>
+<span class="comment">//   &lt;div&gt;Content...&lt;/div&gt;</span>
+<span class="comment">// &lt;/div&gt;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>🚫 Filtered & Disabled Items</h2>
+        <p>Prevent certain elements from being dragged or disable entire lists</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Filtered Elements</h3>
+            <div id="filter-list">
+              <div class="filter-item" data-id="filter-1">
+                <span>📝 Regular Item 1</span>
+              </div>
+              <div class="filter-item" data-id="filter-2">
+                <span>📝 Item with input:</span>
+                <input type="text" placeholder="Type here..." />
+              </div>
+              <div class="filter-item disabled" data-id="filter-3">
+                <span>🔒 Disabled Item (filtered)</span>
+              </div>
+              <div class="filter-item" data-id="filter-4">
+                <span>📝 Item with button:</span>
+                <button onclick="alert('Clicked!')">Click me</button>
+              </div>
+              <div class="filter-item disabled" data-id="filter-5">
+                <span>🔒 Another disabled item</span>
+                <button disabled>Disabled</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Configuration</h3>
+            <div class="code-sample">
+<span class="keyword">new</span> <span class="property">Sortable</span>(element, {
+  <span class="property">filter</span>: <span class="string">'.disabled, input, button'</span>,
+  <span class="property">preventOnFilter</span>: <span class="keyword">true</span>,
+  <span class="property">onFilter</span>: <span class="keyword">function</span>(evt) {
+    <span class="comment">// Called when filtered element is clicked</span>
+    <span class="keyword">const</span> item = evt.target;
+    <span class="keyword">if</span> (item.classList.contains(<span class="string">'disabled'</span>)) {
+      console.log(<span class="string">'Disabled item clicked'</span>);
+    }
+  }
+});
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nested Lists Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>📁 Nested Sortable Lists</h2>
+        <p>Create complex hierarchical structures with nested sortable containers</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Nested Structure</h3>
+            <div id="nested-root">
+              <div class="nested-container" data-id="folder-1">
+                <div class="nested-header">📁 Project Files</div>
+                <div class="nested-content" id="nested-folder-1">
+                  <div class="nested-item" data-id="file-1-1">📄 index.html</div>
+                  <div class="nested-item" data-id="file-1-2">🎨 styles.css</div>
+                  <div class="nested-item" data-id="file-1-3">⚡ script.js</div>
+                </div>
+              </div>
+              <div class="nested-container" data-id="folder-2">
+                <div class="nested-header">📁 Components</div>
+                <div class="nested-content" id="nested-folder-2">
+                  <div class="nested-item" data-id="file-2-1">🧩 Header.jsx</div>
+                  <div class="nested-item" data-id="file-2-2">🧩 Footer.jsx</div>
+                  <div class="nested-item" data-id="file-2-3">🧩 Sidebar.jsx</div>
+                </div>
+              </div>
+              <div class="nested-container" data-id="folder-3">
+                <div class="nested-header">📁 Assets</div>
+                <div class="nested-content" id="nested-folder-3">
+                  <div class="nested-item" data-id="file-3-1">🖼️ logo.png</div>
+                  <div class="nested-item" data-id="file-3-2">🖼️ banner.jpg</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Configuration</h3>
+            <div class="code-sample">
+<span class="comment">// Parent container (folders)</span>
+<span class="keyword">new</span> <span class="property">Sortable</span>(rootElement, {
+  <span class="property">group</span>: <span class="string">'nested'</span>,
+  <span class="property">handle</span>: <span class="string">'.nested-header'</span>,
+  <span class="property">draggable</span>: <span class="string">'.nested-container'</span>,
+  <span class="property">animation</span>: <span class="string">150</span>
+});
+
+<span class="comment">// Child containers (files)</span>
+folders.forEach(folder => {
+  <span class="keyword">new</span> <span class="property">Sortable</span>(folder, {
+    <span class="property">group</span>: <span class="string">'files'</span>,
+    <span class="property">draggable</span>: <span class="string">'.nested-item'</span>,
+    <span class="property">animation</span>: <span class="string">150</span>
+  });
+});
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delay Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>⏱️ Drag Delay</h2>
+        <p>Add a delay before drag starts - useful for touch devices and preventing accidental drags</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Hold to Drag (300ms delay)</h3>
+            <div id="delay-list">
+              <div class="delay-item" data-id="delay-1">🎯 Hold for 300ms to start dragging</div>
+              <div class="delay-item" data-id="delay-2">📱 Perfect for mobile interfaces</div>
+              <div class="delay-item" data-id="delay-3">🚀 Prevents accidental drags</div>
+              <div class="delay-item" data-id="delay-4">✨ Allows quick taps without triggering drag</div>
+            </div>
+            <div class="delay-notice">
+              💡 <strong>Tip:</strong> Click and hold any item for 300ms to start dragging. Quick clicks won't trigger drag mode.
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Configuration</h3>
+            <div class="code-sample">
+<span class="keyword">new</span> <span class="property">Sortable</span>(element, {
+  <span class="property">delay</span>: <span class="string">300</span>, <span class="comment">// 300ms delay</span>
+  <span class="property">delayOnTouchOnly</span>: <span class="keyword">true</span>, <span class="comment">// Only on touch</span>
+  <span class="property">touchStartThreshold</span>: <span class="string">5</span>, <span class="comment">// 5px movement cancels</span>
+  <span class="property">animation</span>: <span class="string">150</span>
+});
+
+<span class="comment">// Useful for:</span>
+<span class="comment">// - Mobile apps with scrollable lists</span>
+<span class="comment">// - Lists with clickable items</span>
+<span class="comment">// - Preventing mis-clicks</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clone/Pull Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>🔄 Cloning Items Between Lists</h2>
+        <p>Clone items when dragging between lists instead of moving them</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Source List (Pull: clone)</h3>
+            <div class="clone-source" id="clone-source">
+              <div class="clone-item" data-id="template-1">📋 Template Item 1</div>
+              <div class="clone-item" data-id="template-2">📋 Template Item 2</div>
+              <div class="clone-item" data-id="template-3">📋 Template Item 3</div>
+              <div class="clone-item" data-id="template-4">📋 Template Item 4</div>
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Target List (Put: true)</h3>
+            <div class="clone-target" id="clone-target">
+              <div class="clone-item" data-id="existing-1">📌 Existing Item</div>
+            </div>
+          </div>
+        </div>
+        <div class="code-sample" style="margin-top: 1.5rem;">
+<span class="comment">// Source list - items are cloned when dragged out</span>
+<span class="keyword">new</span> <span class="property">Sortable</span>(sourceList, {
+  <span class="property">group</span>: {
+    <span class="property">name</span>: <span class="string">'clone-demo'</span>,
+    <span class="property">pull</span>: <span class="string">'clone'</span>, <span class="comment">// Clone instead of move</span>
+    <span class="property">put</span>: <span class="keyword">false</span> <span class="comment">// Don't accept items back</span>
+  },
+  <span class="property">sort</span>: <span class="keyword">false</span> <span class="comment">// Disable sorting in source</span>
+});
+
+<span class="comment">// Target list - accepts cloned items</span>
+<span class="keyword">new</span> <span class="property">Sortable</span>(targetList, {
+  <span class="property">group</span>: <span class="string">'clone-demo'</span>
+});
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Drag Demo -->
+    <div class="demo-card">
+      <div class="demo-header">
+        <h2>✨ Multi-Drag Selection <span class="badge beta">Beta</span></h2>
+        <p>Select and drag multiple items at once</p>
+      </div>
+      <div class="demo-content">
+        <div class="demo-grid">
+          <div class="demo-section">
+            <h3>Click to Select, Then Drag</h3>
+            <div id="multidrag-list">
+              <div class="filter-item" data-id="multi-1">
+                <span>📦 Package 1 - Click to select</span>
+              </div>
+              <div class="filter-item" data-id="multi-2">
+                <span>📦 Package 2 - Ctrl/Cmd+Click for multi</span>
+              </div>
+              <div class="filter-item" data-id="multi-3">
+                <span>📦 Package 3 - Drag any selected item</span>
+              </div>
+              <div class="filter-item" data-id="multi-4">
+                <span>📦 Package 4 - All selected move together</span>
+              </div>
+              <div class="filter-item" data-id="multi-5">
+                <span>📦 Package 5 - Great for bulk operations</span>
+              </div>
+            </div>
+          </div>
+          <div class="demo-section">
+            <h3>Configuration</h3>
+            <div class="code-sample">
+<span class="keyword">new</span> <span class="property">Sortable</span>(element, {
+  <span class="property">multiDrag</span>: <span class="keyword">true</span>,
+  <span class="property">selectedClass</span>: <span class="string">'selected'</span>,
+  <span class="property">onSelect</span>: <span class="keyword">function</span>(evt) {
+    console.log(<span class="string">'Selected:'</span>, evt.items);
+  }
+});
+
+<span class="comment">// Features:</span>
+<span class="comment">// - Click to select/deselect</span>
+<span class="comment">// - Ctrl/Cmd+Click for multiple</span>
+<span class="comment">// - Drag any selected item</span>
+<span class="comment">// - Visual feedback with selectedClass</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    document.getElementById('library-status')?.remove(); // Remove if exists from copied HTML
+    
+    // Import Resortable
+    const { Sortable } = await import('/src/index.ts');
+    
+    // Store instances
+    window.sortables = [];
+    
+    // Handle Demo
+    const handleList = document.getElementById('handle-list');
+    if (handleList) {
+      window.sortables.push(new Sortable(handleList, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.handle-item'
+      }));
+    }
+    
+    // Filter Demo
+    const filterList = document.getElementById('filter-list');
+    if (filterList) {
+      window.sortables.push(new Sortable(filterList, {
+        filter: '.disabled, input, button',
+        preventOnFilter: true,
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.filter-item',
+        onFilter: function(evt) {
+          const item = evt.target;
+          if (item.classList?.contains('disabled')) {
+            console.log('Attempted to drag disabled item');
+          }
+        }
+      }));
+    }
+    
+    // Nested Lists Demo
+    const nestedRoot = document.getElementById('nested-root');
+    if (nestedRoot) {
+      // Parent level - folders can be reordered
+      window.sortables.push(new Sortable(nestedRoot, {
+        group: 'nested-folders',
+        handle: '.nested-header',
+        draggable: '.nested-container',
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+      }));
+      
+      // Child level - files within folders
+      const folderContents = document.querySelectorAll('.nested-content');
+      folderContents.forEach(folder => {
+        window.sortables.push(new Sortable(folder, {
+          group: 'nested-files', // Shared group so files can move between folders
+          draggable: '.nested-item',
+          animation: 150,
+          ghostClass: 'sortable-ghost'
+        }));
+      });
+    }
+    
+    // Delay Demo
+    const delayList = document.getElementById('delay-list');
+    if (delayList) {
+      window.sortables.push(new Sortable(delayList, {
+        delay: 300, // 300ms delay before drag starts
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.delay-item'
+      }));
+    }
+    
+    // Clone Demo
+    const cloneSource = document.getElementById('clone-source');
+    const cloneTarget = document.getElementById('clone-target');
+    
+    if (cloneSource) {
+      window.sortables.push(new Sortable(cloneSource, {
+        group: {
+          name: 'clone-demo',
+          pull: 'clone',
+          put: false // Don't allow items to be put back
+        },
+        sort: false, // Disable sorting within the source list
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.clone-item'
+      }));
+    }
+    
+    if (cloneTarget) {
+      window.sortables.push(new Sortable(cloneTarget, {
+        group: 'clone-demo',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.clone-item'
+      }));
+    }
+    
+    // Multi-Drag Demo
+    const multiDragList = document.getElementById('multidrag-list');
+    if (multiDragList) {
+      let selectedItems = new Set();
+      
+      // Add click handler for selection
+      multiDragList.addEventListener('click', (e) => {
+        const item = e.target.closest('.filter-item');
+        if (item && !e.target.matches('input, button')) {
+          if (e.ctrlKey || e.metaKey) {
+            // Multi-select with Ctrl/Cmd
+            if (selectedItems.has(item)) {
+              selectedItems.delete(item);
+              item.style.background = '';
+            } else {
+              selectedItems.add(item);
+              item.style.background = '#e7f5ff';
+            }
+          } else {
+            // Single select
+            selectedItems.forEach(el => el.style.background = '');
+            selectedItems.clear();
+            selectedItems.add(item);
+            item.style.background = '#e7f5ff';
+          }
+        }
+      });
+      
+      window.sortables.push(new Sortable(multiDragList, {
+        multiDrag: true,
+        selectedClass: 'selected',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        draggable: '.filter-item',
+        onEnd: () => {
+          // Clear selection after drag
+          selectedItems.forEach(el => el.style.background = '');
+          selectedItems.clear();
+        }
+      }));
+    }
+    
+    console.log(`Resortable demos loaded - ${window.sortables.length} instances active`);
+  </script>
+</body>
+</html>
