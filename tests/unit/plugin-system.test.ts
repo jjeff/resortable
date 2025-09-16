@@ -55,7 +55,12 @@ describe('PluginSystem', () => {
 
     mockPlugin1 = new MockPlugin('TestPlugin1')
     mockPlugin2 = new MockPlugin('TestPlugin2')
-    mockSortable = { id: 'test-sortable' }
+    mockSortable = {
+      id: 'test-sortable',
+      element: document.createElement('div'),
+      options: {},
+      eventSystem: {},
+    }
   })
 
   afterEach(() => {
@@ -162,7 +167,12 @@ describe('PluginSystem', () => {
     })
 
     it('should return false when uninstalling non-installed plugin', () => {
-      const anotherSortable = { id: 'another' }
+      const anotherSortable = {
+        id: 'another',
+        element: document.createElement('div'),
+        options: {},
+        eventSystem: {},
+      }
       const result = PluginSystem.uninstall(anotherSortable, 'TestPlugin1')
       expect(result).toBe(false)
     })
@@ -198,7 +208,12 @@ describe('PluginSystem', () => {
     let anotherSortable: any
 
     beforeEach(() => {
-      anotherSortable = { id: 'another-sortable' }
+      anotherSortable = {
+        id: 'another-sortable',
+        element: document.createElement('div'),
+        options: {},
+        eventSystem: {},
+      }
       PluginSystem.register(mockPlugin1)
     })
 

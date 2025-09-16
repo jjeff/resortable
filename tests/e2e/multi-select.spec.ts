@@ -100,7 +100,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
               for (let i = start; i <= end; i++) {
                 const targetItem = items[i]
                 if (targetItem) {
-                  sortable._selectedItems.add(targetItem)
+                  sortable._selectedItems.add(targetItem as HTMLElement)
                   targetItem.classList.add('sortable-selected')
                   targetItem.setAttribute('aria-selected', 'true')
                 }

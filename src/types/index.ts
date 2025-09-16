@@ -616,22 +616,9 @@ export interface SortableInstance {
   /** Current configuration options for this Sortable instance */
   readonly options: SortableOptions
   /** Event system for this instance */
-  readonly eventSystem: {
-    on: (event: string, handler: (data: any) => void) => void
-    off: (event: string, handler?: (data: any) => void) => void
-    emit: (event: string, data?: any) => void
-  }
-  /** Drag manager for this instance */
-  dragManager?: {
-    isDragging?: boolean
-    selectionManager?: {
-      selectedElements: Set<HTMLElement>
-      isSelected: (element: HTMLElement) => boolean
-      select: (element: HTMLElement, addToSelection?: boolean) => boolean
-      deselect: (element: HTMLElement) => void
-      clearSelection: () => void
-    }
-  }
+  readonly eventSystem: any
+  /** Drag manager for this instance - simplified to avoid interface conflicts */
+  dragManager?: any
   [key: string]: any // Allow additional properties for plugin-specific extensions
 }
 

@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin } from '../types/index.js'
+import { SortablePlugin, SortableInstance } from '../types/index.js'
 
 /**
  * Plugin system for managing Sortable plugins
@@ -37,7 +37,7 @@ export class PluginSystem {
   /**
    * Track which plugins are installed on which instances
    */
-  private static installations = new WeakMap<object, Set<string>>()
+  private static installations = new WeakMap<SortableInstance, Set<string>>()
 
   /**
    * Register a plugin globally
@@ -119,7 +119,7 @@ export class PluginSystem {
    * PluginSystem.install(sortable, 'AutoScroll');
    * ```
    */
-  public static install(instance: object, name: string): void {
+  public static install(instance: SortableInstance, name: string): void {
     const plugin = this.plugins.get(name)
     if (!plugin) {
       throw new Error(`Plugin "${name}" is not registered`)
@@ -154,7 +154,7 @@ export class PluginSystem {
    * PluginSystem.uninstall(sortable, 'AutoScroll');
    * ```
    */
-  public static uninstall(instance: object, name: string): boolean {
+  public static uninstall(instance: SortableInstance, name: string): boolean {
     const plugin = this.plugins.get(name)
     const installed = this.installations.get(instance)
 
@@ -186,7 +186,7 @@ export class PluginSystem {
    * sortable.destroy();
    * ```
    */
-  public static uninstallAll(instance: object): void {
+  public static uninstallAll(instance: SortableInstance): void {
     const installed = this.installations.get(instance)
     if (!installed) {
       return
@@ -218,7 +218,7 @@ export class PluginSystem {
    * }
    * ```
    */
-  public static isInstalled(instance: object, name: string): boolean {
+  public static isInstalled(instance: SortableInstance, name: string): boolean {
     const installed = this.installations.get(instance)
     return installed ? installed.has(name) : false
   }
@@ -235,7 +235,7 @@ export class PluginSystem {
    * console.log('Installed plugins:', installedPlugins);
    * ```
    */
-  public static getInstalled(instance: object): string[] {
+  public static getInstalled(instance: SortableInstance): string[] {
     const installed = this.installations.get(instance)
     return installed ? Array.from(installed) : []
   }
@@ -251,7 +251,7 @@ export class PluginSystem {
    * PluginSystem.installMany(sortable, ['AutoScroll', 'MultiDrag']);
    * ```
    */
-  public static installMany(instance: object, names: string[]): void {
+  public static installMany(instance: SortableInstance, names: string[]): void {
     for (const name of names) {
       this.install(instance, name)
     }
@@ -268,7 +268,10 @@ export class PluginSystem {
    * PluginSystem.uninstallMany(sortable, ['AutoScroll', 'MultiDrag']);
    * ```
    */
-  public static uninstallMany(instance: object, names: string[]): void {
+  public static uninstallMany(
+    instance: SortableInstance,
+    names: string[]
+  ): void {
     for (const name of names) {
       this.uninstall(instance, name)
     }
