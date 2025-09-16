@@ -2,6 +2,17 @@
 
 import type { Sortable } from '../../src'
 
+// Extend Sortable interface for test-specific properties
+declare module '../../src' {
+  interface Sortable {
+    _selectedItems?: Set<HTMLElement>
+    _lastSelected?: HTMLElement | null
+    _multiDragInstalled?: boolean
+    _multiDragClickHandler?: (event: MouseEvent) => void
+    _multiDragKeyHandler?: (event: KeyboardEvent) => void
+  }
+}
+
 declare global {
   interface Window {
     Sortable?: typeof Sortable
