@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:debug": "NODE_OPTIONS='--inspect' vite",
     "build": "tsc && vite build",
+    "build:debug": "NODE_OPTIONS='--inspect-brk' npm run build",
     "build:rollup": "rollup -c",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
@@ -30,6 +32,7 @@
     "clean": "rimraf dist",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
+    "test:unit:debug": "NODE_OPTIONS='--inspect-brk' vitest run",
     "test:unit:watch": "vitest",
     "test:unit:ui": "vitest --ui",
     "test:unit:coverage": "vitest run --coverage",

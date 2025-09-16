@@ -28,6 +28,7 @@
     /* Declaration generation */
     "declaration": true,
     "declarationMap": true,
+    "sourceMap": true,
     "outDir": "dist"
   },
   "include": [

@@ -34,7 +34,7 @@ export default defineConfig({
   },
   server: {
     open: !process.env.CI,
-    port: process.env.CI ? 4173 : 3000, // Use different port in CI to avoid conflicts
+    port: process.env.CI ? 4173 : 5173, // Standard Vite port for debugging
     strictPort: false, // Allow Vite to find another port if needed
     host: process.env.CI ? '0.0.0.0' : 'localhost',
   },
