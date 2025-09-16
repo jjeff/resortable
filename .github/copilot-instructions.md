@@ -12,6 +12,9 @@
 ```bash
 # Install Node.js dependencies (takes ~31 seconds)
 npm install
+
+# Initialize Git submodules for legacy reference (required for migration work)
+git submodule update --init --recursive
 ```
 
 ### Pre-Commit Validation - CRITICAL
@@ -230,6 +233,15 @@ examples/              # HTML examples for testing
 ## Legacy Reference
 
 The `legacy-sortable/` directory contains the original Sortable.js codebase for reference during development. Do not modify these files - they are read-only reference material.
+
+**IMPORTANT**: `legacy-sortable` is a Git submodule that may need to be checked out explicitly:
+
+```bash
+# Initialize and update the submodule if it's empty
+git submodule update --init --recursive
+```
+
+Ensure the submodule is in place because it provides valuable reference material for migration and understanding the original implementation patterns.
 
 ## Getting Help
 
