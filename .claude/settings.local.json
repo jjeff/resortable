@@ -4,7 +4,10 @@
       "Bash(git checkout:*)",
       "WebFetch(domain:github.com)",
       "Bash(mkdir:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm run lint)",
+      "Bash(/usr/local/bin/npm run lint)",
+      "Bash(/usr/local/bin/npm run type-check)"
     ],
     "deny": [],
     "ask": []

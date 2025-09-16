@@ -901,7 +901,15 @@
 
   <!-- Load Resortable -->
   <script type="module">
-    import { Sortable } from './dist/sortable.esm.js';
+    import { Sortable, PluginSystem } from '/src/index.ts';
+    import { registerAllPlugins } from '/src/plugins/index.ts';
+
+    // Register all plugins
+    registerAllPlugins();
+
+    // Expose to global window for debugging
+    window.Sortable = Sortable;
+    window.PluginSystem = PluginSystem;
 
     // Global flag for tests
     window.resortableLoaded = false;
