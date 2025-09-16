@@ -55,7 +55,10 @@ test.describe('Plugin System E2E', () => {
       // Initialize sortable with plugin
       const { Sortable, PluginSystem } = window as any
 
-      // Register AutoScroll plugin
+      // Unregister existing AutoScroll plugin if it exists
+      PluginSystem.unregister('AutoScroll')
+
+      // Register test AutoScroll plugin
       const AutoScrollPlugin = {
         name: 'AutoScroll',
         version: '2.0.0',
@@ -120,6 +123,9 @@ test.describe('Plugin System E2E', () => {
 
       // Initialize with MultiDrag
       const { Sortable, PluginSystem } = window as any
+
+      // Unregister existing MultiDrag plugin if it exists
+      PluginSystem.unregister('MultiDrag')
 
       // Register mock MultiDrag plugin
       const MultiDragPlugin = {
@@ -193,6 +199,9 @@ test.describe('Plugin System E2E', () => {
 
       // Initialize with Swap plugin
       const { Sortable, PluginSystem } = window as any
+
+      // Unregister existing Swap plugin if it exists
+      PluginSystem.unregister('Swap')
 
       // Register mock Swap plugin
       const SwapPlugin = {

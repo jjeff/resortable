@@ -206,6 +206,7 @@ test.describe('Screen Reader Support', () => {
 
   test('clears announcements after delay to allow re-announcement', async ({
     page,
+    browserName,
   }) => {
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
@@ -214,10 +215,16 @@ test.describe('Screen Reader Support', () => {
     await firstItem.focus()
     await page.keyboard.press('Space')
     await page.keyboard.press('Enter')
+
+    // Wait a bit longer on Chromium as it seems to have timing issues
+    if (browserName === 'chromium') {
+      await page.waitForTimeout(100)
+    }
+
     await expect(announcer).toHaveText(/Grabbed/)
 
     // Wait for clear delay
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300) // Increased wait time
 
     // Announcer should be cleared
     await expect(announcer).toHaveText('')

@@ -624,8 +624,8 @@ export interface SelectionManagerInterface {
  */
 export interface DragManagerInterface {
   readonly isDragging: boolean
-  // selectionManager is private in actual DragManager implementation
-  readonly selectionManager?: SelectionManagerInterface
+  // selectionManager is always available in DragManager implementation
+  readonly selectionManager: SelectionManagerInterface
 }
 
 /**
