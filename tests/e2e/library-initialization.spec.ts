@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 test.describe('Library Initialization and Error Handling', () => {
   test('loads the development environment correctly', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Check page title
     await expect(page).toHaveTitle('Resortable - Modern Drag & Drop Library')
@@ -16,6 +18,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('initializes Resortable library successfully', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Wait for library to load and initialize
     await expect(page.locator('#library-status')).toContainText(
@@ -38,6 +42,8 @@ test.describe('Library Initialization and Error Handling', () => {
     })
 
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Check that error fallback message is displayed
     await expect(page.locator('#library-status')).toContainText(
@@ -47,6 +53,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('verifies all sortable containers are initialized', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
       'Resortable loaded'
     )
@@ -72,6 +80,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('displays proper development status information', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Check that developer section exists
     await expect(page.locator('.developer-section h2')).toContainText(
@@ -84,6 +94,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('applies correct CSS classes to sortable elements', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Check that sortable items have the correct base class
     const items = page.locator('.sortable-item')
@@ -96,6 +108,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
   test('handles page refresh and reinitialization', async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
       'Resortable loaded'
     )
@@ -108,6 +122,8 @@ test.describe('Library Initialization and Error Handling', () => {
 
     // Refresh the page
     await page.reload()
+    // Wait for the library to fully load after refresh
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
 
     // Verify library reinitializes correctly
     await expect(page.locator('#library-status')).toContainText(
@@ -135,6 +151,8 @@ test.describe('Library Initialization and Error Handling', () => {
     })
 
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
     await page.waitForTimeout(1000)
 
     // Check that no errors were logged during normal initialization

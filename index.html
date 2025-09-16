@@ -884,6 +884,9 @@
       window.MultiDragPlugin = MultiDragPlugin;
       window.SwapPlugin = SwapPlugin;
       window.sortables = [];
+
+      // Set a flag to indicate that the library is fully loaded
+      window.resortableLoaded = true;
       
       // Logging helper
       const log = (label) => (evt) => {

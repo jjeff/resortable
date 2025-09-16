@@ -695,6 +695,9 @@ folders.forEach(folder => {
 
     // Store instances
     window.sortables = [];
+
+    // Set a flag to indicate that the library is fully loaded
+    window.resortableLoaded = true;
     
     // Handle Demo
     const handleList = document.getElementById('handle-list');

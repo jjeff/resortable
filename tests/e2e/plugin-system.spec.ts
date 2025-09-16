@@ -15,6 +15,8 @@ import { test, expect } from '@playwright/test'
 test.describe('Plugin System E2E', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => (window as any).resortableLoaded === true)
   })
 
   test('should load and initialize plugin system', async ({ page }) => {
