@@ -48,13 +48,15 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
         const MultiDragPlugin = {
           name: 'MultiDrag',
           version: '2.0.0',
-          install(sortable) {
+          install(sortable: any) {
             if (!sortable.options.multiDrag) return
             sortable._multiDragInstalled = true
             sortable._selectedItems = new Set()
 
-            const handleClick = (event) => {
-              const item = event.target.closest('.sortable-item')
+            const handleClick = (event: MouseEvent) => {
+              const target = event.target as HTMLElement
+              if (!target) return
+              const item = target.closest('.sortable-item')
               if (!item) return
 
               if (event.ctrlKey || event.metaKey) {
@@ -78,20 +80,23 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
                 const start = Math.min(startIdx, endIdx)
                 const end = Math.max(startIdx, endIdx)
 
-                sortable._selectedItems.forEach((el) => {
+                sortable._selectedItems.forEach((el: Element) => {
                   el.classList.remove('sortable-selected')
                   el.setAttribute('aria-selected', 'false')
                 })
                 sortable._selectedItems.clear()
 
                 for (let i = start; i <= end; i++) {
-                  sortable._selectedItems.add(items[i])
-                  items[i].classList.add('sortable-selected')
-                  items[i].setAttribute('aria-selected', 'true')
+                  const targetItem = items[i] as HTMLElement
+                  if (targetItem) {
+                    sortable._selectedItems.add(targetItem)
+                    targetItem.classList.add('sortable-selected')
+                    targetItem.setAttribute('aria-selected', 'true')
+                  }
                 }
               } else {
                 event.preventDefault()
-                sortable._selectedItems.forEach((el) => {
+                sortable._selectedItems.forEach((el: Element) => {
                   el.classList.remove('sortable-selected')
                   el.setAttribute('aria-selected', 'false')
                 })
@@ -104,9 +109,9 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
             }
 
             // Keyboard handlers
-            const handleKeydown = (event) => {
+            const handleKeydown = (event: KeyboardEvent) => {
               if (event.key === 'Escape') {
-                sortable._selectedItems.forEach((el) => {
+                sortable._selectedItems.forEach((el: Element) => {
                   el.classList.remove('sortable-selected')
                   el.setAttribute('aria-selected', 'false')
                 })
@@ -121,8 +126,8 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
                 )
                 items.forEach((item) => {
                   sortable._selectedItems.add(item)
-                  item.classList.add('sortable-selected')
-                  item.setAttribute('aria-selected', 'true')
+                  ;(item as HTMLElement).classList.add('sortable-selected')
+                  ;(item as HTMLElement).setAttribute('aria-selected', 'true')
                 })
               }
             }
@@ -132,7 +137,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
             sortable._multiDragClickHandler = handleClick
             sortable._multiDragKeyHandler = handleKeydown
           },
-          uninstall(sortable) {
+          uninstall(sortable: any) {
             if (sortable._multiDragClickHandler) {
               sortable.element.removeEventListener(
                 'click',

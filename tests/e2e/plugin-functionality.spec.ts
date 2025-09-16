@@ -23,16 +23,16 @@ test.describe('Plugin Functionality E2E', () => {
       const AutoScrollPlugin = {
         name: 'AutoScroll',
         version: '2.0.0',
-        install(sortable) {
+        install(sortable: any) {
           sortable._autoScrollInstalled = true
-          let mousePosition = { x: 0, y: 0 }
-          const trackMouse = (e) => {
-            mousePosition = { x: e.clientX, y: e.clientY }
+          const trackMouse = (e: MouseEvent) => {
+            // Mouse tracking functionality
+            console.log('Mouse tracked:', e.clientX, e.clientY)
           }
           document.addEventListener('mousemove', trackMouse)
           sortable._autoScrollMouseTracker = trackMouse
         },
-        uninstall(sortable) {
+        uninstall(sortable: any) {
           if (sortable._autoScrollMouseTracker) {
             document.removeEventListener(
               'mousemove',
@@ -47,13 +47,15 @@ test.describe('Plugin Functionality E2E', () => {
       const MultiDragPlugin = {
         name: 'MultiDrag',
         version: '2.0.0',
-        install(sortable) {
+        install(sortable: any) {
           if (!sortable.options.multiDrag) return
           sortable._multiDragInstalled = true
           sortable._selectedItems = new Set()
 
-          const handleClick = (event) => {
-            const item = event.target.closest('.sortable-item')
+          const handleClick = (event: MouseEvent) => {
+            const target = event.target as HTMLElement
+            if (!target) return
+            const item = target.closest('.sortable-item')
             if (!item) return
 
             if (event.ctrlKey || event.metaKey) {
@@ -73,17 +75,20 @@ test.describe('Plugin Functionality E2E', () => {
               const start = Math.min(startIdx, endIdx)
               const end = Math.max(startIdx, endIdx)
 
-              sortable._selectedItems.forEach((el) =>
+              sortable._selectedItems.forEach((el: Element) =>
                 el.classList.remove('sortable-selected')
               )
               sortable._selectedItems.clear()
 
               for (let i = start; i <= end; i++) {
-                sortable._selectedItems.add(items[i])
-                items[i].classList.add('sortable-selected')
+                const targetItem = items[i] as HTMLElement
+                if (targetItem) {
+                  sortable._selectedItems.add(targetItem)
+                  targetItem.classList.add('sortable-selected')
+                }
               }
             } else {
-              sortable._selectedItems.forEach((el) =>
+              sortable._selectedItems.forEach((el: Element) =>
                 el.classList.remove('sortable-selected')
               )
               sortable._selectedItems.clear()
@@ -96,7 +101,7 @@ test.describe('Plugin Functionality E2E', () => {
           sortable.element.addEventListener('click', handleClick)
           sortable._multiDragClickHandler = handleClick
         },
-        uninstall(sortable) {
+        uninstall(sortable: any) {
           if (sortable._multiDragClickHandler) {
             sortable.element.removeEventListener(
               'click',
@@ -111,11 +116,11 @@ test.describe('Plugin Functionality E2E', () => {
       const SwapPlugin = {
         name: 'Swap',
         version: '2.0.0',
-        install(sortable) {
+        install(sortable: any) {
           sortable._swapInstalled = true
           sortable._swapMode = true
         },
-        uninstall(sortable) {
+        uninstall(sortable: any) {
           sortable._swapInstalled = false
           sortable._swapMode = false
         },
@@ -212,8 +217,8 @@ test.describe('Plugin Functionality E2E', () => {
       // Create sortables with plugins
       console.log('Creating sortables...')
 
-      window.multiDragSortable = new window.Sortable(
-        document.getElementById('multi-drag-list'),
+      window.multiDragSortable = new window.Sortable!(
+        document.getElementById('multi-drag-list')!,
         {
           multiDrag: true,
           animation: 150,
@@ -228,8 +233,8 @@ test.describe('Plugin Functionality E2E', () => {
         console.error('Failed to install MultiDrag plugin:', e)
       }
 
-      window.autoScrollSortable = new window.Sortable(
-        document.getElementById('autoscroll-list'),
+      window.autoScrollSortable = new window.Sortable!(
+        document.getElementById('autoscroll-list')!,
         {
           animation: 150,
         }
@@ -243,8 +248,8 @@ test.describe('Plugin Functionality E2E', () => {
         console.error('Failed to install AutoScroll plugin:', e)
       }
 
-      window.swapSortable = new window.Sortable(
-        document.getElementById('swap-container'),
+      window.swapSortable = new window.Sortable!(
+        document.getElementById('swap-container')!,
         {
           animation: 150,
         }
@@ -284,10 +289,10 @@ test.describe('Plugin Functionality E2E', () => {
         testArea.remove()
       }
       // Clean up globals
-      delete window.multiDragSortable
-      delete window.autoScrollSortable
-      delete window.swapSortable
-      delete window.pluginTestsReady
+      delete (window as any).multiDragSortable
+      delete (window as any).autoScrollSortable
+      delete (window as any).swapSortable
+      delete (window as any).pluginTestsReady
     })
   })
 
@@ -435,16 +440,16 @@ test.describe('Plugin Functionality E2E', () => {
     test('should handle container scrolling during drag', async ({ page }) => {
       // Get initial scroll position
       const initialScrollTop = await page.evaluate(() => {
-        return document.getElementById('autoscroll-container').scrollTop
+        return document.getElementById('autoscroll-container')!.scrollTop
       })
 
       // Scroll down to make items visible
       await page.evaluate(() => {
-        document.getElementById('autoscroll-container').scrollTop = 100
+        document.getElementById('autoscroll-container')!.scrollTop = 100
       })
 
       const scrolledPosition = await page.evaluate(() => {
-        return document.getElementById('autoscroll-container').scrollTop
+        return document.getElementById('autoscroll-container')!.scrollTop
       })
 
       expect(scrolledPosition).toBeGreaterThan(initialScrollTop)
@@ -471,7 +476,7 @@ test.describe('Plugin Functionality E2E', () => {
       const initialOrder = await page.evaluate(() => {
         return Array.from(
           document.querySelectorAll('#swap-container .sortable-item')
-        ).map((el) => el.textContent)
+        ).map((el) => (el as HTMLElement).textContent)
       })
 
       // Perform a drag operation to trigger swap
@@ -497,7 +502,7 @@ test.describe('Plugin Functionality E2E', () => {
       const finalOrder = await page.evaluate(() => {
         return Array.from(
           document.querySelectorAll('#swap-container .sortable-item')
-        ).map((el) => el.textContent)
+        ).map((el) => (el as HTMLElement).textContent)
       })
 
       expect(finalOrder).not.toEqual(initialOrder)
@@ -582,7 +587,7 @@ test.describe('Plugin Functionality E2E', () => {
           )
           return { success: true, error: null }
         } catch (error) {
-          return { success: false, error: error.message }
+          return { success: false, error: (error as Error).message }
         }
       })
 
@@ -597,7 +602,7 @@ test.describe('Plugin Functionality E2E', () => {
           window.PluginSystem.install(window.multiDragSortable, 'MultiDrag')
           return { success: true, error: null }
         } catch (error) {
-          return { success: false, error: error.message }
+          return { success: false, error: (error as Error).message }
         }
       })
 
