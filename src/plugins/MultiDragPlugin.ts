@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin } from '../types/index.js'
+import { SortablePlugin, SortableInstance } from '../types/index.js'
 
 /**
  * Configuration options for the MultiDrag plugin
@@ -102,7 +102,7 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Install the plugin on a Sortable instance
    */
-  public install(sortable: any): void {
+  public install(sortable: SortableInstance): void {
     // Only install if multiDrag is enabled
     if (!sortable.options.multiDrag) {
       console.warn('MultiDrag plugin requires multiDrag option to be enabled')
@@ -123,7 +123,7 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Uninstall the plugin from a Sortable instance
    */
-  public uninstall(sortable: any): void {
+  public uninstall(sortable: SortableInstance): void {
     // Remove click handlers
     this.detachClickHandlers(sortable)
 
@@ -134,7 +134,7 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Enhance the existing SelectionManager with multi-drag features
    */
-  private enhanceSelectionManager(sortable: any): void {
+  private enhanceSelectionManager(sortable: SortableInstance): void {
     const selectionManager = sortable.dragManager?.selectionManager
     if (!selectionManager) {
       return
@@ -157,13 +157,13 @@ export class MultiDragPlugin implements SortablePlugin {
     }
 
     // Store reference for cleanup
-    sortable._multiDragEnhanced = true
+    ;(sortable as any)._multiDragEnhanced = true
   }
 
   /**
    * Attach click handlers for multi-selection
    */
-  private attachClickHandlers(sortable: any): void {
+  private attachClickHandlers(sortable: SortableInstance): void {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement
       const draggableItem = this.findDraggableItem(sortable, target)
@@ -192,20 +192,21 @@ export class MultiDragPlugin implements SortablePlugin {
     }
 
     // Store handler for cleanup
-    sortable._multiDragClickHandler = handleClick
+    ;(sortable as any)._multiDragClickHandler = handleClick
     sortable.element.addEventListener('click', handleClick)
   }
 
   /**
    * Detach click handlers
    */
-  private detachClickHandlers(sortable: any): void {
-    if (sortable._multiDragClickHandler) {
+  private detachClickHandlers(sortable: SortableInstance): void {
+    const sortableAny = sortable as any
+    if (sortableAny._multiDragClickHandler) {
       sortable.element.removeEventListener(
         'click',
-        sortable._multiDragClickHandler
+        sortableAny._multiDragClickHandler
       )
-      delete sortable._multiDragClickHandler
+      delete sortableAny._multiDragClickHandler
     }
   }
 
@@ -226,7 +227,7 @@ export class MultiDragPlugin implements SortablePlugin {
    * Handle range selection (Shift + click)
    */
   private handleRangeSelect(
-    sortable: any,
+    sortable: SortableInstance,
     selectionManager: any,
     element: HTMLElement
   ): void {
@@ -268,7 +269,7 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Handle drag start for multi-item dragging
    */
-  private handleDragStart(sortable: any, event: any): void {
+  private handleDragStart(sortable: SortableInstance, event: any): void {
     const selectionManager = sortable.dragManager?.selectionManager
     if (!selectionManager) {
       return
@@ -286,7 +287,7 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Handle drag end for multi-item dragging
    */
-  private handleDragEnd(sortable: any): void {
+  private handleDragEnd(sortable: SortableInstance): void {
     const selectionManager = sortable.dragManager?.selectionManager
     if (!selectionManager) {
       return
@@ -315,7 +316,7 @@ export class MultiDragPlugin implements SortablePlugin {
    * Find the draggable item for a given element
    */
   private findDraggableItem(
-    sortable: any,
+    sortable: SortableInstance,
     element: HTMLElement
   ): HTMLElement | null {
     const draggableSelector = sortable.options.draggable || '.sortable-item'
@@ -326,13 +327,13 @@ export class MultiDragPlugin implements SortablePlugin {
     }
 
     // Check if element is inside a draggable item
-    return element.closest(draggableSelector) as HTMLElement | null
+    return element.closest(draggableSelector)
   }
 
   /**
    * Get all draggable items in the sortable
    */
-  private getDraggableItems(sortable: any): HTMLElement[] {
+  private getDraggableItems(sortable: SortableInstance): HTMLElement[] {
     const draggableSelector = sortable.options.draggable || '.sortable-item'
     return Array.from(sortable.element.querySelectorAll(draggableSelector))
   }

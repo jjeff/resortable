@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin } from '../types/index.js'
+import { SortablePlugin, SortableInstance } from '../types/index.js'
 
 /**
  * Configuration options for the AutoScroll plugin
@@ -110,7 +110,7 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Install the plugin on a Sortable instance
    */
-  public install(sortable: any): void {
+  public install(sortable: SortableInstance): void {
     // Listen for drag start to begin auto-scroll
     sortable.eventSystem.on('start', this.handleDragStart.bind(this, sortable))
     sortable.eventSystem.on('end', this.handleDragEnd.bind(this, sortable))
@@ -122,7 +122,7 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Uninstall the plugin from a Sortable instance
    */
-  public uninstall(sortable: any): void {
+  public uninstall(sortable: SortableInstance): void {
     // Stop any active scrolling
     this.stopAutoScroll(sortable)
 
@@ -136,28 +136,28 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Handle drag start event
    */
-  private handleDragStart(sortable: any): void {
+  private handleDragStart(sortable: SortableInstance): void {
     this.startAutoScroll(sortable)
   }
 
   /**
    * Handle drag end event
    */
-  private handleDragEnd(sortable: any): void {
+  private handleDragEnd(sortable: SortableInstance): void {
     this.stopAutoScroll(sortable)
   }
 
   /**
    * Attach mouse tracking for auto-scroll
    */
-  private attachMouseTracking(sortable: any): void {
+  private attachMouseTracking(sortable: SortableInstance): void {
     const handleMouseMove = (event: MouseEvent) => {
       this.lastMousePosition = { x: event.clientX, y: event.clientY }
     }
 
     // Store the handler for cleanup
-    if (!sortable._autoScrollMouseHandler) {
-      sortable._autoScrollMouseHandler = handleMouseMove
+    if (!(sortable as any)._autoScrollMouseHandler) {
+      ;(sortable as any)._autoScrollMouseHandler = handleMouseMove
       document.addEventListener('mousemove', handleMouseMove)
     }
   }
@@ -165,20 +165,21 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Detach mouse tracking
    */
-  private detachMouseTracking(sortable: any): void {
-    if (sortable._autoScrollMouseHandler) {
+  private detachMouseTracking(sortable: SortableInstance): void {
+    const sortableAny = sortable as any
+    if (sortableAny._autoScrollMouseHandler) {
       document.removeEventListener(
         'mousemove',
-        sortable._autoScrollMouseHandler
+        sortableAny._autoScrollMouseHandler
       )
-      delete sortable._autoScrollMouseHandler
+      delete sortableAny._autoScrollMouseHandler
     }
   }
 
   /**
    * Start auto-scroll for a sortable instance
    */
-  private startAutoScroll(sortable: any): void {
+  private startAutoScroll(sortable: SortableInstance): void {
     this.stopAutoScroll(sortable) // Clean up any existing scroll
 
     const scroll = () => {
@@ -192,18 +193,18 @@ export class AutoScrollPlugin implements SortablePlugin {
         this.performScroll(sortable, scrollAmount)
       }
 
-      this.animationFrame = requestAnimationFrame(scroll)
+      this.animationFrame = window.requestAnimationFrame(scroll)
     }
 
-    this.animationFrame = requestAnimationFrame(scroll)
+    this.animationFrame = window.requestAnimationFrame(scroll)
   }
 
   /**
    * Stop auto-scroll for a sortable instance
    */
-  private stopAutoScroll(_sortable: any): void {
+  private stopAutoScroll(_sortable: SortableInstance): void {
     if (this.animationFrame) {
-      cancelAnimationFrame(this.animationFrame)
+      window.cancelAnimationFrame(this.animationFrame)
       this.animationFrame = null
     }
   }
@@ -211,15 +212,18 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Check if auto-scroll should be active
    */
-  private shouldAutoScroll(sortable: any): boolean {
+  private shouldAutoScroll(sortable: SortableInstance): boolean {
     // Check if dragging is active
-    return !!sortable.dragManager && sortable.dragManager.isDragging
+    return Boolean(sortable.dragManager?.isDragging)
   }
 
   /**
    * Calculate scroll amount based on mouse position
    */
-  private calculateScrollAmount(sortable: any): { x: number; y: number } {
+  private calculateScrollAmount(sortable: SortableInstance): {
+    x: number
+    y: number
+  } {
     const container = sortable.element
     const rect = container.getBoundingClientRect()
     const mouse = this.lastMousePosition
@@ -268,7 +272,10 @@ export class AutoScrollPlugin implements SortablePlugin {
   /**
    * Perform the actual scrolling
    */
-  private performScroll(sortable: any, amount: { x: number; y: number }): void {
+  private performScroll(
+    sortable: SortableInstance,
+    amount: { x: number; y: number }
+  ): void {
     const container = sortable.element
 
     // Scroll the container
@@ -293,7 +300,7 @@ export class AutoScrollPlugin implements SortablePlugin {
     let parent = element.parentElement
 
     while (parent && parent !== document.body) {
-      const style = getComputedStyle(parent)
+      const style = window.getComputedStyle(parent)
       const hasScrollX =
         style.overflowX === 'auto' || style.overflowX === 'scroll'
       const hasScrollY =

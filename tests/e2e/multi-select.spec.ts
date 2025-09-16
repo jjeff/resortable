@@ -56,7 +56,9 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
             console.error('Debug: Failed to install MultiDrag:', e)
           }
         } else {
-          console.warn('Debug: MultiDragPlugin not available, creating fallback')
+          console.warn(
+            'Debug: MultiDragPlugin not available, creating fallback'
+          )
           // Fallback: Create basic multi-select functionality for testing
           sortable._selectedItems = new Set()
 
@@ -83,7 +85,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
               event.preventDefault()
               const items = Array.from(
                 sortable.element.querySelectorAll('.sortable-item')
-              ) as HTMLElement[]
+              )
               const startIdx = items.indexOf(sortable._lastSelected)
               const endIdx = items.indexOf(item)
               const start = Math.min(startIdx, endIdx)

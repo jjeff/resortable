@@ -606,6 +606,35 @@ export interface MoveEvent extends SortableEvent {
  *
  * @public
  */
+/**
+ * Type alias for Sortable instance used in plugins to avoid circular dependencies
+ * @public
+ */
+export interface SortableInstance {
+  /** The DOM element that this Sortable instance is bound to */
+  readonly element: HTMLElement
+  /** Current configuration options for this Sortable instance */
+  readonly options: SortableOptions
+  /** Event system for this instance */
+  readonly eventSystem: {
+    on: (event: string, handler: (data: any) => void) => void
+    off: (event: string, handler?: (data: any) => void) => void
+    emit: (event: string, data?: any) => void
+  }
+  /** Drag manager for this instance */
+  dragManager?: {
+    isDragging?: boolean
+    selectionManager?: {
+      selectedElements: Set<HTMLElement>
+      isSelected: (element: HTMLElement) => boolean
+      select: (element: HTMLElement, addToSelection?: boolean) => boolean
+      deselect: (element: HTMLElement) => void
+      clearSelection: () => void
+    }
+  }
+  [key: string]: any // Allow additional properties for plugin-specific extensions
+}
+
 export interface SortablePlugin {
   /**
    * Plugin name (must be unique)
@@ -621,13 +650,13 @@ export interface SortablePlugin {
    * Install the plugin on a Sortable instance
    * @param sortable - The sortable instance to install on
    */
-  install(sortable: unknown): void // Using unknown to avoid circular dependency
+  install(sortable: SortableInstance): void
 
   /**
    * Uninstall the plugin from a Sortable instance
    * @param sortable - The sortable instance to uninstall from
    */
-  uninstall(sortable: unknown): void // Using unknown to avoid circular dependency
+  uninstall(sortable: SortableInstance): void
 }
 
 /**
