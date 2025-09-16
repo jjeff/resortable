@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for PluginSystem
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { PluginSystem } from '../../src/core/PluginSystem.js'
 import { SortablePlugin } from '../../src/types/index.js'
 
@@ -171,7 +171,11 @@ describe('PluginSystem', () => {
         id: 'another',
         element: document.createElement('div'),
         options: {},
-        eventSystem: {},
+        eventSystem: {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn(),
+        },
       }
       const result = PluginSystem.uninstall(anotherSortable, 'TestPlugin1')
       expect(result).toBe(false)
@@ -212,7 +216,11 @@ describe('PluginSystem', () => {
         id: 'another-sortable',
         element: document.createElement('div'),
         options: {},
-        eventSystem: {},
+        eventSystem: {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn(),
+        },
       }
       PluginSystem.register(mockPlugin1)
     })

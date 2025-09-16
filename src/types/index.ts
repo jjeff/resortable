@@ -623,9 +623,9 @@ export interface SelectionManagerInterface {
  * @public
  */
 export interface EventSystemInterface {
-  on(event: string, handler: (...args: unknown[]) => void): void
-  off(event: string, handler?: (...args: unknown[]) => void): void
-  emit(event: string, ...args: unknown[]): void
+  on(event: string, handler: (...args: any[]) => void): void
+  off(event: string, handler?: (...args: any[]) => void): void
+  emit(event: string, ...args: any[]): void
 }
 
 /**
@@ -639,12 +639,10 @@ export interface SortableInstance {
   readonly options: SortableOptions
   /** Event system for this instance */
   readonly eventSystem: EventSystemInterface
-  /** Drag manager for this instance - simplified to avoid interface conflicts */
-  dragManager?: {
-    isDragging?: boolean
-    selectionManager?: SelectionManagerInterface
-  }
-  [key: string]: unknown // Allow additional properties for plugin-specific extensions
+  /** Drag manager for this instance - uses any to avoid circular dependency issues */
+  dragManager?: any
+  /** Allow additional properties for plugin-specific extensions */
+  [key: string]: any
 }
 
 export interface SortablePlugin {

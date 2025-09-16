@@ -150,7 +150,10 @@ export class SwapPlugin implements SortablePlugin {
   private overrideDropZoneMove(sortable: SortableInstance): void {
     const dropZone = (
       sortable as SortableInstance & {
-        dropZone?: { move: (items: HTMLElement[], targetIndex: number) => void }
+        dropZone?: {
+          element: HTMLElement
+          move: (items: HTMLElement[], targetIndex: number) => void
+        }
       }
     ).dropZone
     if (!dropZone) {
@@ -191,7 +194,10 @@ export class SwapPlugin implements SortablePlugin {
   private restoreDropZoneMove(sortable: SortableInstance): void {
     const dropZone = (
       sortable as SortableInstance & {
-        dropZone?: { move: (items: HTMLElement[], targetIndex: number) => void }
+        dropZone?: {
+          element: HTMLElement
+          move: (items: HTMLElement[], targetIndex: number) => void
+        }
       }
     ).dropZone
     const originalMethod = this.originalMoveMethod.get(sortable)

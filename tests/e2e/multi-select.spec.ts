@@ -50,7 +50,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
         if (MultiDragPlugin) {
           try {
             console.log('Debug: Installing MultiDrag plugin on sortable')
-            PluginSystem.install(sortable, 'MultiDrag')
+            PluginSystem.install(sortable as any, 'MultiDrag')
             console.log('Debug: MultiDrag plugin installed successfully')
           } catch (e) {
             console.error('Debug: Failed to install MultiDrag:', e)
