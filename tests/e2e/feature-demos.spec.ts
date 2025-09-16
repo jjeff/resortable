@@ -4,16 +4,8 @@ import { dragAndDropWithAnimation } from './helpers/animations'
 test.describe('Feature Demos', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html')
-    // Wait for Resortable to load
-    await page.waitForFunction(
-      () => {
-        const win = window as typeof window & { sortables?: unknown[] }
-        return win.sortables && win.sortables.length > 0
-      },
-      {
-        timeout: 5000,
-      }
-    )
+    // Wait for the library to fully load
+    await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
   test.describe('Handle Functionality', () => {

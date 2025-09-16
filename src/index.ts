@@ -37,8 +37,12 @@ import { AnimationManager } from './animation/AnimationManager.js'
 import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
+import { PluginSystem } from './core/PluginSystem.js'
 import { SortableOptions, type SortableEvents } from './types/index.js'
 import { toArray as domToArray } from './utils/dom.js'
+
+// Export PluginSystem
+export { PluginSystem }
 
 // WeakMap to track Sortable instances by their elements
 const sortableInstances = new WeakMap<HTMLElement, Sortable>()
@@ -294,9 +298,83 @@ export class Sortable {
    * @public
    */
   public destroy(): void {
+    // Uninstall all plugins
+    PluginSystem.uninstallAll(this)
+
     this.dragManager.detach()
     // Remove from instance tracking
     sortableInstances.delete(this.element)
+  }
+
+  /**
+   * Install a plugin on this Sortable instance
+   *
+   * @param name - Name of the plugin to install
+   * @throws Error if plugin is not registered or already installed
+   *
+   * @example
+   * ```typescript
+   * const sortable = new Sortable(element);
+   * sortable.usePlugin('AutoScroll');
+   * ```
+   *
+   * @public
+   */
+  public usePlugin(name: string): void {
+    PluginSystem.install(this, name)
+  }
+
+  /**
+   * Uninstall a plugin from this Sortable instance
+   *
+   * @param name - Name of the plugin to uninstall
+   * @returns true if plugin was found and uninstalled, false otherwise
+   *
+   * @example
+   * ```typescript
+   * sortable.removePlugin('AutoScroll');
+   * ```
+   *
+   * @public
+   */
+  public removePlugin(name: string): boolean {
+    return PluginSystem.uninstall(this, name)
+  }
+
+  /**
+   * Check if a plugin is installed on this instance
+   *
+   * @param name - Name of the plugin to check
+   * @returns true if plugin is installed, false otherwise
+   *
+   * @example
+   * ```typescript
+   * if (sortable.hasPlugin('AutoScroll')) {
+   *   console.log('AutoScroll is active');
+   * }
+   * ```
+   *
+   * @public
+   */
+  public hasPlugin(name: string): boolean {
+    return PluginSystem.isInstalled(this, name)
+  }
+
+  /**
+   * Get all installed plugin names for this instance
+   *
+   * @returns Array of installed plugin names
+   *
+   * @example
+   * ```typescript
+   * const plugins = sortable.getPlugins();
+   * console.log('Installed plugins:', plugins);
+   * ```
+   *
+   * @public
+   */
+  public getPlugins(): string[] {
+    return PluginSystem.getInstalled(this)
   }
 
   /**

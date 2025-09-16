@@ -10,6 +10,8 @@ const shouldSkipMobileChrome = (
 test.describe('Legacy E2E Drag and Drop', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+    // Wait for the library to fully load
+    await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#list1 .sortable-item')).toHaveCount(4)
     await expect(page.locator('#list2 .sortable-item')).toHaveCount(4)
   })

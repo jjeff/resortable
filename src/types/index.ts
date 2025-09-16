@@ -606,6 +606,59 @@ export interface MoveEvent extends SortableEvent {
  *
  * @public
  */
+/**
+ * Selection manager interface for type safety
+ * @public
+ */
+export interface SelectionManagerInterface {
+  readonly selectedElements: Set<HTMLElement>
+  select(item: HTMLElement, addToSelection?: boolean): void
+  deselect(item: HTMLElement): void
+  isSelected(item: HTMLElement): boolean
+  clearSelection(): void
+}
+
+/**
+ * Drag manager interface for type safety in plugins
+ * @public
+ */
+export interface DragManagerInterface {
+  readonly isDragging: boolean
+  // selectionManager is always available in DragManager implementation
+  readonly selectionManager: SelectionManagerInterface
+}
+
+/**
+ * Event system interface for type safety
+ * @public
+ */
+export interface EventSystemInterface {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
+  on(event: string, handler: (...args: any[]) => void): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
+  off(event: string, handler?: (...args: any[]) => void): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
+  emit(event: string, ...args: any[]): void
+}
+
+/**
+ * Type alias for Sortable instance used in plugins to avoid circular dependencies
+ * @public
+ */
+export interface SortableInstance {
+  /** The DOM element that this Sortable instance is bound to */
+  readonly element: HTMLElement
+  /** Current configuration options for this Sortable instance */
+  readonly options: SortableOptions
+  /** Event system for this instance */
+  readonly eventSystem: EventSystemInterface
+  /** Drag manager for this instance */
+  dragManager?: DragManagerInterface
+  /** Allow additional properties for plugin-specific extensions - justified for plugin extensibility */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any
+}
+
 export interface SortablePlugin {
   /**
    * Plugin name (must be unique)
@@ -621,13 +674,13 @@ export interface SortablePlugin {
    * Install the plugin on a Sortable instance
    * @param sortable - The sortable instance to install on
    */
-  install(sortable: unknown): void // Using unknown to avoid circular dependency
+  install(sortable: SortableInstance): void
 
   /**
    * Uninstall the plugin from a Sortable instance
    * @param sortable - The sortable instance to uninstall from
    */
-  uninstall(sortable: unknown): void // Using unknown to avoid circular dependency
+  uninstall(sortable: SortableInstance): void
 }
 
 /**

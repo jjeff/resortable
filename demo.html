@@ -680,12 +680,24 @@ folders.forEach(folder => {
 
   <script type="module">
     document.getElementById('library-status')?.remove(); // Remove if exists from copied HTML
-    
+
     // Import Resortable
-    const { Sortable } = await import('/src/index.ts');
-    
+    const { Sortable, PluginSystem } = await import('/src/index.ts');
+    const { MultiDragPlugin, registerAllPlugins } = await import('/src/plugins/index.ts');
+
+    // Expose to global window for E2E tests
+    window.Sortable = Sortable;
+    window.PluginSystem = PluginSystem;
+    window.MultiDragPlugin = MultiDragPlugin;
+
+    // Register all plugins
+    registerAllPlugins();
+
     // Store instances
     window.sortables = [];
+
+    // Set a flag to indicate that the library is fully loaded
+    window.resortableLoaded = true;
     
     // Handle Demo
     const handleList = document.getElementById('handle-list');
