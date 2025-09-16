@@ -11,7 +11,7 @@ test.describe('Event Callbacks and Logging', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
-    await page.waitForFunction(() => (window as any).resortableLoaded === true)
+    await page.waitForFunction(() => window.resortableLoaded === true)
     // Clear any existing console logs
     await page.evaluate(() => {
       // eslint-disable-next-line no-console

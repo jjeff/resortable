@@ -5,8 +5,7 @@ test.describe('Feature Demos', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html')
     // Wait for the library to fully load
-    await page.waitForFunction(() => (window as any).resortableLoaded === true
-    )
+    await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
   test.describe('Handle Functionality', () => {

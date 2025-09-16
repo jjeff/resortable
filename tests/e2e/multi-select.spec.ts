@@ -4,7 +4,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
-    await page.waitForFunction(() => (window as any).resortableLoaded === true)
+    await page.waitForFunction(() => window.resortableLoaded === true)
 
     // Initialize a sortable with multi-select enabled using the real plugin system
     await page.evaluate(() => {

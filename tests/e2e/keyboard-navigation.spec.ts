@@ -4,7 +4,7 @@ test.describe('Keyboard Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
-    await page.waitForFunction(() => (window as any).resortableLoaded === true)
+    await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })
 
