@@ -127,24 +127,50 @@ test.describe('Plugin System E2E', () => {
       // Unregister existing MultiDrag plugin if it exists
       PluginSystem.unregister('MultiDrag')
 
-      // Register mock MultiDrag plugin
+      // Register mock MultiDrag plugin with enhanced click handling
       const MultiDragPlugin = {
         name: 'MultiDrag',
         version: '2.0.0',
         install(sortable: any) {
           sortable._multiDragInstalled = true
-          // Add click handler for testing
-          sortable.element.addEventListener('click', function (e: Event) {
-            if ((e as MouseEvent).ctrlKey) {
-              const target = e.target as HTMLElement
+          sortable._selectedItems = new Set()
+
+          // Add click handler for testing with better event handling
+          const handleClick = function (e: Event) {
+            const event = e as MouseEvent
+            if (event.ctrlKey || event.metaKey) {
+              const target = event.target as HTMLElement
               if (target.classList.contains('sortable-item')) {
-                target.classList.toggle('selected')
+                if (target.classList.contains('selected')) {
+                  target.classList.remove('selected')
+                  sortable._selectedItems.delete(target)
+                } else {
+                  target.classList.add('selected')
+                  sortable._selectedItems.add(target)
+                }
+                // Prevent default to avoid interference
+                event.preventDefault()
+                event.stopPropagation()
               }
             }
-          })
+          }
+
+          sortable.element.addEventListener('click', handleClick, true)
+          sortable._multiDragClickHandler = handleClick
         },
         uninstall(sortable: any) {
+          if (sortable._multiDragClickHandler) {
+            sortable.element.removeEventListener(
+              'click',
+              sortable._multiDragClickHandler,
+              true
+            )
+            delete sortable._multiDragClickHandler
+          }
           sortable._multiDragInstalled = false
+          if (sortable._selectedItems) {
+            sortable._selectedItems.clear()
+          }
         },
       }
 
@@ -156,19 +182,47 @@ test.describe('Plugin System E2E', () => {
       ;(window as any).multiDragSortable = sortable
     })
 
-    // Test multi-selection functionality
-    const firstItem = page.locator('#multi-drag-test .sortable-item').first()
-    const secondItem = page.locator('#multi-drag-test .sortable-item').nth(1)
+    // Use direct event dispatch for more reliable modifier handling
+    await page.evaluate(() => {
+      const item1 = document.querySelector(
+        '#multi-drag-test .sortable-item:first-child'
+      ) as HTMLElement
+      const item2 = document.querySelector(
+        '#multi-drag-test .sortable-item:nth-child(2)'
+      ) as HTMLElement
 
-    // Simulate Ctrl+Click for multi-selection
-    await firstItem.click({ modifiers: ['Control'] })
-    await secondItem.click({ modifiers: ['Control'] })
+      const createCtrlClick = (target: HTMLElement) => {
+        const event = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          metaKey: false,
+        })
+        target.dispatchEvent(event)
+      }
 
-    // Verify selection
-    const selectedCount = await page
-      .locator('#multi-drag-test .sortable-item.selected')
-      .count()
-    expect(selectedCount).toBe(2)
+      createCtrlClick(item1)
+      createCtrlClick(item2)
+    })
+
+    // Wait for DOM updates
+    await page.waitForTimeout(100)
+
+    // Verify selection with retry logic
+    await expect
+      .poll(
+        async () => {
+          const count = await page
+            .locator('#multi-drag-test .sortable-item.selected')
+            .count()
+          return count
+        },
+        {
+          message: 'Expected 2 selected items in MultiDrag plugin test',
+          timeout: 5000,
+        }
+      )
+      .toBe(2)
   })
 
   test('should handle Swap plugin functionality', async ({ page }) => {

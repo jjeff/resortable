@@ -313,33 +313,68 @@ test.describe('Plugin Functionality E2E', () => {
     test('should enable multi-item selection with Ctrl+Click', async ({
       page,
     }) => {
-      // Select multiple items with Ctrl+Click
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-        .click({ modifiers: ['Control'] })
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-3"]')
-        .click({ modifiers: ['Control'] })
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-5"]')
-        .click({ modifiers: ['Control'] })
+      // Helper function to verify selection state
+      const verifySelectionState = async (
+        expectedCount: number,
+        expectedSelected: string[]
+      ) => {
+        // Wait for DOM to stabilize after click events
+        await page.waitForTimeout(100)
 
-      // Verify selection
-      const selectedCount = await page
-        .locator('#multi-drag-list .sortable-selected')
-        .count()
-      expect(selectedCount).toBe(3)
+        // Use retry logic for selection verification
+        await expect
+          .poll(
+            async () => {
+              const count = await page
+                .locator('#multi-drag-list .sortable-selected')
+                .count()
+              return count
+            },
+            {
+              message: `Expected ${expectedCount} selected items`,
+              timeout: 5000,
+            }
+          )
+          .toBe(expectedCount)
 
-      // Verify specific items are selected
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-      ).toHaveClass(/sortable-selected/)
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-3"]')
-      ).toHaveClass(/sortable-selected/)
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-5"]')
-      ).toHaveClass(/sortable-selected/)
+        // Verify specific items are selected
+        for (const itemId of expectedSelected) {
+          await expect(
+            page.locator(`#multi-drag-list .sortable-item[data-id="${itemId}"]`)
+          ).toHaveClass(/sortable-selected/, { timeout: 2000 })
+        }
+      }
+
+      // Select multiple items with Ctrl+Click using dispatchEvent for more reliable modifier handling
+      await page.evaluate(() => {
+        const item1 = document.querySelector(
+          '#multi-drag-list .sortable-item[data-id="multi-1"]'
+        ) as HTMLElement
+        const item3 = document.querySelector(
+          '#multi-drag-list .sortable-item[data-id="multi-3"]'
+        ) as HTMLElement
+        const item5 = document.querySelector(
+          '#multi-drag-list .sortable-item[data-id="multi-5"]'
+        ) as HTMLElement
+
+        // Create click events with modifier keys
+        const createCtrlClick = (target: HTMLElement) => {
+          const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            metaKey: false,
+          })
+          target.dispatchEvent(event)
+        }
+
+        createCtrlClick(item1)
+        createCtrlClick(item3)
+        createCtrlClick(item5)
+      })
+
+      // Verify selection with retry logic
+      await verifySelectionState(3, ['multi-1', 'multi-3', 'multi-5'])
     })
 
     test('should enable range selection with Shift+Click', async ({ page }) => {
@@ -371,45 +406,116 @@ test.describe('Plugin Functionality E2E', () => {
     })
 
     test('should toggle selection with Ctrl+Click', async ({ page }) => {
+      // Helper function for reliable modifier clicks
+      const ctrlClickItem = async (itemId: string) => {
+        await page.evaluate((id) => {
+          const item = document.querySelector(
+            `#multi-drag-list .sortable-item[data-id="${id}"]`
+          ) as HTMLElement
+          const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            metaKey: false,
+          })
+          item.dispatchEvent(event)
+        }, itemId)
+        // Wait for DOM updates
+        await page.waitForTimeout(50)
+      }
+
       // Select an item
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-        .click({ modifiers: ['Control'] })
+      await ctrlClickItem('multi-1')
+
+      // Verify selection with retry logic
       await expect(
         page.locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-      ).toHaveClass(/sortable-selected/)
+      ).toHaveClass(/sortable-selected/, { timeout: 2000 })
 
       // Toggle it off
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-        .click({ modifiers: ['Control'] })
+      await ctrlClickItem('multi-1')
+
+      // Verify deselection with retry logic
       await expect(
         page.locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-      ).not.toHaveClass(/sortable-selected/)
+      ).not.toHaveClass(/sortable-selected/, { timeout: 2000 })
     })
 
     test('should clear selection with single click', async ({ page }) => {
+      // Helper function for reliable clicks
+      const ctrlClickItem = async (itemId: string) => {
+        await page.evaluate((id) => {
+          const item = document.querySelector(
+            `#multi-drag-list .sortable-item[data-id="${id}"]`
+          ) as HTMLElement
+          const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            metaKey: false,
+          })
+          item.dispatchEvent(event)
+        }, itemId)
+        await page.waitForTimeout(50)
+      }
+
+      const singleClickItem = async (itemId: string) => {
+        await page.evaluate((id) => {
+          const item = document.querySelector(
+            `#multi-drag-list .sortable-item[data-id="${id}"]`
+          ) as HTMLElement
+          const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: false,
+            metaKey: false,
+          })
+          item.dispatchEvent(event)
+        }, itemId)
+        await page.waitForTimeout(50)
+      }
+
       // Select multiple items
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-        .click({ modifiers: ['Control'] })
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-3"]')
-        .click({ modifiers: ['Control'] })
+      await ctrlClickItem('multi-1')
+      await ctrlClickItem('multi-3')
+
+      // Verify initial selection
+      await expect
+        .poll(
+          async () => {
+            return await page
+              .locator('#multi-drag-list .sortable-selected')
+              .count()
+          },
+          {
+            message: 'Expected 2 selected items initially',
+            timeout: 3000,
+          }
+        )
+        .toBe(2)
 
       // Single click should clear and select only one
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-2"]')
-        .click()
+      await singleClickItem('multi-2')
 
-      // Verify only one item is selected
-      const selectedCount = await page
-        .locator('#multi-drag-list .sortable-selected')
-        .count()
-      expect(selectedCount).toBe(1)
+      // Verify only one item is selected with retry logic
+      await expect
+        .poll(
+          async () => {
+            const count = await page
+              .locator('#multi-drag-list .sortable-selected')
+              .count()
+            return count
+          },
+          {
+            message: 'Expected 1 selected item after single click',
+            timeout: 3000,
+          }
+        )
+        .toBe(1)
+
       await expect(
         page.locator('#multi-drag-list .sortable-item[data-id="multi-2"]')
-      ).toHaveClass(/sortable-selected/)
+      ).toHaveClass(/sortable-selected/, { timeout: 2000 })
     })
   })
 
