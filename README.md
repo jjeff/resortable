@@ -1,3 +1,5 @@
+⚠️⚠️⚠️ WARNING: Development in progress. Not yet ready for external use. ⚠️⚠️⚠️
+
 # Resortable
 
 Modern TypeScript rewrite of Sortable.js - reorderable drag-and-drop lists
@@ -16,7 +18,7 @@ Resortable is a complete rewrite of the popular Sortable.js library using modern
 
 ## Status
 
-⚠️ **Pre-Alpha**: This project is in early development. Not ready for production use.
+⚠️⚠️⚠️ **Pre-Alpha**: This project is in early development and very little works yet. Not ready for production use. ⚠️⚠️⚠️
 
 ## Installation
 
