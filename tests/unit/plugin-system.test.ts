@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { PluginSystem } from '../../src/core/PluginSystem.js'
-import { SortablePlugin } from '../../src/types/index.js'
+import { SortablePlugin, SortableInstance } from '../../src/types/index.js'
 
 // Mock plugins for testing
 class MockPlugin implements SortablePlugin {
@@ -184,7 +184,7 @@ describe('PluginSystem', () => {
           off: vi.fn(),
           emit: vi.fn(),
         },
-      }
+      } as unknown as SortableInstance
       const result = PluginSystem.uninstall(anotherSortable, 'TestPlugin1')
       expect(result).toBe(false)
     })

@@ -170,7 +170,7 @@ export class SwapPlugin implements SortablePlugin {
       }
 
       const targetElement = this.getElementAtIndex(
-        dropZone as { element: HTMLElement },
+        { element: dropZone.element },
         targetIndex
       )
       if (!targetElement) {
@@ -184,7 +184,7 @@ export class SwapPlugin implements SortablePlugin {
       }
 
       // Perform the swap
-      this.performSwap(dropZone, items, targetElement)
+      this.performSwap({ element: dropZone.element }, items, targetElement)
     }
   }
 

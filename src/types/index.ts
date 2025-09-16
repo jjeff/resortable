@@ -624,7 +624,8 @@ export interface SelectionManagerInterface {
  */
 export interface DragManagerInterface {
   readonly isDragging: boolean
-  readonly selectionManager: SelectionManagerInterface
+  // selectionManager is private in actual DragManager implementation
+  readonly selectionManager?: SelectionManagerInterface
 }
 
 /**
@@ -632,11 +633,11 @@ export interface DragManagerInterface {
  * @public
  */
 export interface EventSystemInterface {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
   on(event: string, handler: (...args: any[]) => void): void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
   off(event: string, handler?: (...args: any[]) => void): void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types for compatibility with plugins
   emit(event: string, ...args: any[]): void
 }
 
