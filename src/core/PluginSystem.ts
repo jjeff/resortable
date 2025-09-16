@@ -43,15 +43,22 @@ export class PluginSystem {
    * Register a plugin globally
    *
    * @param plugin - The plugin to register
-   * @throws Error if plugin name conflicts with existing plugin
+   * @param options - Registration options
+   * @param options.overwrite - If true, overwrite existing plugin instead of throwing error
+   * @throws Error if plugin name conflicts with existing plugin and overwrite is false
    *
    * @example
    * ```typescript
    * PluginSystem.register(new MyCustomPlugin());
+   * // Or to overwrite existing:
+   * PluginSystem.register(new MyCustomPlugin(), { overwrite: true });
    * ```
    */
-  public static register(plugin: SortablePlugin): void {
-    if (this.plugins.has(plugin.name)) {
+  public static register(
+    plugin: SortablePlugin,
+    options: { overwrite?: boolean } = {}
+  ): void {
+    if (this.plugins.has(plugin.name) && !options.overwrite) {
       throw new Error(`Plugin "${plugin.name}" is already registered`)
     }
 

@@ -30,9 +30,16 @@ import type { SortableInstance } from '../types/index.js'
  * ```
  */
 export function registerAllPlugins(): void {
-  PluginSystem.register(AutoScrollPlugin.create())
-  PluginSystem.register(MultiDragPlugin.create())
-  PluginSystem.register(SwapPlugin.create())
+  // Check if plugins are already registered to avoid duplicate registration errors
+  if (!PluginSystem.get('AutoScroll')) {
+    PluginSystem.register(AutoScrollPlugin.create())
+  }
+  if (!PluginSystem.get('MultiDrag')) {
+    PluginSystem.register(MultiDragPlugin.create())
+  }
+  if (!PluginSystem.get('Swap')) {
+    PluginSystem.register(SwapPlugin.create())
+  }
 }
 
 /**
