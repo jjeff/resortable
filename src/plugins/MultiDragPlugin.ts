@@ -4,7 +4,11 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin, SortableInstance } from '../types/index.js'
+import {
+  SortablePlugin,
+  SortableInstance,
+  SelectionManagerInterface,
+} from '../types/index.js'
 
 /**
  * Configuration options for the MultiDrag plugin
@@ -105,7 +109,7 @@ export class MultiDragPlugin implements SortablePlugin {
   public install(sortable: SortableInstance): void {
     // Only install if multiDrag is enabled
     if (!sortable.options.multiDrag) {
-      console.warn('MultiDrag plugin requires multiDrag option to be enabled')
+      // MultiDrag plugin requires multiDrag option to be enabled
       return
     }
 
@@ -145,19 +149,23 @@ export class MultiDragPlugin implements SortablePlugin {
     selectionManager.select = (
       element: HTMLElement,
       addToSelection = false
-    ) => {
+    ): boolean => {
       // Check selection limit
       if (
         !addToSelection ||
         selectionManager.selectedElements.size < this.options.maxSelections
       ) {
-        return originalSelect(element, addToSelection)
+        originalSelect(element, addToSelection)
+        return true
       }
       return false
     }
 
-    // Store reference for cleanup
-    ;(sortable as any)._multiDragEnhanced = true
+    // Store reference for cleanup using explicit type extension
+    const sortableWithMultiDrag = sortable as SortableInstance & {
+      _multiDragEnhanced?: boolean
+    }
+    sortableWithMultiDrag._multiDragEnhanced = true
   }
 
   /**
@@ -191,8 +199,11 @@ export class MultiDragPlugin implements SortablePlugin {
       }
     }
 
-    // Store handler for cleanup
-    ;(sortable as any)._multiDragClickHandler = handleClick
+    // Store handler for cleanup using explicit type extension
+    const sortableWithClickHandler = sortable as SortableInstance & {
+      _multiDragClickHandler?: (event: MouseEvent) => void
+    }
+    sortableWithClickHandler._multiDragClickHandler = handleClick
     sortable.element.addEventListener('click', handleClick)
   }
 
@@ -200,20 +211,25 @@ export class MultiDragPlugin implements SortablePlugin {
    * Detach click handlers
    */
   private detachClickHandlers(sortable: SortableInstance): void {
-    const sortableAny = sortable as any
-    if (sortableAny._multiDragClickHandler) {
+    const sortableWithClickHandler = sortable as SortableInstance & {
+      _multiDragClickHandler?: (event: MouseEvent) => void
+    }
+    if (sortableWithClickHandler._multiDragClickHandler) {
       sortable.element.removeEventListener(
         'click',
-        sortableAny._multiDragClickHandler
+        sortableWithClickHandler._multiDragClickHandler
       )
-      delete sortableAny._multiDragClickHandler
+      delete sortableWithClickHandler._multiDragClickHandler
     }
   }
 
   /**
    * Handle multi-select (Ctrl/Cmd + click)
    */
-  private handleMultiSelect(selectionManager: any, element: HTMLElement): void {
+  private handleMultiSelect(
+    selectionManager: SelectionManagerInterface,
+    element: HTMLElement
+  ): void {
     if (selectionManager.isSelected(element)) {
       // Deselect if already selected
       selectionManager.deselect(element)
@@ -228,7 +244,7 @@ export class MultiDragPlugin implements SortablePlugin {
    */
   private handleRangeSelect(
     sortable: SortableInstance,
-    selectionManager: any,
+    selectionManager: SelectionManagerInterface,
     element: HTMLElement
   ): void {
     const lastSelected = this.lastSelected.get(sortable)
@@ -269,7 +285,10 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Handle drag start for multi-item dragging
    */
-  private handleDragStart(sortable: SortableInstance, event: any): void {
+  private handleDragStart(
+    sortable: SortableInstance,
+    event: { item: HTMLElement }
+  ): void {
     const selectionManager = sortable.dragManager?.selectionManager
     if (!selectionManager) {
       return
@@ -300,7 +319,10 @@ export class MultiDragPlugin implements SortablePlugin {
   /**
    * Update visual feedback for dragging
    */
-  private updateDragVisuals(selectionManager: any, isDragging: boolean): void {
+  private updateDragVisuals(
+    selectionManager: SelectionManagerInterface,
+    isDragging: boolean
+  ): void {
     const className = isDragging ? 'sortable-multi-drag' : ''
 
     selectionManager.selectedElements.forEach((element: HTMLElement) => {

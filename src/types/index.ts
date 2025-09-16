@@ -607,6 +607,28 @@ export interface MoveEvent extends SortableEvent {
  * @public
  */
 /**
+ * Selection manager interface for type safety
+ * @public
+ */
+export interface SelectionManagerInterface {
+  readonly selectedElements: Set<HTMLElement>
+  select(item: HTMLElement, addToSelection?: boolean): void
+  deselect(item: HTMLElement): void
+  isSelected(item: HTMLElement): boolean
+  clearSelection(): void
+}
+
+/**
+ * Event system interface for type safety
+ * @public
+ */
+export interface EventSystemInterface {
+  on(event: string, handler: (...args: unknown[]) => void): void
+  off(event: string, handler?: (...args: unknown[]) => void): void
+  emit(event: string, ...args: unknown[]): void
+}
+
+/**
  * Type alias for Sortable instance used in plugins to avoid circular dependencies
  * @public
  */
@@ -616,10 +638,13 @@ export interface SortableInstance {
   /** Current configuration options for this Sortable instance */
   readonly options: SortableOptions
   /** Event system for this instance */
-  readonly eventSystem: any
+  readonly eventSystem: EventSystemInterface
   /** Drag manager for this instance - simplified to avoid interface conflicts */
-  dragManager?: any
-  [key: string]: any // Allow additional properties for plugin-specific extensions
+  dragManager?: {
+    isDragging?: boolean
+    selectionManager?: SelectionManagerInterface
+  }
+  [key: string]: unknown // Allow additional properties for plugin-specific extensions
 }
 
 export interface SortablePlugin {

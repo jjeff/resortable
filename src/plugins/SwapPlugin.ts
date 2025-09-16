@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin } from '../types/index.js'
+import { SortablePlugin, SortableInstance } from '../types/index.js'
 
 /**
  * Configuration options for the Swap plugin
@@ -83,8 +83,14 @@ export class SwapPlugin implements SortablePlugin {
   public readonly version = '2.0.0'
 
   private options: Required<SwapOptions>
-  private currentSwapTarget = new WeakMap<object, HTMLElement | null>()
-  private originalMoveMethod = new WeakMap<object, Function>()
+  private currentSwapTarget = new WeakMap<
+    SortableInstance,
+    HTMLElement | null
+  >()
+  private originalMoveMethod = new WeakMap<
+    SortableInstance,
+    (items: HTMLElement[], targetIndex: number) => void
+  >()
 
   /**
    * Create a Swap plugin instance
@@ -111,7 +117,7 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Install the plugin on a Sortable instance
    */
-  public install(sortable: any): void {
+  public install(sortable: SortableInstance): void {
     // Override the DropZone's move method to implement swap behavior
     this.overrideDropZoneMove(sortable)
 
@@ -126,7 +132,7 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Uninstall the plugin from a Sortable instance
    */
-  public uninstall(sortable: any): void {
+  public uninstall(sortable: SortableInstance): void {
     // Restore original move method
     this.restoreDropZoneMove(sortable)
 
@@ -141,8 +147,12 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Override DropZone's move method to implement swap behavior
    */
-  private overrideDropZoneMove(sortable: any): void {
-    const dropZone = sortable.dropZone
+  private overrideDropZoneMove(sortable: SortableInstance): void {
+    const dropZone = (
+      sortable as SortableInstance & {
+        dropZone?: { move: (items: HTMLElement[], targetIndex: number) => void }
+      }
+    ).dropZone
     if (!dropZone) {
       return
     }
@@ -156,7 +166,10 @@ export class SwapPlugin implements SortablePlugin {
         return
       }
 
-      const targetElement = this.getElementAtIndex(dropZone, targetIndex)
+      const targetElement = this.getElementAtIndex(
+        dropZone as { element: HTMLElement },
+        targetIndex
+      )
       if (!targetElement) {
         // No target to swap with, fall back to original behavior
         return this.originalMoveMethod.get(sortable)?.(items, targetIndex)
@@ -175,8 +188,12 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Restore original DropZone move method
    */
-  private restoreDropZoneMove(sortable: any): void {
-    const dropZone = sortable.dropZone
+  private restoreDropZoneMove(sortable: SortableInstance): void {
+    const dropZone = (
+      sortable as SortableInstance & {
+        dropZone?: { move: (items: HTMLElement[], targetIndex: number) => void }
+      }
+    ).dropZone
     const originalMethod = this.originalMoveMethod.get(sortable)
 
     if (dropZone && originalMethod) {
@@ -187,33 +204,40 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Attach handlers for move events and swap previews
    */
-  private attachMoveHandlers(sortable: any): void {
+  private attachMoveHandlers(sortable: SortableInstance): void {
     const handleDragOver = (event: DragEvent) => {
       const target = this.findSwapTarget(sortable, event)
       this.updateSwapPreview(sortable, target)
     }
 
-    sortable._swapDragOverHandler = handleDragOver
+    ;(
+      sortable as SortableInstance & {
+        _swapDragOverHandler?: (event: DragEvent) => void
+      }
+    )._swapDragOverHandler = handleDragOver
     sortable.element.addEventListener('dragover', handleDragOver)
   }
 
   /**
    * Detach move handlers
    */
-  private detachMoveHandlers(sortable: any): void {
-    if (sortable._swapDragOverHandler) {
+  private detachMoveHandlers(sortable: SortableInstance): void {
+    const sortableWithHandler = sortable as SortableInstance & {
+      _swapDragOverHandler?: (event: DragEvent) => void
+    }
+    if (sortableWithHandler._swapDragOverHandler) {
       sortable.element.removeEventListener(
         'dragover',
-        sortable._swapDragOverHandler
+        sortableWithHandler._swapDragOverHandler
       )
-      delete sortable._swapDragOverHandler
+      delete sortableWithHandler._swapDragOverHandler
     }
   }
 
   /**
    * Handle drag start
    */
-  private handleDragStart(sortable: any): void {
+  private handleDragStart(sortable: SortableInstance): void {
     // Initialize swap tracking
     this.currentSwapTarget.set(sortable, null)
   }
@@ -221,7 +245,7 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Handle drag end
    */
-  private handleDragEnd(sortable: any): void {
+  private handleDragEnd(sortable: SortableInstance): void {
     // Clear swap preview
     this.clearSwapPreview(sortable)
     this.currentSwapTarget.set(sortable, null)
@@ -230,7 +254,10 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Find potential swap target based on mouse position
    */
-  private findSwapTarget(sortable: any, event: DragEvent): HTMLElement | null {
+  private findSwapTarget(
+    sortable: SortableInstance,
+    event: DragEvent
+  ): HTMLElement | null {
     const element = document.elementFromPoint(
       event.clientX,
       event.clientY
@@ -248,7 +275,9 @@ export class SwapPlugin implements SortablePlugin {
     }
 
     // Check if this is a valid swap target
-    const draggedItem = sortable.dragManager?.draggedElement
+    const draggedItem = (
+      sortable.dragManager as { draggedElement?: HTMLElement }
+    )?.draggedElement
     if (!draggedItem || target === draggedItem) {
       return null
     }
@@ -298,7 +327,10 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Update swap preview visual feedback
    */
-  private updateSwapPreview(sortable: any, target: HTMLElement | null): void {
+  private updateSwapPreview(
+    sortable: SortableInstance,
+    target: HTMLElement | null
+  ): void {
     const currentTarget = this.currentSwapTarget.get(sortable)
 
     // Remove previous preview
@@ -317,7 +349,7 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Clear swap preview
    */
-  private clearSwapPreview(sortable: any): void {
+  private clearSwapPreview(sortable: SortableInstance): void {
     const currentTarget = this.currentSwapTarget.get(sortable)
     if (currentTarget) {
       currentTarget.classList.remove(this.options.swapClass)
@@ -342,7 +374,7 @@ export class SwapPlugin implements SortablePlugin {
    * Perform the actual swap operation
    */
   private performSwap(
-    _dropZone: any,
+    _dropZone: { element: HTMLElement },
     items: HTMLElement[],
     targetElement: HTMLElement
   ): void {
@@ -447,15 +479,15 @@ export class SwapPlugin implements SortablePlugin {
     targetElement.style.transition = `transform ${this.options.animationDuration}ms ease`
 
     // Trigger reflow
-    sourceElement.offsetHeight
-    targetElement.offsetHeight
+    void sourceElement.offsetHeight
+    void targetElement.offsetHeight
 
     // Remove transforms to animate to final position
     sourceElement.style.transform = ''
     targetElement.style.transform = ''
 
     // Clean up after animation
-    setTimeout(() => {
+    window.setTimeout(() => {
       sourceElement.style.transition = ''
       targetElement.style.transition = ''
     }, this.options.animationDuration)
@@ -464,7 +496,10 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Get element at specific index in the container
    */
-  private getElementAtIndex(dropZone: any, index: number): HTMLElement | null {
+  private getElementAtIndex(
+    dropZone: { element: HTMLElement },
+    index: number
+  ): HTMLElement | null {
     const draggableSelector =
       dropZone.element.getAttribute('data-draggable') || '.sortable-item'
     const children = Array.from(

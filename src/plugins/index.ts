@@ -11,6 +11,13 @@ export { SwapPlugin, type SwapOptions } from './SwapPlugin.js'
 // Re-export the PluginSystem for convenience
 export { PluginSystem } from '../core/PluginSystem.js'
 
+// Import types and classes for internal use
+import { PluginSystem } from '../core/PluginSystem.js'
+import { AutoScrollPlugin } from './AutoScrollPlugin.js'
+import { MultiDragPlugin } from './MultiDragPlugin.js'
+import { SwapPlugin } from './SwapPlugin.js'
+import type { SortableInstance } from '../types/index.js'
+
 /**
  * Utility function to register all built-in plugins
  *
@@ -23,11 +30,6 @@ export { PluginSystem } from '../core/PluginSystem.js'
  * ```
  */
 export function registerAllPlugins(): void {
-  const { PluginSystem } = require('../core/PluginSystem.js')
-  const { AutoScrollPlugin } = require('./AutoScrollPlugin.js')
-  const { MultiDragPlugin } = require('./MultiDragPlugin.js')
-  const { SwapPlugin } = require('./SwapPlugin.js')
-
   PluginSystem.register(AutoScrollPlugin.create())
   PluginSystem.register(MultiDragPlugin.create())
   PluginSystem.register(SwapPlugin.create())
@@ -49,15 +51,15 @@ export function registerAllPlugins(): void {
  * ```
  */
 export function installCommonPlugins(
-  sortable: any,
+  sortable: SortableInstance,
   plugins: string[] = ['AutoScroll']
 ): void {
-  const { PluginSystem } = require('../core/PluginSystem.js')
-
   for (const pluginName of plugins) {
     try {
       PluginSystem.install(sortable, pluginName)
     } catch (error) {
+      // Plugin installation failed - logged for debugging
+      // eslint-disable-next-line no-console
       console.warn(`Failed to install plugin "${pluginName}":`, error)
     }
   }

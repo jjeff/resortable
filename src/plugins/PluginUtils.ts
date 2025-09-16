@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin } from '../types/index.js'
+import { SortablePlugin, SortableInstance } from '../types/index.js'
 
 /**
  * Base class for plugins that provides common functionality
@@ -35,22 +35,25 @@ export abstract class BasePlugin implements SortablePlugin {
   public abstract readonly name: string
   public abstract readonly version: string
 
-  private eventListeners = new WeakMap<any, Map<string, EventListener>>()
+  private eventListeners = new WeakMap<
+    SortableInstance,
+    Map<string, EventListener>
+  >()
   private domListeners = new WeakMap<
-    any,
+    SortableInstance,
     Map<string, { element: Element; listener: EventListener }>
   >()
-  private timers = new WeakMap<any, Set<number>>()
-  private states = new WeakMap<any, any>()
+  private timers = new WeakMap<SortableInstance, Set<number>>()
+  private states = new WeakMap<SortableInstance, unknown>()
 
   /**
    * Install the plugin on a sortable instance
    */
-  public install(sortable: any): void {
+  public install(sortable: SortableInstance): void {
     try {
       this.onInstall(sortable)
-    } catch (error) {
-      console.error(`Plugin ${this.name} installation failed:`, error)
+    } catch (_error) {
+      // Plugin installation failed, clean up
       this.uninstall(sortable) // Cleanup on failure
     }
   }
@@ -58,10 +61,12 @@ export abstract class BasePlugin implements SortablePlugin {
   /**
    * Uninstall the plugin from a sortable instance
    */
-  public uninstall(sortable: any): void {
+  public uninstall(sortable: SortableInstance): void {
     try {
       this.onUninstall(sortable)
     } catch (error) {
+      // Plugin uninstallation failed - logged for debugging
+      // eslint-disable-next-line no-console
       console.error(`Plugin ${this.name} uninstallation failed:`, error)
     } finally {
       this.cleanup(sortable)
@@ -71,12 +76,12 @@ export abstract class BasePlugin implements SortablePlugin {
   /**
    * Override this method to implement plugin installation logic
    */
-  protected abstract onInstall(sortable: any): void
+  protected abstract onInstall(sortable: SortableInstance): void
 
   /**
    * Override this method to implement plugin uninstallation logic
    */
-  protected onUninstall(_sortable: any): void {
+  protected onUninstall(_sortable: SortableInstance): void {
     // Default implementation does nothing
   }
 
@@ -84,11 +89,13 @@ export abstract class BasePlugin implements SortablePlugin {
    * Add an event listener to the sortable's event system
    */
   protected addEventListener(
-    sortable: any,
+    sortable: SortableInstance,
     eventName: string,
     listener: EventListener
   ): void {
     if (!sortable.eventSystem) {
+      // No event system available - warn for debugging
+      // eslint-disable-next-line no-console
       console.warn(`Plugin ${this.name}: No event system available`)
       return
     }
@@ -107,7 +114,7 @@ export abstract class BasePlugin implements SortablePlugin {
    * Add a DOM event listener
    */
   protected addDOMListener(
-    sortable: any,
+    sortable: SortableInstance,
     element: Element,
     eventName: string,
     listener: EventListener
@@ -127,7 +134,7 @@ export abstract class BasePlugin implements SortablePlugin {
    * Set a timeout and track it for cleanup
    */
   protected setTimeout(
-    sortable: any,
+    sortable: SortableInstance,
     callback: () => void,
     delay: number
   ): number {
@@ -150,7 +157,7 @@ export abstract class BasePlugin implements SortablePlugin {
    * Set an interval and track it for cleanup
    */
   protected setInterval(
-    sortable: any,
+    sortable: SortableInstance,
     callback: () => void,
     interval: number
   ): number {
@@ -168,10 +175,16 @@ export abstract class BasePlugin implements SortablePlugin {
   /**
    * Get or set plugin state for a sortable instance
    */
-  protected getState<T = any>(sortable: any): T | undefined
-  protected getState<T = any>(sortable: any, defaultValue: T): T
-  protected getState<T = any>(sortable: any, defaultValue?: T): T | undefined {
-    let state = this.states.get(sortable)
+  protected getState<T = unknown>(sortable: SortableInstance): T | undefined
+  protected getState<T = unknown>(
+    sortable: SortableInstance,
+    defaultValue: T
+  ): T
+  protected getState<T = unknown>(
+    sortable: SortableInstance,
+    defaultValue?: T
+  ): T | undefined {
+    let state = this.states.get(sortable) as T | undefined
     if (state === undefined && defaultValue !== undefined) {
       state = defaultValue
       this.states.set(sortable, state)
@@ -182,21 +195,25 @@ export abstract class BasePlugin implements SortablePlugin {
   /**
    * Set plugin state for a sortable instance
    */
-  protected setState<T = any>(sortable: any, state: T): void {
+  protected setState<T = unknown>(sortable: SortableInstance, state: T): void {
     this.states.set(sortable, state)
   }
 
   /**
    * Check if sortable has required features
    */
-  protected requiresFeature(sortable: any, feature: string): boolean {
+  protected requiresFeature(
+    sortable: SortableInstance,
+    feature: string
+  ): boolean {
     switch (feature) {
       case 'eventSystem':
         return !!sortable.eventSystem
       case 'multiDrag':
         return !!sortable.options.multiDrag
       case 'animation':
-        return !!sortable.animationManager
+        return !!(sortable as SortableInstance & { animationManager?: unknown })
+          .animationManager
       case 'selectionManager':
         return !!sortable.dragManager?.selectionManager
       default:
@@ -207,7 +224,7 @@ export abstract class BasePlugin implements SortablePlugin {
   /**
    * Clean up all resources for a sortable instance
    */
-  private cleanup(sortable: any): void {
+  private cleanup(sortable: SortableInstance): void {
     // Clean up event listeners
     const eventListeners = this.eventListeners.get(sortable)
     if (eventListeners && sortable.eventSystem) {
@@ -231,8 +248,8 @@ export abstract class BasePlugin implements SortablePlugin {
     const timers = this.timers.get(sortable)
     if (timers) {
       timers.forEach((timerId) => {
-        clearTimeout(timerId)
-        clearInterval(timerId)
+        window.clearTimeout(timerId)
+        window.clearInterval(timerId)
       })
       this.timers.delete(sortable)
     }
@@ -303,13 +320,13 @@ export class PluginUtils {
   /**
    * Debounce a function
    */
-  public static debounce<T extends (...args: any[]) => any>(
+  public static debounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     delay: number
   ): (...args: Parameters<T>) => void {
     let timeoutId: number
     return (...args: Parameters<T>) => {
-      clearTimeout(timeoutId)
+      window.clearTimeout(timeoutId)
       timeoutId = window.setTimeout(() => func(...args), delay)
     }
   }
@@ -317,7 +334,7 @@ export class PluginUtils {
   /**
    * Throttle a function
    */
-  public static throttle<T extends (...args: any[]) => any>(
+  public static throttle<T extends (...args: unknown[]) => unknown>(
     func: T,
     delay: number
   ): (...args: Parameters<T>) => void {
@@ -400,7 +417,7 @@ export class PluginUtils {
       element.addEventListener('transitionend', cleanup)
 
       // Fallback timeout
-      setTimeout(cleanup, duration + 50)
+      window.setTimeout(cleanup, duration + 50)
     })
   }
 
@@ -435,17 +452,17 @@ export class PluginFactory {
   public static createEventPlugin(
     name: string,
     version: string,
-    handlers: Record<string, (event: any) => void>
+    handlers: Record<string, (event: unknown) => void>
   ): SortablePlugin {
     return {
       name,
       version,
-      install(sortable: any) {
+      install(sortable: SortableInstance) {
         Object.entries(handlers).forEach(([eventName, handler]) => {
           sortable.eventSystem?.on(eventName, handler)
         })
       },
-      uninstall(sortable: any) {
+      uninstall(sortable: SortableInstance) {
         Object.entries(handlers).forEach(([eventName, handler]) => {
           sortable.eventSystem?.off(eventName, handler)
         })
@@ -465,16 +482,22 @@ export class PluginFactory {
     return {
       name,
       version,
-      install(sortable: any) {
+      install(sortable: SortableInstance) {
         events.add.forEach((eventName) => {
-          sortable.eventSystem?.on(eventName, (event: any) => {
-            event.item?.classList.add(className)
-          })
+          sortable.eventSystem?.on(
+            eventName,
+            (event: { item?: HTMLElement }) => {
+              event.item?.classList.add(className)
+            }
+          )
         })
         events.remove.forEach((eventName) => {
-          sortable.eventSystem?.on(eventName, (event: any) => {
-            event.item?.classList.remove(className)
-          })
+          sortable.eventSystem?.on(
+            eventName,
+            (event: { item?: HTMLElement }) => {
+              event.item?.classList.remove(className)
+            }
+          )
         })
       },
       uninstall() {
