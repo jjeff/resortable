@@ -1,6 +1,14 @@
 /**
  * @fileoverview End-to-end tests for plugin system functionality
+ * @note This file contains E2E test mocks that access global window objects
+ * and internal plugin properties for testing purposes.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- E2E test mocks need 'any' for flexibility */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- E2E test accessing internal properties */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- E2E test mock assignments */
+/* eslint-disable @typescript-eslint/no-unsafe-call -- E2E test mock function calls */
+/* eslint-disable @typescript-eslint/no-unsafe-return -- E2E test mock return values */
 
 import { test, expect } from '@playwright/test'
 

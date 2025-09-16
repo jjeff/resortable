@@ -1,4 +1,9 @@
-import { SortableEvent, SortableGroup } from '../types/index.js'
+import {
+  SortableEvent,
+  SortableGroup,
+  SelectionManagerInterface,
+  DragManagerInterface,
+} from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
@@ -14,12 +19,12 @@ const dragManagerRegistry = new Map<HTMLElement, DragManager>()
  * Handles drag and drop interactions with accessibility support
  * @internal
  */
-export class DragManager {
+export class DragManager implements DragManagerInterface {
   private startIndex = -1
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
-  private selectionManager: SelectionManager
+  private _selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
   private enableAccessibility: boolean
   private handle?: string
@@ -164,7 +169,7 @@ export class DragManager {
     )
 
     // Initialize selection manager
-    this.selectionManager = new SelectionManager(
+    this._selectionManager = new SelectionManager(
       this.zone.element,
       this.events,
       {
@@ -178,7 +183,7 @@ export class DragManager {
     this.keyboardManager = new KeyboardManager(
       this.zone.element,
       this.zone,
-      this.selectionManager,
+      this._selectionManager,
       this.events,
       this.groupManager.getName()
     )
@@ -229,7 +234,7 @@ export class DragManager {
     // Detach accessibility features
     if (this.enableAccessibility) {
       this.keyboardManager.detach()
-      this.selectionManager.destroy()
+      this._selectionManager.destroy()
     }
 
     // Unregister from global registry
@@ -714,12 +719,12 @@ export class DragManager {
 
     // Get selected items if multiSelect is enabled
     let draggedItems: HTMLElement[] = [target]
-    if (this.selectionManager.isSelected(target)) {
+    if (this._selectionManager.isSelected(target)) {
       // If the target is already selected, drag all selected items
-      draggedItems = this.selectionManager.getSelected()
+      draggedItems = this._selectionManager.getSelected()
     } else {
       // If target is not selected, select only it
-      this.selectionManager.select(target)
+      this._selectionManager.select(target)
     }
 
     // Capture the pointer to ensure we receive all subsequent events
@@ -952,7 +957,7 @@ export class DragManager {
 
   /** Get the selection manager for this drag manager */
   public getSelectionManager(): SelectionManager {
-    return this.selectionManager
+    return this._selectionManager
   }
 
   /** Get the keyboard manager for this drag manager */
@@ -963,6 +968,16 @@ export class DragManager {
   /** Get the group manager for this drag manager */
   public getGroupManager(): GroupManager {
     return this.groupManager
+  }
+
+  /** Check if currently dragging */
+  public get isDragging(): boolean {
+    return this.isPointerDragging
+  }
+
+  /** Get the selection manager interface for plugins */
+  public get selectionManager(): SelectionManagerInterface {
+    return this._selectionManager
   }
 
   /** Check if we can drop in a target zone based on group compatibility */

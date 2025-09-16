@@ -1,6 +1,14 @@
 /**
  * @fileoverview Unit tests for PluginSystem
+ * @note This file contains test mocks that require 'any' types for testing
+ * internal plugin system functionality and mock sortable instances.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- Test mocks need 'any' for flexibility */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Test accessing internal properties */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Test mock assignments */
+/* eslint-disable @typescript-eslint/no-unsafe-call -- Test mock function calls */
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- Test mock arguments */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { PluginSystem } from '../../src/core/PluginSystem.js'

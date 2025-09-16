@@ -12,18 +12,24 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
         sortables?: Array<{ el: HTMLElement; destroy: () => void }>
         Sortable?: typeof import('../../src/index.js').Sortable
         PluginSystem?: typeof import('../../src/core/PluginSystem.js').PluginSystem
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- E2E test needs to access plugin from global window
         MultiDragPlugin?: any
       }
       const win = window as WindowWithSortables
 
+      // eslint-disable-next-line no-console -- Debug logging for E2E test
       console.log('Debug: Sortable available:', !!win.Sortable)
+      // eslint-disable-next-line no-console -- Debug logging for E2E test
       console.log('Debug: PluginSystem available:', !!win.PluginSystem)
+      // eslint-disable-next-line no-console -- Debug logging for E2E test
       console.log('Debug: MultiDragPlugin available:', !!win.MultiDragPlugin)
+      // eslint-disable-next-line no-console -- Debug logging for E2E test
       console.log('Debug: basicList found:', !!basicList)
 
       if (basicList && win.sortables) {
         const sortable = win.sortables.find((s) => s.el === basicList)
         if (sortable) {
+          // eslint-disable-next-line no-console -- Debug logging for E2E test
           console.log('Debug: Destroying existing sortable')
           sortable.destroy()
         }
@@ -32,9 +38,11 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
       // Create new sortable with multi-select using the real plugin system
       const Sortable = win.Sortable
       const PluginSystem = win.PluginSystem
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- E2E test accessing global plugin
       const MultiDragPlugin = win.MultiDragPlugin
 
       if (Sortable && PluginSystem && basicList) {
+        // eslint-disable-next-line no-console -- Debug logging for E2E test
         console.log('Debug: Creating new sortable with multiDrag: true')
         const sortable = new Sortable(basicList, {
           animation: 150,
@@ -44,18 +52,24 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
           enableAccessibility: true,
         })
 
+        // eslint-disable-next-line no-console -- Debug logging for E2E test
         console.log('Debug: Registered plugins:', PluginSystem.list())
 
         // Use the real MultiDragPlugin if available
         if (MultiDragPlugin) {
           try {
+            // eslint-disable-next-line no-console -- Debug logging for E2E test
             console.log('Debug: Installing MultiDrag plugin on sortable')
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- E2E test needs to cast sortable for plugin system compatibility
             PluginSystem.install(sortable as any, 'MultiDrag')
+            // eslint-disable-next-line no-console -- Debug logging for E2E test
             console.log('Debug: MultiDrag plugin installed successfully')
           } catch (e) {
+            // eslint-disable-next-line no-console -- Debug logging for E2E test error handling
             console.error('Debug: Failed to install MultiDrag:', e)
           }
         } else {
+          // eslint-disable-next-line no-console -- Debug logging for E2E test
           console.warn(
             'Debug: MultiDragPlugin not available, creating fallback'
           )
@@ -137,6 +151,7 @@ test.describe('Multi-Select Functionality - Plugin System Implementation', () =>
         // Store sortable globally for debugging
         window.debugSortable = sortable
       } else {
+        // eslint-disable-next-line no-console -- Debug logging for E2E test
         console.error('Debug: Missing dependencies:', {
           Sortable: !!Sortable,
           PluginSystem: !!PluginSystem,

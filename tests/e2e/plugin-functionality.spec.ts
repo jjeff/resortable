@@ -1,6 +1,19 @@
 /**
  * @fileoverview E2E tests for actual plugin functionality
+ * @note This file contains test mock plugins that require extensive use of 'any' types
+ * for testing internal plugin functionality and accessing private sortable properties.
+ * ESLint suppressions are used throughout for legitimate testing purposes.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- Test mock plugins need 'any' for flexibility */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Test accessing internal plugin properties */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Test mock assignments */
+/* eslint-disable @typescript-eslint/no-unsafe-call -- Test mock function calls */
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- Test mock arguments */
+/* eslint-disable @typescript-eslint/no-unsafe-return -- Test mock return values */
+/* eslint-disable @typescript-eslint/require-await -- Test async functions may not always await */
+/* eslint-disable no-console -- E2E test debug logging */
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- E2E test DOM assertions */
 
 import { test, expect } from '@playwright/test'
 

@@ -1,4 +1,6 @@
 // Type declarations for test files
+// ESLint suppressions for legitimate test type definitions requiring 'any'
+/* eslint-disable @typescript-eslint/no-explicit-any -- Test global types need 'any' for external libraries and dynamic test objects */
 
 import type { Sortable } from '../../src'
 

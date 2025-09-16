@@ -1,4 +1,4 @@
-import { SortableEvent } from '../types/index.js'
+import { SortableEvent, SelectionManagerInterface } from '../types/index.js'
 import { SortableEventSystem } from './EventSystem.js'
 
 /**
@@ -6,7 +6,7 @@ import { SortableEventSystem } from './EventSystem.js'
  * Supports single and multi-select operations
  * @internal
  */
-export class SelectionManager {
+export class SelectionManager implements SelectionManagerInterface {
   private selectedItems = new Set<HTMLElement>()
   private lastSelectedItem: HTMLElement | null = null
   private selectedClass: string
@@ -26,6 +26,13 @@ export class SelectionManager {
     this.focusClass = options?.focusClass || 'sortable-focused'
     // TODO: Implement multiSelect logic in Phase 2.4
     // this.multiSelect = options?.multiSelect || false
+  }
+
+  /**
+   * Get selected elements (readonly interface property)
+   */
+  public get selectedElements(): Set<HTMLElement> {
+    return this.selectedItems
   }
 
   /**

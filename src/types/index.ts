@@ -619,12 +619,24 @@ export interface SelectionManagerInterface {
 }
 
 /**
+ * Drag manager interface for type safety in plugins
+ * @public
+ */
+export interface DragManagerInterface {
+  readonly isDragging: boolean
+  readonly selectionManager: SelectionManagerInterface
+}
+
+/**
  * Event system interface for type safety
  * @public
  */
 export interface EventSystemInterface {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
   on(event: string, handler: (...args: any[]) => void): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
   off(event: string, handler?: (...args: any[]) => void): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Event system needs flexible handler types
   emit(event: string, ...args: any[]): void
 }
 
@@ -639,9 +651,10 @@ export interface SortableInstance {
   readonly options: SortableOptions
   /** Event system for this instance */
   readonly eventSystem: EventSystemInterface
-  /** Drag manager for this instance - uses any to avoid circular dependency issues */
-  dragManager?: any
-  /** Allow additional properties for plugin-specific extensions */
+  /** Drag manager for this instance */
+  dragManager?: DragManagerInterface
+  /** Allow additional properties for plugin-specific extensions - justified for plugin extensibility */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any
 }
 
