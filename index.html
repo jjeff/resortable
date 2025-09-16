@@ -824,10 +824,65 @@
     
     try {
       // Import Resortable
-      const { Sortable } = await import('/src/index.ts');
-      
+      const { Sortable, PluginSystem } = await import('/src/index.ts');
+
+      // Import plugins
+      let AutoScrollPlugin, MultiDragPlugin, SwapPlugin;
+      try {
+        const autoModule = await import('/src/plugins/AutoScrollPlugin.ts');
+        AutoScrollPlugin = autoModule.AutoScrollPlugin;
+      } catch (e) {
+        console.warn('Could not import AutoScrollPlugin:', e);
+      }
+
+      try {
+        const multiModule = await import('/src/plugins/MultiDragPlugin.ts');
+        MultiDragPlugin = multiModule.MultiDragPlugin;
+      } catch (e) {
+        console.warn('Could not import MultiDragPlugin:', e);
+      }
+
+      try {
+        const swapModule = await import('/src/plugins/SwapPlugin.ts');
+        SwapPlugin = swapModule.SwapPlugin;
+      } catch (e) {
+        console.warn('Could not import SwapPlugin:', e);
+      }
+
+      // Register plugins if available
+      if (AutoScrollPlugin) {
+        try {
+          PluginSystem.register(AutoScrollPlugin);
+          console.log('AutoScrollPlugin registered successfully');
+        } catch (e) {
+          console.warn('Failed to register AutoScrollPlugin:', e);
+        }
+      }
+
+      if (MultiDragPlugin) {
+        try {
+          PluginSystem.register(MultiDragPlugin);
+          console.log('MultiDragPlugin registered successfully');
+        } catch (e) {
+          console.warn('Failed to register MultiDragPlugin:', e);
+        }
+      }
+
+      if (SwapPlugin) {
+        try {
+          PluginSystem.register(SwapPlugin);
+          console.log('SwapPlugin registered successfully');
+        } catch (e) {
+          console.warn('Failed to register SwapPlugin:', e);
+        }
+      }
+
       // Store globally for testing
       window.Sortable = Sortable;
+      window.PluginSystem = PluginSystem;
+      window.AutoScrollPlugin = AutoScrollPlugin;
+      window.MultiDragPlugin = MultiDragPlugin;
+      window.SwapPlugin = SwapPlugin;
       window.sortables = [];
       
       // Logging helper
