@@ -18,7 +18,8 @@
         "esbenp.prettier-vscode",
         "eamodio.gitlens",
         "ms-playwright.playwright",
-        "vitest.explorer"
+        "vitest.explorer",
+        "pdconsec.vscode-print"
       ],
       "settings": {
         "editor.formatOnSave": true,
