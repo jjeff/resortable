@@ -83,9 +83,19 @@ export class DropZone {
       // Get all sortable items that might be affected by this move
       const affectedItems = this.getItems()
 
+      // Temporarily disable pointer events on the moving item to prevent interference
+      const originalPointerEvents = item.style.pointerEvents
+      item.style.pointerEvents = 'none'
+
       // Use FLIP animation for smooth reordering
       this.animationManager.animateReorder(affectedItems, () => {
         insertAt(this.element, item, targetDOMIndex)
+      })
+
+      // Restore pointer events after animation starts
+      // Using requestAnimationFrame to ensure it happens after the animation begins
+      window.requestAnimationFrame(() => {
+        item.style.pointerEvents = originalPointerEvents
       })
     } else {
       // No animation, just do the move

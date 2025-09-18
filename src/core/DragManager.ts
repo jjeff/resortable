@@ -27,6 +27,8 @@ export class DragManager implements DragManagerInterface {
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
+  private lastHoveredElement: HTMLElement | null = null
+  private lastMoveTime = 0
   private _selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
   private enableAccessibility: boolean
@@ -260,7 +262,7 @@ export class DragManager implements DragManagerInterface {
       this.keyboardManager.attach()
     }
 
-    // Setup draggable items based on the draggable selector
+    // Setup draggable items based on the draggable selec tor
     this.updateDraggableItems()
   }
 
@@ -944,10 +946,49 @@ export class DragManager implements DragManagerInterface {
     if (!activeDrag) return
 
     // Find the element under the mouse cursor
+    // IMPORTANT: We need to temporarily hide the dragged element and ghost to get accurate hit testing
+    const draggedElementPointerEvents = this.dragElement.style.pointerEvents
+    const ghostElement = this.ghostManager.getGhostElement()
+    const ghostPointerEvents = ghostElement?.style.pointerEvents
+
+    // Temporarily disable pointer events on dragged element and ghost
+    this.dragElement.style.pointerEvents = 'none'
+    if (ghostElement) {
+      ghostElement.style.pointerEvents = 'none'
+    }
+
     const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY)
+
+    // Restore pointer events
+    this.dragElement.style.pointerEvents = draggedElementPointerEvents
+    if (ghostElement) {
+      ghostElement.style.pointerEvents = ghostPointerEvents || 'none'
+    }
+
     const over = elementUnderMouse?.closest(this.draggable) as HTMLElement
 
     if (!over) return
+
+    // Skip if we're hovering over the dragged element itself or the placeholder
+    if (
+      over === this.dragElement ||
+      over === this.ghostManager.getPlaceholderElement()
+    ) {
+      return
+    }
+
+    // Debounce move operations to prevent jumpiness from animations
+    const now = Date.now()
+    const timeSinceLastMove = now - this.lastMoveTime
+    const MOVE_THROTTLE_MS = 100 // Minimum time between moves
+
+    // Skip if we're still hovering over the same element and not enough time has passed
+    if (
+      over === this.lastHoveredElement &&
+      timeSinceLastMove < MOVE_THROTTLE_MS
+    ) {
+      return
+    }
 
     // Find which zone the element we're hovering over belongs to
     const targetZoneElement = over.parentElement
@@ -1002,6 +1043,10 @@ export class DragManager implements DragManagerInterface {
       ) {
         // Use the DropZone's move method to get animations
         this.zone.move(this.dragElement, targetIndex)
+
+        // Update tracking variables
+        this.lastHoveredElement = over
+        this.lastMoveTime = Date.now()
 
         // Only emit update if it's within the original zone
         if (activeDrag.fromZone === targetZoneElement) {
@@ -1096,6 +1141,8 @@ export class DragManager implements DragManagerInterface {
     this.isPointerDragging = false
     this.activePointerId = null
     this.dragElement = null
+    this.lastHoveredElement = null
+    this.lastMoveTime = 0
   }
 
   /** Find the DragManager instance that manages a specific zone */
