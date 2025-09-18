@@ -44,9 +44,6 @@ import { toArray as domToArray } from './utils/dom.js'
 // Export PluginSystem
 export { PluginSystem }
 
-// WeakMap to track Sortable instances by their elements
-const sortableInstances = new WeakMap<HTMLElement, Sortable>()
-
 /**
  * @beta
  * Main Sortable class for creating drag-and-drop sortable lists
@@ -74,6 +71,12 @@ const sortableInstances = new WeakMap<HTMLElement, Sortable>()
  * @public
  */
 export class Sortable {
+  /**
+   * WeakMap to track Sortable instances by their elements
+   * @internal
+   */
+  private static instances = new WeakMap<HTMLElement, Sortable>()
+
   /**
    * The currently active Sortable instance (if any drag is in progress)
    * @readonly
@@ -123,8 +126,7 @@ export class Sortable {
       }
 
       // Check if current element has a Sortable instance
-      // We'll need to track instances in a WeakMap
-      const sortable = sortableInstances.get(current)
+      const sortable = Sortable.instances.get(current)
       if (sortable) {
         return sortable
       }
@@ -184,7 +186,7 @@ export class Sortable {
     this.options = { ...defaultOptions, ...options }
 
     // Track this instance
-    sortableInstances.set(element, this)
+    Sortable.instances.set(element, this)
 
     // Create animation manager first
     this.animationManager = new AnimationManager({
@@ -303,7 +305,7 @@ export class Sortable {
 
     this.dragManager.detach()
     // Remove from instance tracking
-    sortableInstances.delete(this.element)
+    Sortable.instances.delete(this.element)
   }
 
   /**
@@ -581,3 +583,6 @@ const defaultOptions: SortableOptions = {
   selectedClass: 'sortable-selected',
   focusClass: 'sortable-focused',
 }
+
+// Default export for compatibility
+export default Sortable

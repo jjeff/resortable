@@ -557,14 +557,26 @@
     }
 
     /* Empty state for horizontal containers */
-    .horizontal-items:empty::before {
+    .horizontal-items:empty {
+      position: relative;
+    }
+
+    .horizontal-items:empty::after {
       content: 'Drop items here';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       color: var(--text-secondary);
       font-size: 0.875rem;
       font-style: italic;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      pointer-events: none; /* Critical: allows drops to pass through */
+      white-space: nowrap;
+    }
+
+    .horizontal-items:empty::before {
+      content: '';
+      display: block;
       height: 60px;
       width: 100%;
       border: 2px dashed var(--border);
@@ -1348,7 +1360,8 @@
   "group": "nested-items",
   "animation": 200,
   "direction": "horizontal",
-  "ghostClass": "sortable-ghost"
+  "ghostClass": "sortable-ghost",
+  "emptyInsertThreshold": 50
 }</textarea>
               </div>
             </div>
@@ -1755,7 +1768,7 @@
               onStart: (e) => {
                 outputElement.textContent = formatEventOutput('item-start', {
                   ...e,
-                  containerName: container.parentElement.querySelector('.nested-title').textContent
+                  containerName: container.parentElement?.querySelector('.nested-title')?.textContent || 'unknown'
                 });
               },
               onEnd: (e) => {
@@ -1767,29 +1780,29 @@
 
                 outputElement.textContent = formatEventOutput('item-end', {
                   ...e,
-                  fromContainer: e.from.parentElement.querySelector('.nested-title').textContent,
-                  toContainer: e.to.parentElement.querySelector('.nested-title').textContent
+                  fromContainer: e.from.parentElement?.querySelector('.nested-title')?.textContent || 'unknown',
+                  toContainer: e.to.parentElement?.querySelector('.nested-title')?.textContent || 'unknown'
                 });
               },
               onAdd: (e) => {
                 updateItemCount(e.to.closest('.nested-container'));
                 outputElement.textContent = formatEventOutput('item-add', {
                   ...e,
-                  toContainer: e.to.parentElement.querySelector('.nested-title').textContent
+                  toContainer: e.to.parentElement?.querySelector('.nested-title')?.textContent || 'unknown'
                 });
               },
               onRemove: (e) => {
                 updateItemCount(e.from.closest('.nested-container'));
                 outputElement.textContent = formatEventOutput('item-remove', {
                   ...e,
-                  fromContainer: e.from.parentElement.querySelector('.nested-title').textContent
+                  fromContainer: e.from.parentElement?.querySelector('.nested-title')?.textContent || 'unknown'
                 });
               },
               onSort: (e) => {
                 updateItemCount(e.from.closest('.nested-container'));
                 outputElement.textContent = formatEventOutput('item-sort', {
                   ...e,
-                  containerName: e.from.parentElement.querySelector('.nested-title').textContent
+                  containerName: e.from.parentElement?.querySelector('.nested-title')?.textContent || 'unknown'
                 });
               },
             });

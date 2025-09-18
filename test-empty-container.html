@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empty Container Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      border: 2px dashed #ccc;
+      padding: 10px;
+      margin: 10px 0;
+      min-height: 50px;
+    }
+    .item {
+      background: #4CAF50;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+      border-radius: 4px;
+    }
+    .container.empty {
+      background: #f5f5f5;
+    }
+    .sortable-ghost {
+      opacity: 0.5;
+    }
+    .sortable-placeholder {
+      background: #2196F3;
+      opacity: 0.3;
+    }
+    h3 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Empty Container Drop Test</h1>
+
+  <div class="container" id="container1">
+    <h3>Container 1 (Source)</h3>
+    <div class="item" data-id="item1">Item 1</div>
+    <div class="item" data-id="item2">Item 2</div>
+    <div class="item" data-id="item3">Item 3</div>
+  </div>
+
+  <div class="container empty" id="container2">
+    <h3>Container 2 (Empty)</h3>
+  </div>
+
+  <div class="container" id="container3">
+    <h3>Container 3 (Has Items)</h3>
+    <div class="item" data-id="item4">Item 4</div>
+  </div>
+
+  <div id="output" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-family: monospace;"></div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const output = document.getElementById('output');
+
+    function log(message) {
+      const time = new Date().toLocaleTimeString();
+      output.innerHTML = `[${time}] ${message}<br>` + output.innerHTML;
+    }
+
+    // Initialize sortable on all containers
+    const containers = document.querySelectorAll('.container');
+    containers.forEach((container, index) => {
+      const sortable = new Sortable(container, {
+        group: 'shared',
+        animation: 150,
+        draggable: '.item',
+        ghostClass: 'sortable-ghost',
+        onStart: (evt) => {
+          log(`Started dragging ${evt.item.dataset.id} from Container ${evt.from.id}`);
+        },
+        onEnd: (evt) => {
+          log(`Ended drag: ${evt.item.dataset.id} from ${evt.from.id} to ${evt.to.id}`);
+
+          // Update empty class
+          containers.forEach(c => {
+            const hasItems = c.querySelectorAll('.item').length > 0;
+            c.classList.toggle('empty', !hasItems);
+          });
+        },
+        onAdd: (evt) => {
+          log(`Added ${evt.item.dataset.id} to ${evt.to.id}`);
+        },
+        onRemove: (evt) => {
+          log(`Removed ${evt.item.dataset.id} from ${evt.from.id}`);
+        },
+        onSort: (evt) => {
+          log(`Sorted in ${evt.to.id}: oldIndex=${evt.oldIndex}, newIndex=${evt.newIndex}`);
+        }
+      });
+    });
+
+    log('Sortable initialized on all containers');
+  </script>
+</body>
+</html>

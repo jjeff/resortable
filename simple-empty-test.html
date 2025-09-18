@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Simple Empty Container Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .container {
+        border: 2px solid #333;
+        min-height: 100px;
+        margin: 20px;
+        padding: 10px;
+        background: #f9f9f9;
+      }
+      .item {
+        background: #4caf50;
+        color: white;
+        padding: 10px;
+        margin: 5px;
+        cursor: move;
+      }
+      .sortable-ghost {
+        opacity: 0.4;
+      }
+      .sortable-drop-zone {
+        background: #f0f0f0;
+      }
+      .sortable-empty-drop-zone {
+        background: #e8f5e9 !important;
+        border: 2px dashed #4caf50 !important;
+      }
+      h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Simple Empty Container Test</h1>
+    <p>Try dragging items from Source to the Empty Container below.</p>
+
+    <div class="container" id="source">
+      <h3>Source (has items)</h3>
+      <div class="item">Item 1</div>
+      <div class="item">Item 2</div>
+      <div class="item">Item 3</div>
+    </div>
+
+    <div class="container" id="empty">
+      <h3>Empty Container (drop items here)</h3>
+    </div>
+
+    <div
+      id="status"
+      style="
+        margin: 20px;
+        padding: 10px;
+        background: #333;
+        color: #0f0;
+        font-family: monospace;
+      "
+    >
+      Loading...
+    </div>
+
+    <script type="module">
+      import Sortable from '/src/index.ts'
+
+      const status = document.getElementById('status')
+      function log(msg) {
+        const time = new Date().toTimeString().substr(0, 8)
+        status.innerHTML = `[${time}] ${msg}<br>` + status.innerHTML
+        console.log(msg)
+      }
+
+      try {
+        log('Initializing Sortable...')
+
+        // Create sortables with shared group
+        const source = new Sortable(document.getElementById('source'), {
+          group: 'shared',
+          animation: 150,
+          draggable: '.item',
+          onStart: (evt) => {
+            log('Started dragging: ' + evt.item.textContent)
+          },
+          onEnd: (evt) => {
+            log(`Drag ended - from: ${evt.from.id}, to: ${evt.to.id}`)
+          },
+        })
+
+        const empty = new Sortable(document.getElementById('empty'), {
+          group: 'shared',
+          animation: 150,
+          draggable: '.item',
+          onAdd: (evt) => {
+            log(
+              'SUCCESS! Item added to empty container: ' + evt.item.textContent
+            )
+          },
+        })
+
+        log('Ready! Try dragging items to the empty container.')
+
+        // Check if the empty container is properly marked
+        setTimeout(() => {
+          const emptyEl = document.getElementById('empty')
+          if (!emptyEl) throw new Error('Empty container not found')
+          log('Empty container setup:')
+          log('  - data-drop-zone: ' + emptyEl.dataset.dropZone)
+          log('  - data-sortable-group: ' + emptyEl.dataset.sortableGroup)
+          log('  - position: ' + emptyEl.style.position)
+          log('  - classes: ' + emptyEl.className)
+
+          // Check for helper element when dragging
+          document.addEventListener('dragstart', () => {
+            setTimeout(() => {
+              const helper = emptyEl.querySelector(
+                '.sortable-empty-drop-helper'
+              )
+              if (helper) {
+                log('Helper element found in empty container')
+                log('  - innerHTML: ' + helper.innerHTML)
+                log('  - offsetHeight: ' + helper.offsetHeight)
+                log('  - offsetWidth: ' + helper.offsetWidth)
+              } else {
+                log('No helper element found')
+              }
+            }, 50)
+          })
+
+          // Track all drag events on empty container
+          let dragOverCount = 0
+          emptyEl.addEventListener(
+            'dragover',
+            (e) => {
+              dragOverCount++
+              if (dragOverCount === 1) {
+                log('DRAGOVER EVENT FIRED ON EMPTY CONTAINER!')
+                log('  - defaultPrevented: ' + e.defaultPrevented)
+              }
+            },
+            false
+          )
+
+          emptyEl.addEventListener(
+            'dragenter',
+            (e) => {
+              log('DRAGENTER EVENT FIRED ON EMPTY CONTAINER!')
+            },
+            false
+          )
+
+          emptyEl.addEventListener(
+            'drop',
+            (e) => {
+              log('DROP EVENT FIRED ON EMPTY CONTAINER!')
+            },
+            false
+          )
+        }, 100)
+      } catch (err) {
+        log('ERROR: ' + err.message)
+        console.error(err)
+      }
+    </script>
+  </body>
+</html>
