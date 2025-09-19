@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Native HTML5 Drag and Drop - Empty Container Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      border: 2px solid #333;
+      min-height: 100px;
+      margin: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: #4caf50;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+    }
+    .container.drag-over {
+      background: #e8f5e9;
+      border-color: #4caf50;
+    }
+    #log {
+      margin: 20px;
+      padding: 10px;
+      background: #333;
+      color: #0f0;
+      font-family: monospace;
+      height: 200px;
+      overflow-y: auto;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Native HTML5 Drag and Drop Test</h1>
+  <p>Test dragging items from Source to Empty Container using only native HTML5 APIs.</p>
+
+  <div class="container" id="source">
+    <h3>Source Container</h3>
+    <div class="item" draggable="true" data-id="1">Item 1</div>
+    <div class="item" draggable="true" data-id="2">Item 2</div>
+    <div class="item" draggable="true" data-id="3">Item 3</div>
+  </div>
+
+  <div class="container" id="empty">
+    <h3>Empty Container (Drop Here)</h3>
+  </div>
+
+  <div id="log">Waiting for drag events...</div>
+
+  <script>
+    const log = document.getElementById('log');
+    function logMessage(msg) {
+      const time = new Date().toTimeString().substr(0, 8);
+      log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+      console.log(msg);
+    }
+
+    // Get all draggable items
+    const items = document.querySelectorAll('.item');
+    const containers = document.querySelectorAll('.container');
+    let draggedElement = null;
+
+    // Add event listeners to items
+    items.forEach(item => {
+      item.addEventListener('dragstart', handleDragStart);
+      item.addEventListener('dragend', handleDragEnd);
+    });
+
+    // Add event listeners to containers
+    containers.forEach(container => {
+      container.addEventListener('dragover', handleDragOver);
+      container.addEventListener('drop', handleDrop);
+      container.addEventListener('dragenter', handleDragEnter);
+      container.addEventListener('dragleave', handleDragLeave);
+    });
+
+    function handleDragStart(e) {
+      draggedElement = this;
+      logMessage(`DRAGSTART: ${this.textContent} from ${this.parentElement.id}`);
+
+      // Set drag data and effect
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.innerHTML);
+      e.dataTransfer.setData('text/plain', this.dataset.id);
+
+      this.style.opacity = '0.4';
+    }
+
+    function handleDragEnd(e) {
+      logMessage(`DRAGEND: ${this.textContent}`);
+      this.style.opacity = '';
+
+      // Clean up
+      containers.forEach(container => {
+        container.classList.remove('drag-over');
+      });
+    }
+
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault(); // CRITICAL: Allows us to drop
+      }
+
+      // Set the dropEffect to move
+      e.dataTransfer.dropEffect = 'move';
+
+      // Only log once per container
+      if (!this.dataset.logged) {
+        logMessage(`DRAGOVER: on ${this.id} container`);
+        this.dataset.logged = 'true';
+        setTimeout(() => delete this.dataset.logged, 100);
+      }
+
+      return false;
+    }
+
+    function handleDragEnter(e) {
+      logMessage(`DRAGENTER: ${this.id} container`);
+      this.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      // Only remove class if we're actually leaving the container
+      if (e.target === this) {
+        logMessage(`DRAGLEAVE: ${this.id} container`);
+        this.classList.remove('drag-over');
+      }
+    }
+
+    function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation(); // Stops some browsers from redirecting
+      }
+      e.preventDefault();
+
+      logMessage(`DROP: on ${this.id} container`);
+
+      // Don't do anything if dropping on the same container
+      if (draggedElement && draggedElement.parentElement !== this) {
+        // Move the element to the new container
+        this.appendChild(draggedElement);
+        logMessage(`SUCCESS: Moved ${draggedElement.textContent} to ${this.id}`);
+      }
+
+      this.classList.remove('drag-over');
+
+      return false;
+    }
+
+    // Test that empty container is properly set up
+    window.addEventListener('DOMContentLoaded', () => {
+      const emptyContainer = document.getElementById('empty');
+      logMessage('Page loaded. Empty container setup:');
+      logMessage(`  - offsetHeight: ${emptyContainer.offsetHeight}px`);
+      logMessage(`  - offsetWidth: ${emptyContainer.offsetWidth}px`);
+      logMessage(`  - childElementCount: ${emptyContainer.childElementCount}`);
+      logMessage('Ready to test drag and drop!');
+    });
+  </script>
+</body>
+</html>

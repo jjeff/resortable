@@ -223,13 +223,17 @@ export class DragManager implements DragManagerInterface {
     // Add a class that ensures the container is a valid drop target
     el.classList.add('sortable-drop-zone')
 
-    // HTML5 drag events
-    el.addEventListener('dragstart', this.onDragStart, true) // Use capture
-    el.addEventListener('dragover', this.onDragOver, true) // Use capture
-    el.addEventListener('drop', this.onDrop, true) // Use capture
-    el.addEventListener('dragend', this.onDragEnd, true) // Use capture
-    el.addEventListener('dragenter', this.onDragEnter, true) // Use capture
-    el.addEventListener('dragleave', this.onDragLeave, true) // Use capture
+    // Check if container is initially empty and add helper if needed
+    this.ensureEmptyContainerDropTarget()
+
+    // HTML5 drag events - use bubble phase (false) for better compatibility
+    // Using capture phase can prevent events from reaching the container properly
+    el.addEventListener('dragstart', this.onDragStart, false)
+    el.addEventListener('dragover', this.onDragOver, false)
+    el.addEventListener('drop', this.onDrop, false)
+    el.addEventListener('dragend', this.onDragEnd, false)
+    el.addEventListener('dragenter', this.onDragEnter, false)
+    el.addEventListener('dragleave', this.onDragLeave, false)
 
     // Also add a global dragover handler during drags to catch events on empty containers
     // This is a workaround for browsers not firing dragover on empty elements
@@ -246,6 +250,8 @@ export class DragManager implements DragManagerInterface {
         y <= rect.bottom
       ) {
         // We're over this container, handle it
+        // Call preventDefault to allow drops
+        e.preventDefault()
         this.onDragOver(e)
       }
     }
@@ -269,12 +275,12 @@ export class DragManager implements DragManagerInterface {
   /** Detach event listeners */
   public detach(): void {
     const el = this.zone.element
-    el.removeEventListener('dragstart', this.onDragStart, true)
-    el.removeEventListener('dragover', this.onDragOver, true)
-    el.removeEventListener('drop', this.onDrop, true)
-    el.removeEventListener('dragend', this.onDragEnd, true)
-    el.removeEventListener('dragenter', this.onDragEnter, true)
-    el.removeEventListener('dragleave', this.onDragLeave, true)
+    el.removeEventListener('dragstart', this.onDragStart, false)
+    el.removeEventListener('dragover', this.onDragOver, false)
+    el.removeEventListener('drop', this.onDrop, false)
+    el.removeEventListener('dragend', this.onDragEnd, false)
+    el.removeEventListener('dragenter', this.onDragEnter, false)
+    el.removeEventListener('dragleave', this.onDragLeave, false)
 
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
@@ -283,6 +289,9 @@ export class DragManager implements DragManagerInterface {
     // Cancel any pending drag delay
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+
+    // Remove any empty container helper
+    this.removeEmptyContainerHelper()
 
     // Detach accessibility features
     if (this.enableAccessibility) {
@@ -347,25 +356,32 @@ export class DragManager implements DragManagerInterface {
     // Emit choose event first
     this.events.emit('choose', evt)
 
-    // Create ghost element (but for HTML5 drag, we'll use it as a placeholder)
-    // The actual dragging visual is handled by the browser
-    const placeholder = this.ghostManager.createPlaceholder(target)
-    // Insert placeholder where the item was
-    target.parentElement?.insertBefore(placeholder, target)
-
     // Apply chosen class to the dragged element
     target.classList.add(this.ghostManager.getChosenClass())
-    const ghost = this.ghostManager.createGhost(target, e)
 
-    // For HTML5 drag API, we can optionally set the drag image
-    if (e.dataTransfer && ghost) {
-      // Hide the ghost since browser will show its own drag image
-      ghost.style.display = 'none'
-      // Set drag data
-      e.dataTransfer.setData('text/plain', '')
+    // For HTML5 drag API, we need to set the data FIRST before any DOM manipulation
+    if (e.dataTransfer) {
+      // Set drag data - MUST have a value for Firefox
+      e.dataTransfer.setData('text/plain', 'sortable-item')
       e.dataTransfer.effectAllowed = 'move'
+
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())
+
+      // Reduce opacity of original item during drag for visual feedback
+      target.style.opacity = '0.5'
+
+      // For HTML5 drag, DON'T create a placeholder yet - it will be created on first dragover
+      // The browser needs the original element to stay in place for the drag to work
+      // We'll create the placeholder when we first detect movement
+    } else {
+      // For non-HTML5 drag (shouldn't happen with mouse), create ghost and placeholder
+      const placeholder = this.ghostManager.createPlaceholder(target)
+      target.parentElement?.insertBefore(placeholder, target)
+      const ghost = this.ghostManager.createGhost(target, e)
+      if (ghost) {
+        ghost.style.display = 'none'
+      }
     }
 
     // Then emit start event
@@ -412,13 +428,15 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDragOver = (e: DragEvent): void => {
-    // Check if this event is for our container
-    const isOurContainer = e.currentTarget === this.zone.element
+    // IMPORTANT: We must ALWAYS call preventDefault() on dragover to allow drops
+    // This must happen before any other checks according to the HTML5 drag/drop spec
+    e.preventDefault()
+    e.stopPropagation()
 
-    // ALWAYS prevent default on our container to allow drops
-    if (isOurContainer) {
-      e.preventDefault()
-      e.stopPropagation()
+    // CRITICAL: Set dropEffect to indicate this is a valid drop target
+    // This MUST be set in dragover for the drop to work properly
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
     }
 
     // Check if we can accept the current drag (HTML5 drag events don't have pointer IDs)
@@ -432,10 +450,6 @@ export class DragManager implements DragManagerInterface {
       return
     }
 
-    // Now prevent default for valid drags
-    e.preventDefault()
-    e.stopPropagation()
-
     // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
     const isDifferentZone = activeDrag.item.parentElement !== this.zone.element
     if (isDifferentZone) {
@@ -448,7 +462,14 @@ export class DragManager implements DragManagerInterface {
     }
 
     const originalItem = activeDrag.item
-    const placeholder = this.ghostManager.getPlaceholderElement()
+
+    // For HTML5 drag, create placeholder on first dragover if it doesn't exist
+    let placeholder = this.ghostManager.getPlaceholderElement()
+    if (!placeholder && originalItem.parentElement) {
+      placeholder = this.ghostManager.createPlaceholder(originalItem)
+      // Hide the original item completely now that we have a placeholder
+      originalItem.style.display = 'none'
+    }
     if (!placeholder) return
 
     // Get the actual event target element
@@ -466,22 +487,27 @@ export class DragManager implements DragManagerInterface {
         child.matches(this.draggable) &&
         child !== placeholder &&
         child !== originalItem &&
-        child !== activeDrag.clone
+        child !== activeDrag.clone &&
+        !child.classList.contains('sortable-empty-drop-helper') &&
+        !child.classList.contains('sortable-ghost')
     )
 
     // Handle empty container or dragging over empty space in container
     if (isOverContainer && draggableChildren.length === 0) {
-      // Container is empty - add placeholder
+      // Container is empty - add placeholder to show drop zone
       if (placeholder.parentElement !== this.zone.element) {
         this.zone.element.appendChild(placeholder)
+        // Add visual indication for empty container
+        this.zone.element.classList.add('sortable-empty-drop-zone')
       }
 
       // Mark that we're over an empty container for the drop handler
       this.zone.element.dataset.dragOverEmpty = 'true'
       return
     } else {
-      // Clear the empty marker if not empty
+      // Clear the empty markers if not empty
       delete this.zone.element.dataset.dragOverEmpty
+      this.zone.element.classList.remove('sortable-empty-drop-zone')
     }
 
     // Determine which item to use for positioning (original or clone)
@@ -507,6 +533,8 @@ export class DragManager implements DragManagerInterface {
       // Move item (or clone) to this zone if not already here
       if (itemToInsert.parentElement !== this.zone.element) {
         this.zone.element.appendChild(itemToInsert)
+        // Remove helper since container is no longer empty
+        this.removeEmptyContainerHelper()
       }
     }
 
@@ -645,11 +673,24 @@ export class DragManager implements DragManagerInterface {
     const originalItem = activeDrag.item
     const placeholder = this.ghostManager.getPlaceholderElement()
 
-    // Handle drop in this container
-    if (
+    // Clear empty container styling
+    this.zone.element.classList.remove('sortable-empty-drop-zone')
+
+    // Check if drop is on this container using multiple methods:
+    // 1. Direct containment check
+    // 2. Coordinate-based check for empty containers
+    // 3. Check if we marked this container during dragover
+    const isDropOnThisContainer =
       this.zone.element.contains(e.target as Node) ||
-      this.zone.element === e.target
-    ) {
+      this.zone.element === e.target ||
+      this.zone.element.dataset.dragOverEmpty === 'true' ||
+      this.isDropWithinBounds(e)
+
+    // Handle drop in this container
+    if (isDropOnThisContainer) {
+      // Clear the empty marker
+      delete this.zone.element.dataset.dragOverEmpty
+
       if (placeholder && placeholder.parentElement === this.zone.element) {
         // Get the target index based on placeholder position
         const items = this.zone.getItems()
@@ -691,6 +732,8 @@ export class DragManager implements DragManagerInterface {
             // Same container, just append
             this.zone.element.appendChild(itemToPlace)
           }
+          // Remove the helper element since container is no longer empty
+          this.removeEmptyContainerHelper()
         } else {
           // Normal case: container has items
           // Now calculate where to insert the item
@@ -731,13 +774,32 @@ export class DragManager implements DragManagerInterface {
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
 
-    // Clean up ghost elements
+    // Clean up ghost elements and restore visibility
     if (activeDrag) {
+      activeDrag.item.style.opacity = ''
+      activeDrag.item.style.display = ''
+      activeDrag.item.classList.remove(this.ghostManager.getDragClass())
+      activeDrag.item.classList.remove(this.ghostManager.getChosenClass())
+
+      // Clean up any remaining placeholder or ghost elements
       this.ghostManager.destroy(activeDrag.item)
+
+      // Clean up any ghost class elements that might be lingering
+      const ghosts = document.querySelectorAll('.sortable-ghost')
+      ghosts.forEach((ghost) => {
+        if (!ghost.classList.contains('sortable-placeholder')) {
+          ghost.remove()
+        }
+      })
     }
 
     // Clean up empty container markers
     this.unmarkEmptyContainers()
+
+    // Clear any empty zone styling from all containers
+    document.querySelectorAll('.sortable-empty-drop-zone').forEach((el) => {
+      el.classList.remove('sortable-empty-drop-zone')
+    })
 
     // Remove global dragover handler
     if (this._globalDragOverHandler) {
@@ -748,12 +810,19 @@ export class DragManager implements DragManagerInterface {
       )
     }
 
+    // Check if our container is now empty and needs helper
+    this.ensureEmptyContainerDropTarget()
+
     globalDragState.endDrag(dragId)
     this.startIndex = -1
   }
 
   private onDragEnter = (e: DragEvent): void => {
     e.preventDefault()
+    // Set dropEffect to indicate this is a valid drop target
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
     const dragId = 'html5-drag'
     if (globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
       globalDragState.setPutTarget(
@@ -775,6 +844,13 @@ export class DragManager implements DragManagerInterface {
 
   // Pointer-based drag and drop for modern touch/pen/mouse support
   private onPointerDown = (e: PointerEvent): void => {
+    // CRITICAL: For mouse events, let the native HTML5 drag API handle it
+    // Only use pointer-based dragging for touch events
+    if (e.pointerType === 'mouse') {
+      // Don't interfere with native HTML5 drag for mouse
+      return
+    }
+
     // Find the closest draggable item
     const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
@@ -1292,24 +1368,27 @@ export class DragManager implements DragManagerInterface {
    * Update which items are draggable based on the draggable selector
    */
   private updateDraggableItems(): void {
-    // Update draggable attribute based on selector
-    const draggableItems = this.zone.element.querySelectorAll(this.draggable)
-    for (const item of draggableItems) {
-      if (
-        item instanceof HTMLElement &&
-        item.parentElement === this.zone.element
-      ) {
-        // Set draggable=true for HTML5 drag API
-        // When using handle, we still need draggable=true for HTML5 drag,
-        // the handle check happens in onDragStart
-        item.draggable = true
-      }
-    }
+    // Only update draggable attribute for direct children of THIS container
+    // Don't touch items in other containers
+    const children = Array.from(this.zone.element.children)
 
-    // Set draggable=false for items that don't match the selector
-    for (const child of this.zone.getItems()) {
-      if (!child.matches(this.draggable)) {
-        child.draggable = false
+    for (const child of children) {
+      if (child instanceof HTMLElement) {
+        // Skip helper elements
+        if (child.classList.contains('sortable-empty-drop-helper')) {
+          continue
+        }
+
+        // Set draggable based on whether it matches the selector
+        if (child.matches(this.draggable)) {
+          // Set draggable=true for HTML5 drag API
+          // When using handle, we still need draggable=true for HTML5 drag,
+          // the handle check happens in onDragStart
+          child.draggable = true
+        } else {
+          // Not a draggable item (might be a header or other content)
+          child.draggable = false
+        }
       }
     }
   }
@@ -1449,5 +1528,93 @@ export class DragManager implements DragManagerInterface {
         }
       }
     })
+  }
+
+  /**
+   * Ensure empty containers have a drop target for HTML5 drag events
+   */
+  private ensureEmptyContainerDropTarget(): void {
+    const el = this.zone.element
+
+    // Check if container is empty (no draggable children)
+    const draggableItems = el.querySelectorAll(this.draggable)
+    if (draggableItems.length === 0) {
+      // Add a helper element to ensure drag events fire
+      if (!el.querySelector('.sortable-empty-drop-helper')) {
+        const helper = document.createElement('div')
+        helper.className = 'sortable-empty-drop-helper'
+        helper.draggable = false
+
+        // CRITICAL: Use a non-zero alpha background color to ensure browser treats it as content
+        // Fully transparent elements don't receive drag events in some browsers
+        helper.style.cssText =
+          'min-height: 60px; width: 100%; background: rgba(0,0,0,0.01); pointer-events: auto; user-select: none; position: relative;'
+        helper.setAttribute('aria-hidden', 'true')
+
+        // Add actual text content (not just hidden) to ensure it's a valid drop target
+        // Use transparent color instead of visibility:hidden
+        helper.innerHTML =
+          '<span style="color: transparent; font-size: 1px; user-select: none;">Drop zone</span>'
+
+        // Add dragover event listener directly to helper to ensure it receives events
+        helper.addEventListener(
+          'dragover',
+          (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            // Set dropEffect to indicate this is a valid drop target
+            if (e.dataTransfer) {
+              e.dataTransfer.dropEffect = 'move'
+            }
+            // Forward the event to the container's handler
+            this.onDragOver(e)
+          },
+          true
+        )
+
+        helper.addEventListener(
+          'drop',
+          (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            // Forward the event to the container's handler
+            this.onDrop(e)
+          },
+          true
+        )
+
+        el.appendChild(helper)
+      }
+    }
+  }
+
+  /**
+   * Remove the empty container drop helper if it exists
+   */
+  private removeEmptyContainerHelper(): void {
+    const helper = this.zone.element.querySelector(
+      '.sortable-empty-drop-helper'
+    )
+    if (helper) {
+      // Remove all event listeners before removing the element
+      helper.replaceWith(helper.cloneNode(true))
+      const newHelper = this.zone.element.querySelector(
+        '.sortable-empty-drop-helper'
+      )
+      newHelper?.remove()
+    }
+  }
+
+  /**
+   * Check if a drop event occurred within this container's bounds
+   */
+  private isDropWithinBounds(e: DragEvent): boolean {
+    const rect = this.zone.element.getBoundingClientRect()
+    return (
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
+    )
   }
 }

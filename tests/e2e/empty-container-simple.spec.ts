@@ -1,43 +1,79 @@
 import { test, expect } from '@playwright/test'
 
-test('simple empty container drop test', async ({ page }) => {
-  // Navigate to the page
-  await page.goto('http://localhost:5173/demo-features.html')
+test.describe('Simple Empty Container Test', () => {
+  test('should allow dragging items into an empty container', async ({
+    page,
+  }) => {
+    // Navigate to the simple test page
+    await page.goto('http://localhost:5173/test-empty-container.html')
 
-  // Wait for the nested section to be visible
-  await page.waitForSelector('#nested-vertical-list', { timeout: 5000 })
+    // Wait for Sortable to initialize
+    await page.waitForSelector('#container1')
+    await page.waitForTimeout(200)
 
-  // Scroll to the nested section
-  await page.evaluate(() => {
-    const element = document.querySelector('#nested-vertical-list')
-    if (element) {
-      element.scrollIntoView({ behavior: 'instant', block: 'center' })
-    }
+    // Get initial counts
+    const sourceItems = page.locator('#container1 .item')
+    const emptyItems = page.locator('#container2 .item')
+
+    // Verify initial state
+    await expect(sourceItems).toHaveCount(3)
+    await expect(emptyItems).toHaveCount(0)
+
+    // Get the first item
+    const firstItem = sourceItems.first()
+    const itemText = await firstItem.textContent()
+
+    // Get the empty container
+    const emptyContainer = page.locator('#container2')
+
+    // Perform the drag and drop
+    await firstItem.dragTo(emptyContainer)
+
+    // Wait for animation
+    await page.waitForTimeout(300)
+
+    // Verify the item was moved
+    await expect(sourceItems).toHaveCount(2)
+    await expect(emptyItems).toHaveCount(1)
+
+    // Verify it's the correct item
+    const movedItem = emptyItems.first()
+    await expect(movedItem).toHaveText(itemText!)
+
+    // Verify we can drag another item
+    const secondItem = sourceItems.first()
+    await secondItem.dragTo(emptyContainer)
+    await page.waitForTimeout(300)
+
+    // Verify both items moved
+    await expect(sourceItems).toHaveCount(1)
+    await expect(emptyItems).toHaveCount(2)
   })
 
-  // Wait a bit for scroll to complete
-  await page.waitForTimeout(500)
+  test('should allow dragging items back from previously empty container', async ({
+    page,
+  }) => {
+    await page.goto('http://localhost:5173/test-empty-container.html')
 
-  // Get the empty container - use a more specific selector
-  const emptyContainer = await page
-    .locator('.nested-container')
-    .filter({ hasText: 'Empty Section' })
-    .locator('.horizontal-list')
-    .elementHandle()
+    // Wait for initialization
+    await page.waitForSelector('#container1')
+    await page.waitForTimeout(200)
 
-  // Check that it exists
-  expect(emptyContainer).toBeTruthy()
+    const sourceContainer = page.locator('#container1')
+    const emptyContainer = page.locator('#container2')
+    const sourceItems = sourceContainer.locator('.item')
+    const emptyItems = emptyContainer.locator('.item')
 
-  // Get the first item from Dashboard Widgets
-  const firstItem = await page
-    .locator('.nested-container')
-    .filter({ hasText: 'Dashboard Widgets' })
-    .locator('.horizontal-item')
-    .first()
-    .elementHandle()
+    // Move item to empty container
+    await sourceItems.first().dragTo(emptyContainer)
+    await page.waitForTimeout(300)
 
-  // Check that it exists
-  expect(firstItem).toBeTruthy()
+    // Now drag it back
+    await emptyItems.first().dragTo(sourceContainer)
+    await page.waitForTimeout(300)
 
-  console.log('Test completed successfully')
+    // Verify item returned
+    await expect(sourceItems).toHaveCount(3)
+    await expect(emptyItems).toHaveCount(0)
+  })
 })
