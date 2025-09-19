@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Verify Event Listeners</title>
+  <style>
+    .container {
+      border: 2px solid #333;
+      min-height: 100px;
+      margin: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: #4caf50;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+    }
+    #log {
+      margin: 20px;
+      padding: 10px;
+      background: #333;
+      color: #0f0;
+      font-family: monospace;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <h1>Verify Event Listeners Are Attached</h1>
+
+  <div class="container" id="source">
+    <h3>Source Container</h3>
+    <div class="item">Item 1</div>
+    <div class="item">Item 2</div>
+  </div>
+
+  <div class="container" id="empty">
+    <h3>Empty Container</h3>
+  </div>
+
+  <div id="log"></div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts'
+
+    const log = document.getElementById('log');
+    function logMsg(msg) {
+      log.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    // Helper to count event listeners (Chrome DevTools internal API)
+    function getEventListeners(element) {
+      // This is a simplified version - in reality we can't easily get listener count
+      // But we can test if events fire
+      const events = ['dragstart', 'dragover', 'drop', 'dragend', 'dragenter', 'dragleave'];
+      const listeners = {};
+
+      events.forEach(event => {
+        // Add a test listener to see if it gets called
+        let count = 0;
+        const testHandler = (e) => {
+          count++;
+          element.removeEventListener(event, testHandler, false);
+          element.removeEventListener(event, testHandler, true);
+        };
+
+        // Try both capture and bubble
+        element.addEventListener(event, testHandler, false);
+        element.addEventListener(event, testHandler, true);
+
+        // Dispatch a test event
+        const testEvent = new DragEvent(event, { bubbles: true, cancelable: true });
+        element.dispatchEvent(testEvent);
+
+        listeners[event] = count > 0;
+      });
+
+      return listeners;
+    }
+
+    const sourceEl = document.getElementById('source');
+    const emptyEl = document.getElementById('empty');
+
+    logMsg('BEFORE Sortable initialization:');
+    logMsg('Source listeners: ' + JSON.stringify(getEventListeners(sourceEl)));
+    logMsg('Empty listeners: ' + JSON.stringify(getEventListeners(emptyEl)));
+
+    // Add tracking listeners BEFORE Sortable
+    const trackEvent = (container, eventName) => {
+      container.addEventListener(eventName, (e) => {
+        logMsg(`[${container.id}] ${eventName} fired!`);
+      }, false);
+    };
+
+    ['dragstart', 'dragover', 'drop', 'dragend', 'dragenter', 'dragleave'].forEach(event => {
+      trackEvent(sourceEl, event);
+      trackEvent(emptyEl, event);
+    });
+
+    logMsg('\nInitializing Sortable...\n');
+
+    try {
+      const sortableSource = new Sortable(sourceEl, {
+        group: 'shared',
+        draggable: '.item',
+        onStart: (evt) => {
+          logMsg(`Sortable onStart: ${evt.item.textContent}`);
+        },
+        onEnd: (evt) => {
+          logMsg(`Sortable onEnd`);
+        }
+      });
+
+      const sortableEmpty = new Sortable(emptyEl, {
+        group: 'shared',
+        draggable: '.item',
+        onAdd: (evt) => {
+          logMsg(`Sortable onAdd: ${evt.item.textContent}`);
+        }
+      });
+
+      logMsg('\nAFTER Sortable initialization:');
+      logMsg('Source listeners: ' + JSON.stringify(getEventListeners(sourceEl)));
+      logMsg('Empty listeners: ' + JSON.stringify(getEventListeners(emptyEl)));
+
+      // Check DragManager attach method
+      logMsg('\nChecking DragManager state:');
+      logMsg('Source data-drop-zone: ' + sourceEl.dataset.dropZone);
+      logMsg('Empty data-drop-zone: ' + emptyEl.dataset.dropZone);
+      logMsg('Source classes: ' + sourceEl.className);
+      logMsg('Empty classes: ' + emptyEl.className);
+
+      // Check items
+      logMsg('\nChecking items:');
+      document.querySelectorAll('.item').forEach((item, i) => {
+        logMsg(`Item ${i}: draggable=${item.draggable}`);
+      });
+
+      // Test if dragover gets prevented
+      logMsg('\nTesting dragover preventDefault:');
+      const testDragOver = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer()
+      });
+
+      sourceEl.addEventListener('dragover', (e) => {
+        logMsg('Source dragover - defaultPrevented: ' + e.defaultPrevented);
+      }, false);
+
+      emptyEl.addEventListener('dragover', (e) => {
+        logMsg('Empty dragover - defaultPrevented: ' + e.defaultPrevented);
+      }, false);
+
+      sourceEl.dispatchEvent(testDragOver);
+      emptyEl.dispatchEvent(new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer()
+      }));
+
+    } catch (err) {
+      logMsg('ERROR: ' + err.message);
+      console.error(err);
+    }
+  </script>
+</body>
+</html>

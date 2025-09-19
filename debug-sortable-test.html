@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Sortable Drag Events</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      border: 2px solid #333;
+      min-height: 100px;
+      margin: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: #4caf50;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+    }
+    #log {
+      margin: 20px;
+      padding: 10px;
+      background: #333;
+      color: #0f0;
+      font-family: monospace;
+      height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug Sortable Library</h1>
+
+  <div class="container" id="source">
+    <h3>Source Container</h3>
+    <div class="item">Item 1</div>
+    <div class="item">Item 2</div>
+  </div>
+
+  <div class="container" id="empty">
+    <h3>Empty Container</h3>
+  </div>
+
+  <div id="log">Loading...</div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts'
+
+    const log = document.getElementById('log');
+    function logMsg(msg) {
+      const time = new Date().toTimeString().substr(0, 8);
+      log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+      console.log(msg);
+    }
+
+    logMsg('Starting debug...');
+
+    // First, let's check what happens to the items
+    const sourceEl = document.getElementById('source');
+    const emptyEl = document.getElementById('empty');
+
+    // Check initial state
+    logMsg('Initial state:');
+    const items = sourceEl.querySelectorAll('.item');
+    items.forEach((item, i) => {
+      logMsg(`  Item ${i}: draggable=${item.draggable}`);
+    });
+
+    // Add native listeners BEFORE Sortable to see raw events
+    sourceEl.addEventListener('dragstart', (e) => {
+      logMsg(`NATIVE dragstart on source - target: ${e.target.className}`);
+    }, false);
+
+    sourceEl.addEventListener('dragover', (e) => {
+      logMsg(`NATIVE dragover on source`);
+    }, false);
+
+    emptyEl.addEventListener('dragover', (e) => {
+      logMsg(`NATIVE dragover on empty`);
+      e.preventDefault(); // Allow drop
+    }, false);
+
+    emptyEl.addEventListener('drop', (e) => {
+      logMsg(`NATIVE drop on empty`);
+      e.preventDefault();
+    }, false);
+
+    // Now initialize Sortable
+    logMsg('Initializing Sortable...');
+
+    try {
+      const sortableSource = new Sortable(sourceEl, {
+        group: 'shared',
+        draggable: '.item',
+        onStart: (evt) => {
+          logMsg(`SORTABLE onStart: ${evt.item.textContent}`);
+        },
+        onEnd: (evt) => {
+          logMsg(`SORTABLE onEnd`);
+        }
+      });
+
+      const sortableEmpty = new Sortable(emptyEl, {
+        group: 'shared',
+        draggable: '.item',
+        onAdd: (evt) => {
+          logMsg(`SORTABLE onAdd: ${evt.item.textContent}`);
+        }
+      });
+
+      logMsg('Sortable initialized');
+
+      // Check state after Sortable
+      setTimeout(() => {
+        logMsg('After Sortable init:');
+        const items = sourceEl.querySelectorAll('.item');
+        items.forEach((item, i) => {
+          logMsg(`  Item ${i}: draggable=${item.draggable}`);
+        });
+
+        // Check what listeners are on the containers
+        logMsg('Container attributes:');
+        logMsg(`  Source: data-drop-zone=${sourceEl.dataset.dropZone}`);
+        logMsg(`  Empty: data-drop-zone=${emptyEl.dataset.dropZone}`);
+
+        // Check for helper element
+        const helper = emptyEl.querySelector('.sortable-empty-drop-helper');
+        if (helper) {
+          logMsg(`  Helper found in empty container`);
+          logMsg(`    - height: ${helper.offsetHeight}px`);
+          logMsg(`    - draggable: ${helper.draggable}`);
+        } else {
+          logMsg(`  No helper in empty container`);
+        }
+
+        // Add a global dragover listener to catch ALL dragover events
+        document.addEventListener('dragover', (e) => {
+          const target = e.target;
+          if (target === emptyEl || emptyEl.contains(target)) {
+            logMsg(`GLOBAL dragover detected over empty container!`);
+          }
+        }, false);
+
+        logMsg('Ready for testing!');
+      }, 100);
+
+    } catch (err) {
+      logMsg(`ERROR: ${err.message}`);
+      console.error(err);
+    }
+  </script>
+</body>
+</html>

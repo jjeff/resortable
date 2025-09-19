@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Empty Container</title>
+  <style>
+    .container {
+      border: 2px solid #333;
+      min-height: 100px;
+      margin: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: #4CAF50;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+    }
+    .sortable-ghost {
+      opacity: 0.4;
+    }
+    .sortable-empty-drop-zone {
+      background: #e8f5e9 !important;
+      border: 2px dashed #4CAF50 !important;
+      position: relative;
+    }
+    .sortable-empty-drop-zone::after {
+      content: 'Drop here';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #4CAF50;
+      font-style: italic;
+    }
+    .sortable-placeholder {
+      background: #2196F3 !important;
+      opacity: 0.5;
+      height: 40px;
+      margin: 5px;
+    }
+    #log {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: #222;
+      color: #0f0;
+      font-family: monospace;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    body {
+      margin-bottom: 220px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug Empty Container</h1>
+
+  <div class="container" id="source">
+    <h3>Source</h3>
+    <div class="item" draggable="true">Item 1 (native draggable)</div>
+    <div class="item">Item 2</div>
+    <div class="item">Item 3</div>
+  </div>
+
+  <div class="container" id="empty">
+    <h3>Empty Container</h3>
+  </div>
+
+  <button id="manualTest" style="margin: 20px;">Test Manual Drag</button>
+
+  <div id="log"></div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const log = document.getElementById('log');
+    function logMsg(msg) {
+      const time = new Date().toTimeString().substr(0, 8);
+      log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+      console.log(msg);
+    }
+
+    logMsg('Starting debug test...');
+
+    try {
+      // Check if Sortable loaded
+      logMsg('Sortable class: ' + (typeof Sortable));
+
+      // Create sortables with extensive logging
+      const sourceEl = document.getElementById('source');
+      const emptyEl = document.getElementById('empty');
+
+      logMsg('Source element: ' + sourceEl);
+      logMsg('Empty element: ' + emptyEl);
+
+      const source = new Sortable(sourceEl, {
+        group: 'shared',
+        animation: 150,
+        draggable: '.item',
+        onStart: (evt) => {
+          logMsg('START: Drag started from source');
+          logMsg('  - Item: ' + evt.item.textContent);
+          logMsg('  - From: ' + evt.from.id);
+        },
+        onEnd: (evt) => {
+          logMsg('END: Drag ended');
+          logMsg('  - From: ' + evt.from.id);
+          logMsg('  - To: ' + evt.to.id);
+          logMsg('  - OldIndex: ' + evt.oldIndex);
+          logMsg('  - NewIndex: ' + evt.newIndex);
+        },
+        onAdd: (evt) => {
+          logMsg('ADD: Item added to source');
+        },
+        onRemove: (evt) => {
+          logMsg('REMOVE: Item removed from source');
+        },
+        onSort: (evt) => {
+          logMsg('SORT: Items sorted in source');
+        },
+        onChoose: (evt) => {
+          logMsg('CHOOSE: Item chosen in source');
+        },
+        onUnchoose: (evt) => {
+          logMsg('UNCHOOSE: Item unchosen in source');
+        },
+        onUpdate: (evt) => {
+          logMsg('UPDATE: List updated in source');
+        }
+      });
+
+      const empty = new Sortable(emptyEl, {
+        group: 'shared',
+        animation: 150,
+        draggable: '.item',
+        onStart: (evt) => {
+          logMsg('START: Drag started from empty');
+        },
+        onEnd: (evt) => {
+          logMsg('END: Drag ended in empty');
+          logMsg('  - From: ' + evt.from.id);
+          logMsg('  - To: ' + evt.to.id);
+        },
+        onAdd: (evt) => {
+          logMsg('ADD: Item added to empty!');
+        },
+        onRemove: (evt) => {
+          logMsg('REMOVE: Item removed from empty');
+        }
+      });
+
+      logMsg('Sortables created successfully');
+
+      // Check draggable items
+      const items = document.querySelectorAll('.item');
+      logMsg('Found ' + items.length + ' items');
+      items.forEach((item, i) => {
+        logMsg('Item ' + i + ' draggable attr: ' + item.getAttribute('draggable'));
+      });
+
+      // Add native drag event listeners for debugging
+      document.addEventListener('dragstart', (e) => {
+        logMsg('NATIVE dragstart: ' + e.target.textContent);
+      }, true);
+
+      let lastDragOverTarget = null;
+      let dragOverCount = 0;
+      document.addEventListener('dragover', (e) => {
+        const target = e.target.id || e.target.className || e.target.tagName;
+        if (target !== lastDragOverTarget) {
+          logMsg('NATIVE dragover: ' + target + ' (count: ' + dragOverCount + ')');
+          lastDragOverTarget = target;
+          dragOverCount = 0;
+        }
+        dragOverCount++;
+      }, true);
+
+      document.addEventListener('drop', (e) => {
+        logMsg('NATIVE drop at: ' + (e.target.id || e.target.className));
+        e.preventDefault(); // Prevent default browser behavior
+      }, true);
+
+      document.addEventListener('dragend', (e) => {
+        logMsg('NATIVE dragend');
+      }, true);
+
+      // Add dragenter/dragleave for completeness
+      document.addEventListener('dragenter', (e) => {
+        const target = e.target.id || e.target.className || e.target.tagName;
+        logMsg('NATIVE dragenter: ' + target);
+      }, true);
+
+      document.addEventListener('dragleave', (e) => {
+        const target = e.target.id || e.target.className || e.target.tagName;
+        logMsg('NATIVE dragleave: ' + target);
+      }, true);
+
+      // Check container attributes
+      setTimeout(() => {
+        logMsg('Checking container attributes:');
+        const containers = document.querySelectorAll('.container');
+        containers.forEach((c) => {
+          logMsg('Container ' + c.id + ':');
+          logMsg('  - data-drop-zone: ' + c.dataset.dropZone);
+          logMsg('  - data-sortable-group: ' + c.dataset.sortableGroup);
+          logMsg('  - children: ' + c.querySelectorAll('.item').length);
+          logMsg('  - minHeight: ' + c.style.minHeight);
+        });
+      }, 500);
+
+      // Manual test button
+      document.getElementById('manualTest').addEventListener('click', () => {
+        logMsg('--- MANUAL TEST START ---');
+        const item = document.querySelector('.item');
+        const empty = document.getElementById('empty');
+
+        // Simulate dragstart
+        const dragStartEvent = new DragEvent('dragstart', {
+          bubbles: true,
+          cancelable: true,
+        });
+        item.dispatchEvent(dragStartEvent);
+
+        // Simulate dragover on empty
+        setTimeout(() => {
+          const dragOverEvent = new DragEvent('dragover', {
+            bubbles: true,
+            cancelable: true,
+          });
+          empty.dispatchEvent(dragOverEvent);
+          logMsg('Dispatched dragover on empty container');
+        }, 100);
+
+        // Simulate drop on empty
+        setTimeout(() => {
+          const dropEvent = new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+          });
+          empty.dispatchEvent(dropEvent);
+          logMsg('Dispatched drop on empty container');
+        }, 200);
+
+        // Simulate dragend
+        setTimeout(() => {
+          const dragEndEvent = new DragEvent('dragend', {
+            bubbles: true,
+            cancelable: true,
+          });
+          item.dispatchEvent(dragEndEvent);
+          logMsg('Dispatched dragend');
+        }, 300);
+      });
+
+    } catch(err) {
+      logMsg('ERROR: ' + err.message);
+      console.error(err);
+    }
+  </script>
+</body>
+</html>

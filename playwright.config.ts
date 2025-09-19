@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Use a different port in CI to avoid conflicts with dev server on host
-const PORT = process.env.CI ? '4173' : '3000';
+const PORT = process.env.CI ? '4173' : '5176';
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -72,7 +72,7 @@ export default defineConfig({
     : {
       command: 'npm run dev',
       url: `http://localhost:${PORT}`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true, // Always reuse existing server
       timeout: 120 * 1000,
       stdout: 'pipe',
       stderr: 'pipe',

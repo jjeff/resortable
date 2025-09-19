@@ -214,6 +214,10 @@ export class GhostManager {
   /**
    * Gets the current ghost element
    */
+  /**
+   * Get the ghost element if it exists
+   * @returns The ghost element or null
+   */
   getGhostElement(): HTMLElement | null {
     return this.ghostElement
   }
