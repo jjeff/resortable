@@ -467,8 +467,9 @@ export class DragManager implements DragManagerInterface {
     let placeholder = this.ghostManager.getPlaceholderElement()
     if (!placeholder && originalItem.parentElement) {
       placeholder = this.ghostManager.createPlaceholder(originalItem)
-      // Hide the original item completely now that we have a placeholder
-      originalItem.style.display = 'none'
+      // Make the original item invisible but keep its space (for nested containers)
+      originalItem.style.visibility = 'hidden'
+      originalItem.style.pointerEvents = 'none'
     }
     if (!placeholder) return
 
@@ -778,6 +779,8 @@ export class DragManager implements DragManagerInterface {
     if (activeDrag) {
       activeDrag.item.style.opacity = ''
       activeDrag.item.style.display = ''
+      activeDrag.item.style.visibility = ''
+      activeDrag.item.style.pointerEvents = ''
       activeDrag.item.classList.remove(this.ghostManager.getDragClass())
       activeDrag.item.classList.remove(this.ghostManager.getChosenClass())
 

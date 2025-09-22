@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Use a different port in CI to avoid conflicts with dev server on host
-const PORT = process.env.CI ? '4173' : '5176';
+const PORT = process.env.CI ? '4173' : '5173';
 
 /**
  * @see https://playwright.dev/docs/test-configuration
