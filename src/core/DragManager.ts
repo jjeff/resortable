@@ -519,7 +519,9 @@ export class DragManager implements DragManagerInterface {
     if (isOverContainer && draggableChildren.length === 0) {
       // Container is empty - move item here if not already
       if (originalItem.parentElement !== this.zone.element) {
+        // For cross-container, we need to append directly (can't use zone.move for items not in zone)
         this.zone.element.appendChild(originalItem)
+        // TODO: Add animation for cross-container moves
         // Add visual indication for empty container
         this.zone.element.classList.add('sortable-empty-drop-zone')
       }
@@ -570,11 +572,16 @@ export class DragManager implements DragManagerInterface {
       if (originalItem.parentElement === this.zone.element) {
         // Get current positions
         const overRect = over.getBoundingClientRect()
+        const items = this.zone.getItems()
+        const currentIndex = items.indexOf(originalItem)
+        const overIndex = items.indexOf(over)
 
         // Determine if we should move the item based on mouse position
         // Check if it's a horizontal or vertical list based on element positions
         const originalRect = originalItem.getBoundingClientRect()
         const isHorizontal = Math.abs(originalRect.top - overRect.top) < 10
+
+        let targetIndex: number
 
         if (isHorizontal) {
           // Horizontal list - use X coordinates
@@ -583,14 +590,10 @@ export class DragManager implements DragManagerInterface {
 
           if (mouseX < overMidpoint) {
             // Mouse is in left half - insert before
-            if (originalItem.nextSibling !== over) {
-              over.parentElement?.insertBefore(originalItem, over)
-            }
+            targetIndex = overIndex
           } else {
             // Mouse is in right half - insert after
-            if (originalItem !== over.nextSibling) {
-              over.parentElement?.insertBefore(originalItem, over.nextSibling)
-            }
+            targetIndex = overIndex + 1
           }
         } else {
           // Vertical list - use Y coordinates
@@ -599,15 +602,21 @@ export class DragManager implements DragManagerInterface {
 
           if (mouseY < overMidpoint) {
             // Mouse is in upper half - insert before
-            if (originalItem.nextSibling !== over) {
-              over.parentElement?.insertBefore(originalItem, over)
-            }
+            targetIndex = overIndex
           } else {
             // Mouse is in lower half - insert after
-            if (originalItem !== over.nextSibling) {
-              over.parentElement?.insertBefore(originalItem, over.nextSibling)
-            }
+            targetIndex = overIndex + 1
           }
+        }
+
+        // Adjust target index if moving from before to after the same position
+        if (currentIndex < targetIndex) {
+          targetIndex--
+        }
+
+        // Use DropZone's move method to handle animation
+        if (currentIndex !== targetIndex) {
+          this.zone.move(originalItem, targetIndex)
         }
       }
     }

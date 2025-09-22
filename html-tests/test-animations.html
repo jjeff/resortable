@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animation Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .item {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 20px;
+      margin: 8px 0;
+      border-radius: 8px;
+      cursor: grab;
+      user-select: none;
+      font-size: 16px;
+      font-weight: 500;
+      transition: transform 0.2s ease;
+    }
+
+    .item:hover {
+      transform: translateX(4px);
+    }
+
+    .item:active {
+      cursor: grabbing;
+    }
+
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #ddd;
+    }
+
+    .sortable-drag {
+      opacity: 0;
+    }
+
+    .sortable-chosen {
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .animation-controls {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .animation-controls h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .control-group label {
+      flex: 0 0 150px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .control-group input[type="range"] {
+      flex: 1;
+    }
+
+    .control-group .value {
+      flex: 0 0 60px;
+      text-align: right;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background: #5a67d8;
+    }
+
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #e6fffa;
+      border: 1px solid #81e6d9;
+      border-radius: 6px;
+      color: #234e52;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎬 FLIP Animation Test</h1>
+
+  <div class="container">
+    <div class="animation-controls">
+      <h3>Animation Settings</h3>
+      <div class="control-group">
+        <label for="duration">Duration (ms):</label>
+        <input type="range" id="duration" min="0" max="1000" value="150" step="50">
+        <span class="value" id="duration-value">150</span>
+      </div>
+      <div class="control-group">
+        <label for="easing">Easing:</label>
+        <select id="easing" style="flex: 1;">
+          <option value="cubic-bezier(0.4, 0.0, 0.2, 1)">Ease (default)</option>
+          <option value="linear">Linear</option>
+          <option value="ease-in">Ease In</option>
+          <option value="ease-out">Ease Out</option>
+          <option value="ease-in-out">Ease In Out</option>
+          <option value="cubic-bezier(0.68, -0.55, 0.265, 1.55)">Elastic</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <button onclick="shuffleItems()">🔀 Shuffle Items</button>
+        <button onclick="reverseItems()">🔄 Reverse Order</button>
+        <button onclick="sortItems()">📝 Sort Alphabetically</button>
+      </div>
+    </div>
+
+    <ul id="sortable-list" class="list">
+      <li class="item" data-id="1">🍎 Apple</li>
+      <li class="item" data-id="2">🍌 Banana</li>
+      <li class="item" data-id="3">🍇 Grape</li>
+      <li class="item" data-id="4">🍊 Orange</li>
+      <li class="item" data-id="5">🍓 Strawberry</li>
+      <li class="item" data-id="6">🥝 Kiwi</li>
+      <li class="item" data-id="7">🍑 Peach</li>
+      <li class="item" data-id="8">🍒 Cherry</li>
+    </ul>
+
+    <div id="status">Drag items to reorder. Watch for smooth FLIP animations!</div>
+  </div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const list = document.getElementById('sortable-list');
+    const durationInput = document.getElementById('duration');
+    const durationValue = document.getElementById('duration-value');
+    const easingSelect = document.getElementById('easing');
+    const status = document.getElementById('status');
+
+    // Create sortable with initial settings
+    let sortable = new Sortable(list, {
+      animation: parseInt(durationInput.value),
+      easing: easingSelect.value,
+      draggable: '.item',
+      onStart: function(evt) {
+        status.textContent = `Started dragging: ${evt.item.textContent}`;
+        status.style.background = '#fef5e7';
+        status.style.borderColor = '#f39c12';
+      },
+      onEnd: function(evt) {
+        const message = evt.oldIndex !== evt.newIndex
+          ? `Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`
+          : 'Item returned to original position';
+        status.textContent = message;
+        status.style.background = '#e6fffa';
+        status.style.borderColor = '#81e6d9';
+
+        // Log for debugging
+        console.log('Animation duration:', sortable.option('animation'));
+        console.log('Move completed:', evt);
+      }
+    });
+
+    // Update animation duration
+    durationInput.addEventListener('input', function() {
+      const value = parseInt(this.value);
+      durationValue.textContent = value;
+      sortable.option('animation', value);
+      status.textContent = `Animation duration set to ${value}ms`;
+    });
+
+    // Update easing function
+    easingSelect.addEventListener('change', function() {
+      sortable.option('easing', this.value);
+      status.textContent = `Easing function updated`;
+    });
+
+    // Helper functions for testing animations
+    window.shuffleItems = function() {
+      const items = Array.from(list.children);
+      const shuffled = [...items];
+
+      // Fisher-Yates shuffle
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      // Use the new reorderAll method for smooth batch animation
+      sortable.dropZone.reorderAll(shuffled);
+
+      status.textContent = 'Items shuffled with animation!';
+      status.style.background = '#f0f9ff';
+      status.style.borderColor = '#3182ce';
+    };
+
+    window.reverseItems = function() {
+      const items = Array.from(list.children);
+      const reversed = [...items].reverse();
+
+      // Use the new reorderAll method for smooth batch animation
+      sortable.dropZone.reorderAll(reversed);
+
+      status.textContent = 'Order reversed with animation!';
+      status.style.background = '#f0f9ff';
+      status.style.borderColor = '#3182ce';
+    };
+
+    window.sortItems = function() {
+      const items = Array.from(list.children);
+      const sorted = [...items].sort((a, b) => a.textContent.localeCompare(b.textContent));
+
+      // Use the new reorderAll method for smooth batch animation
+      sortable.dropZone.reorderAll(sorted);
+
+      status.textContent = 'Items sorted alphabetically with animation!';
+      status.style.background = '#f0f9ff';
+      status.style.borderColor = '#3182ce';
+    };
+
+    // Make sortable available for debugging
+    window.sortable = sortable;
+  </script>
+</body>
+</html>

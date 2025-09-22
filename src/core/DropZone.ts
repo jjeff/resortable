@@ -102,4 +102,42 @@ export class DropZone {
       insertAt(this.element, item, targetDOMIndex)
     }
   }
+
+  /**
+   * Reorder multiple items at once with a single FLIP animation
+   * @param newOrder - Array of elements in their desired new order
+   */
+  public reorderAll(newOrder: HTMLElement[]): void {
+    const currentItems = this.getItems()
+
+    // Validate that all items are present
+    if (newOrder.length !== currentItems.length) {
+      console.warn('reorderAll: new order has different length than current items')
+      return
+    }
+
+    // Check if all items are accounted for
+    const newOrderSet = new Set(newOrder)
+    const currentSet = new Set(currentItems)
+    if (newOrderSet.size !== currentSet.size) {
+      console.warn('reorderAll: new order contains duplicate or missing items')
+      return
+    }
+
+    // If we have an animation manager, animate the entire reordering at once
+    if (this.animationManager) {
+      // Use FLIP animation for smooth reordering of all items
+      this.animationManager.animateReorder(currentItems, () => {
+        // Append all items in the new order
+        newOrder.forEach(item => {
+          this.element.appendChild(item)
+        })
+      })
+    } else {
+      // No animation, just reorder
+      newOrder.forEach(item => {
+        this.element.appendChild(item)
+      })
+    }
+  }
 }
