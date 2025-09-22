@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Drag Test</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .instructions {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 0 auto 30px;
+      max-width: 800px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .instructions h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+
+    .instructions ul {
+      list-style-position: inside;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .instructions code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      color: #d63384;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .demo-section {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .demo-section h3 {
+      color: #333;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .sortable-list {
+      list-style: none;
+      min-height: 200px;
+      background: #f8f9fa;
+      border: 2px dashed #dee2e6;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .sortable-item {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px 20px;
+      margin-bottom: 10px;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .sortable-item:hover {
+      border-color: #667eea;
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .sortable-item:active {
+      cursor: grabbing;
+    }
+
+    .sortable-item:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Selection indicator */
+    .sortable-item::before {
+      content: '☐';
+      position: absolute;
+      left: -25px;
+      font-size: 20px;
+      color: #adb5bd;
+      transition: all 0.2s ease;
+    }
+
+    .sortable-item:hover::before {
+      color: #667eea;
+    }
+
+    /* Multi-drag states */
+    .sortable-selected {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-color: #667eea;
+      transform: translateX(8px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .sortable-selected::before {
+      content: '☑';
+      color: white;
+    }
+
+    .sortable-chosen {
+      opacity: 0.6;
+      transform: scale(1.02);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+    }
+
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #e9ecef;
+      border-style: dashed;
+    }
+
+    .sortable-drag {
+      opacity: 0;
+    }
+
+    /* Item content */
+    .item-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 14px;
+      margin-right: 15px;
+    }
+
+    .sortable-selected .item-number {
+      background: white;
+      color: #667eea;
+    }
+
+    .item-text {
+      flex: 1;
+      font-size: 16px;
+    }
+
+    .item-meta {
+      font-size: 12px;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sortable-selected .item-meta {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Controls */
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .controls button {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .controls button:hover {
+      background: #5a67d8;
+    }
+
+    .controls button:active {
+      transform: translateY(1px);
+    }
+
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #495057;
+    }
+
+    .controls input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* Status */
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      border-radius: 8px;
+      color: #0c5460;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #status.success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    #status.error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    /* Two column layout for multiple lists */
+    .multi-list-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .list-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .list-section h4 {
+      margin-bottom: 10px;
+      color: #495057;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 20px;
+      }
+
+      .multi-list-container {
+        grid-template-columns: 1fr;
+      }
+
+      .sortable-item::before {
+        position: static;
+        margin-right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 Multi-Drag Selection Test</h1>
+
+  <div class="instructions">
+    <h2>How to Use Multi-Drag:</h2>
+    <ul>
+      <li><strong>Select items:</strong> Click on items to select/deselect them (they'll turn purple)</li>
+      <li><strong>Multi-select:</strong> Hold <code>Ctrl</code> (or <code>Cmd</code> on Mac) while clicking to select multiple items</li>
+      <li><strong>Select range:</strong> Click an item, then <code>Shift+Click</code> another to select all items between</li>
+      <li><strong>Drag selected:</strong> Drag any selected item to move all selected items together</li>
+      <li><strong>Clear selection:</strong> Click the "Clear Selection" button or <code>Escape</code> key</li>
+    </ul>
+  </div>
+
+  <div class="container">
+    <!-- Single List Multi-Drag -->
+    <div class="demo-section">
+      <h3>Single List - Multi-Drag</h3>
+
+      <div class="controls">
+        <label>
+          <input type="checkbox" id="multiDragToggle" checked>
+          Multi-Drag Enabled
+        </label>
+        <button onclick="selectAll()">Select All</button>
+        <button onclick="clearSelection()">Clear Selection</button>
+        <button onclick="selectOdd()">Select Odd Items</button>
+        <button onclick="selectEven()">Select Even Items</button>
+      </div>
+
+      <ul id="single-list" class="sortable-list">
+        <li class="sortable-item" data-id="item-1">
+          <span class="item-number">1</span>
+          <span class="item-text">Project Planning</span>
+          <span class="item-meta">High</span>
+        </li>
+        <li class="sortable-item" data-id="item-2">
+          <span class="item-number">2</span>
+          <span class="item-text">Design Review</span>
+          <span class="item-meta">Medium</span>
+        </li>
+        <li class="sortable-item" data-id="item-3">
+          <span class="item-number">3</span>
+          <span class="item-text">Development</span>
+          <span class="item-meta">High</span>
+        </li>
+        <li class="sortable-item" data-id="item-4">
+          <span class="item-number">4</span>
+          <span class="item-text">Testing</span>
+          <span class="item-meta">Medium</span>
+        </li>
+        <li class="sortable-item" data-id="item-5">
+          <span class="item-number">5</span>
+          <span class="item-text">Documentation</span>
+          <span class="item-meta">Low</span>
+        </li>
+        <li class="sortable-item" data-id="item-6">
+          <span class="item-number">6</span>
+          <span class="item-text">Code Review</span>
+          <span class="item-meta">High</span>
+        </li>
+        <li class="sortable-item" data-id="item-7">
+          <span class="item-number">7</span>
+          <span class="item-text">Deployment</span>
+          <span class="item-meta">Critical</span>
+        </li>
+        <li class="sortable-item" data-id="item-8">
+          <span class="item-number">8</span>
+          <span class="item-text">Monitoring</span>
+          <span class="item-meta">Medium</span>
+        </li>
+      </ul>
+
+      <div id="status">
+        Ready. Click items to select them, then drag any selected item to move them all.
+      </div>
+    </div>
+
+    <!-- Multiple Lists Multi-Drag -->
+    <div class="demo-section">
+      <h3>Multiple Lists - Multi-Drag Between Containers</h3>
+
+      <div class="controls">
+        <button onclick="selectAllInList('multi-list-1')">Select All in Todo</button>
+        <button onclick="selectAllInList('multi-list-2')">Select All in Done</button>
+        <button onclick="clearAllSelections()">Clear All Selections</button>
+        <button onclick="moveSelected()">Move Selected to Done</button>
+      </div>
+
+      <div class="multi-list-container">
+        <div class="list-section">
+          <h4>📝 Todo</h4>
+          <ul id="multi-list-1" class="sortable-list">
+            <li class="sortable-item" data-id="todo-1">
+              <span class="item-text">Write unit tests</span>
+            </li>
+            <li class="sortable-item" data-id="todo-2">
+              <span class="item-text">Update documentation</span>
+            </li>
+            <li class="sortable-item" data-id="todo-3">
+              <span class="item-text">Fix bug #123</span>
+            </li>
+            <li class="sortable-item" data-id="todo-4">
+              <span class="item-text">Optimize performance</span>
+            </li>
+            <li class="sortable-item" data-id="todo-5">
+              <span class="item-text">Add new feature</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="list-section">
+          <h4>✅ Done</h4>
+          <ul id="multi-list-2" class="sortable-list">
+            <li class="sortable-item" data-id="done-1">
+              <span class="item-text">Setup project</span>
+            </li>
+            <li class="sortable-item" data-id="done-2">
+              <span class="item-text">Create mockups</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="status2">
+        Multi-drag works across lists! Select items and drag them between Todo and Done.
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const status = document.getElementById('status');
+    const status2 = document.getElementById('status2');
+
+    // Single list with multi-drag
+    const singleList = new Sortable(document.getElementById('single-list'), {
+      animation: 150,
+      multiDrag: true,
+      selectedClass: 'sortable-selected',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onSelect: function(evt) {
+        const count = evt.items.length;
+        status.textContent = `Selected ${count} item${count !== 1 ? 's' : ''}. Drag any selected item to move them all.`;
+        status.className = '';
+        console.log('Selected:', evt);
+      },
+      onDeselect: function(evt) {
+        const remaining = document.querySelectorAll('#single-list .sortable-selected').length;
+        if (remaining === 0) {
+          status.textContent = 'No items selected. Click to select items.';
+        } else {
+          status.textContent = `${remaining} item${remaining !== 1 ? 's' : ''} selected.`;
+        }
+        status.className = '';
+        console.log('Deselected:', evt);
+      },
+      onStart: function(evt) {
+        const selectedCount = evt.items.length;
+        status.textContent = `Dragging ${selectedCount} item${selectedCount !== 1 ? 's' : ''}...`;
+        status.className = '';
+      },
+      onEnd: function(evt) {
+        const selectedCount = evt.items.length;
+        if (evt.oldIndex !== evt.newIndex) {
+          status.textContent = `Moved ${selectedCount} item${selectedCount !== 1 ? 's' : ''} from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`;
+          status.className = 'success';
+        } else {
+          status.textContent = `Items returned to original position.`;
+          status.className = '';
+        }
+        console.log('End event:', evt);
+      }
+    });
+
+    // Multiple lists with shared group
+    const multiList1 = new Sortable(document.getElementById('multi-list-1'), {
+      group: 'shared-tasks',
+      animation: 150,
+      multiDrag: true,
+      selectedClass: 'sortable-selected',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onSelect: updateMultiListStatus,
+      onDeselect: updateMultiListStatus,
+      onEnd: function(evt) {
+        updateMultiListStatus();
+        if (evt.from !== evt.to) {
+          status2.textContent = `Moved ${evt.items.length} item(s) from ${evt.from.id === 'multi-list-1' ? 'Todo' : 'Done'} to ${evt.to.id === 'multi-list-1' ? 'Todo' : 'Done'}`;
+          status2.className = 'success';
+        }
+      }
+    });
+
+    const multiList2 = new Sortable(document.getElementById('multi-list-2'), {
+      group: 'shared-tasks',
+      animation: 150,
+      multiDrag: true,
+      selectedClass: 'sortable-selected',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onSelect: updateMultiListStatus,
+      onDeselect: updateMultiListStatus,
+      onEnd: function(evt) {
+        updateMultiListStatus();
+        if (evt.from !== evt.to) {
+          status2.textContent = `Moved ${evt.items.length} item(s) from ${evt.from.id === 'multi-list-1' ? 'Todo' : 'Done'} to ${evt.to.id === 'multi-list-1' ? 'Todo' : 'Done'}`;
+          status2.className = 'success';
+        }
+      }
+    });
+
+    function updateMultiListStatus() {
+      const selected1 = document.querySelectorAll('#multi-list-1 .sortable-selected').length;
+      const selected2 = document.querySelectorAll('#multi-list-2 .sortable-selected').length;
+      const total = selected1 + selected2;
+
+      if (total === 0) {
+        status2.textContent = 'Click items to select them, then drag between lists.';
+        status2.className = '';
+      } else {
+        let message = `${total} item(s) selected`;
+        if (selected1 > 0 && selected2 > 0) {
+          message += ` (${selected1} in Todo, ${selected2} in Done)`;
+        }
+        status2.textContent = message;
+        status2.className = '';
+      }
+    }
+
+    // Toggle multi-drag
+    document.getElementById('multiDragToggle').addEventListener('change', function(e) {
+      singleList.option('multiDrag', e.target.checked);
+      if (!e.target.checked) {
+        clearSelection();
+        status.textContent = 'Multi-drag disabled. Items can only be dragged individually.';
+        status.className = '';
+      } else {
+        status.textContent = 'Multi-drag enabled. Click items to select them.';
+        status.className = 'success';
+      }
+    });
+
+    // Helper functions
+    window.selectAll = function() {
+      const items = document.querySelectorAll('#single-list .sortable-item');
+      items.forEach(item => {
+        if (!item.classList.contains('sortable-selected')) {
+          item.click();
+        }
+      });
+    };
+
+    window.clearSelection = function() {
+      const items = document.querySelectorAll('#single-list .sortable-selected');
+      items.forEach(item => item.click());
+    };
+
+    window.selectOdd = function() {
+      clearSelection();
+      const items = document.querySelectorAll('#single-list .sortable-item');
+      items.forEach((item, index) => {
+        if (index % 2 === 0) { // 0-indexed, so even indices are odd positions
+          item.click();
+        }
+      });
+    };
+
+    window.selectEven = function() {
+      clearSelection();
+      const items = document.querySelectorAll('#single-list .sortable-item');
+      items.forEach((item, index) => {
+        if (index % 2 === 1) { // 0-indexed, so odd indices are even positions
+          item.click();
+        }
+      });
+    };
+
+    window.selectAllInList = function(listId) {
+      const items = document.querySelectorAll(`#${listId} .sortable-item`);
+      items.forEach(item => {
+        if (!item.classList.contains('sortable-selected')) {
+          item.click();
+        }
+      });
+    };
+
+    window.clearAllSelections = function() {
+      const items = document.querySelectorAll('.sortable-selected');
+      items.forEach(item => item.click());
+    };
+
+    window.moveSelected = function() {
+      const selected = document.querySelectorAll('#multi-list-1 .sortable-selected');
+      const targetList = document.getElementById('multi-list-2');
+      selected.forEach(item => targetList.appendChild(item));
+      updateMultiListStatus();
+      if (selected.length > 0) {
+        status2.textContent = `Programmatically moved ${selected.length} item(s) to Done`;
+        status2.className = 'success';
+      }
+    };
+
+    // Keyboard shortcut for clearing selection
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        clearAllSelections();
+      }
+    });
+
+    // Log for debugging
+    console.log('Multi-drag test page loaded');
+    console.log('Single list Sortable:', singleList);
+    console.log('Multi-list 1 Sortable:', multiList1);
+    console.log('Multi-list 2 Sortable:', multiList2);
+  </script>
+</body>
+</html>

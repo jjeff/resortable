@@ -121,6 +121,12 @@ export interface SortableOptions {
   multiDrag?: boolean
 
   /**
+   * Key to use for multi-select (with click)
+   * @defaultValue 'ctrlKey' (or 'metaKey' on Mac)
+   */
+  multiSelectKey?: 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+
+  /**
    * CSS class for selected items in multi-drag mode
    * @defaultValue 'sortable-selected'
    */

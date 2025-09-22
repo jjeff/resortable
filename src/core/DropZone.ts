@@ -112,7 +112,9 @@ export class DropZone {
 
     // Validate that all items are present
     if (newOrder.length !== currentItems.length) {
-      console.warn('reorderAll: new order has different length than current items')
+      console.warn(
+        'reorderAll: new order has different length than current items'
+      )
       return
     }
 
@@ -129,13 +131,13 @@ export class DropZone {
       // Use FLIP animation for smooth reordering of all items
       this.animationManager.animateReorder(currentItems, () => {
         // Append all items in the new order
-        newOrder.forEach(item => {
+        newOrder.forEach((item) => {
           this.element.appendChild(item)
         })
       })
     } else {
       // No animation, just reorder
-      newOrder.forEach(item => {
+      newOrder.forEach((item) => {
         this.element.appendChild(item)
       })
     }

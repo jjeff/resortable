@@ -5,7 +5,7 @@ test('simple cross-container test', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   // Log all console messages
-  page.on('console', msg => console.log(msg.text()))
+  page.on('console', (msg) => console.log(msg.text()))
 
   // Get initial counts
   const initialList1 = await page.locator('#multi-1 .horizontal-item').count()
@@ -20,7 +20,9 @@ test('simple cross-container test', async ({ page }) => {
   const target = page.locator('#multi-2')
 
   // Check if item is draggable
-  const isDraggable = await source.evaluate(el => (el as HTMLElement).draggable)
+  const isDraggable = await source.evaluate(
+    (el) => (el as HTMLElement).draggable
+  )
   console.log('Item is draggable:', isDraggable)
 
   // Try drag using Playwright's dragTo
@@ -46,6 +48,8 @@ test('simple cross-container test', async ({ page }) => {
   if (finalList1 === initialList1 - 1 && finalList2 === initialList2 + 1) {
     console.log('\n✅ Cross-container drag SUCCESSFUL!')
   } else {
-    console.log('\n❌ Cross-container drag FAILED - items did not move between containers')
+    console.log(
+      '\n❌ Cross-container drag FAILED - items did not move between containers'
+    )
   }
 })

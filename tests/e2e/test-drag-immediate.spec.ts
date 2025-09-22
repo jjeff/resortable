@@ -6,78 +6,96 @@ test('debug immediate dragend', async ({ page }) => {
 
   // Add detailed logging to understand why drag ends immediately
   await page.evaluate(() => {
-    document.addEventListener('dragstart', (e) => {
-      const target = e.target as HTMLElement
-      console.log('[DRAGSTART]', {
-        text: target.textContent,
-        display: window.getComputedStyle(target).display,
-        parent: target.parentElement?.id,
-        dataTransfer: e.dataTransfer ? 'present' : 'missing'
-      })
-
-      // Check what DragManager thinks
-      const container = target.parentElement
-      if (container) {
-        console.log('[DRAGSTART] Container:', {
-          id: container.id,
-          sortableGroup: container.dataset.sortableGroup,
-          dropZone: container.dataset.dropZone
+    document.addEventListener(
+      'dragstart',
+      (e) => {
+        const target = e.target as HTMLElement
+        console.log('[DRAGSTART]', {
+          text: target.textContent,
+          display: window.getComputedStyle(target).display,
+          parent: target.parentElement?.id,
+          dataTransfer: e.dataTransfer ? 'present' : 'missing',
         })
-      }
 
-      // Check GlobalDragState after a moment
-      setTimeout(() => {
+        // Check what DragManager thinks
+        const container = target.parentElement
+        if (container) {
+          console.log('[DRAGSTART] Container:', {
+            id: container.id,
+            sortableGroup: container.dataset.sortableGroup,
+            dropZone: container.dataset.dropZone,
+          })
+        }
+
+        // Check GlobalDragState after a moment
+        setTimeout(() => {
+          try {
+            // @ts-ignore
+            const gs = window.__globalDragState
+            if (gs) {
+              console.log(
+                '[DRAGSTART+100ms] Active drags:',
+                gs.getActiveDragCount()
+              )
+              const activeDrag = gs.getActiveDrag('html5-drag')
+              if (activeDrag) {
+                console.log('[DRAGSTART+100ms] Active drag details:', {
+                  groupName: activeDrag.groupName,
+                  fromZone: activeDrag.fromZone?.id,
+                })
+              } else {
+                console.log('[DRAGSTART+100ms] No active drag found!')
+              }
+            }
+          } catch (err) {
+            console.log('[DRAGSTART+100ms] Error:', err)
+          }
+        }, 100)
+      },
+      true
+    )
+
+    document.addEventListener(
+      'dragover',
+      (e) => {
+        const target = e.target as HTMLElement
+        const container = target.closest('#multi-1, #multi-2')
+        if (container) {
+          console.log('[DRAGOVER] on container:', container.id)
+        }
+      },
+      true
+    )
+
+    document.addEventListener(
+      'dragend',
+      (e) => {
+        const target = e.target as HTMLElement
+        console.log('[DRAGEND]', {
+          text: target.textContent,
+          parent: target.parentElement?.id,
+        })
+
+        // Check GlobalDragState
         try {
           // @ts-ignore
           const gs = window.__globalDragState
           if (gs) {
-            console.log('[DRAGSTART+100ms] Active drags:', gs.getActiveDragCount())
-            const activeDrag = gs.getActiveDrag('html5-drag')
-            if (activeDrag) {
-              console.log('[DRAGSTART+100ms] Active drag details:', {
-                groupName: activeDrag.groupName,
-                fromZone: activeDrag.fromZone?.id
-              })
-            } else {
-              console.log('[DRAGSTART+100ms] No active drag found!')
-            }
+            console.log(
+              '[DRAGEND] Active drags remaining:',
+              gs.getActiveDragCount()
+            )
           }
         } catch (err) {
-          console.log('[DRAGSTART+100ms] Error:', err)
+          console.log('[DRAGEND] Error:', err)
         }
-      }, 100)
-    }, true)
-
-    document.addEventListener('dragover', (e) => {
-      const target = e.target as HTMLElement
-      const container = target.closest('#multi-1, #multi-2')
-      if (container) {
-        console.log('[DRAGOVER] on container:', container.id)
-      }
-    }, true)
-
-    document.addEventListener('dragend', (e) => {
-      const target = e.target as HTMLElement
-      console.log('[DRAGEND]', {
-        text: target.textContent,
-        parent: target.parentElement?.id
-      })
-
-      // Check GlobalDragState
-      try {
-        // @ts-ignore
-        const gs = window.__globalDragState
-        if (gs) {
-          console.log('[DRAGEND] Active drags remaining:', gs.getActiveDragCount())
-        }
-      } catch (err) {
-        console.log('[DRAGEND] Error:', err)
-      }
-    }, true)
+      },
+      true
+    )
   })
 
   // Monitor console
-  page.on('console', msg => console.log(msg.text()))
+  page.on('console', (msg) => console.log(msg.text()))
 
   // Try Playwright's dragTo
   console.log('\n=== Starting drag test with Playwright dragTo ===')
@@ -100,7 +118,7 @@ test('debug immediate dragend', async ({ page }) => {
     const multi2 = document.getElementById('multi-2')
     return {
       list1Count: multi1?.querySelectorAll('.horizontal-item').length,
-      list2Count: multi2?.querySelectorAll('.horizontal-item').length
+      list2Count: multi2?.querySelectorAll('.horizontal-item').length,
     }
   })
 

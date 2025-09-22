@@ -204,6 +204,7 @@ export class Sortable {
       {
         enableAccessibility: this.options.enableAccessibility,
         multiSelect: this.options.multiDrag,
+        multiSelectKey: this.options.multiSelectKey,
         selectedClass: this.options.selectedClass,
         focusClass: this.options.focusClass,
         handle: this.options.handle,

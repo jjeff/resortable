@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test'
-import {
-  injectEventLogger,
-  getItemOrder,
-} from '../helpers/drag-helpers'
+import { injectEventLogger, getItemOrder } from '../helpers/drag-helpers'
 
 test.describe('Cross-Container Drag Debug - Simple', () => {
   test('basic cross-container setup check', async ({ page }) => {
@@ -368,6 +365,8 @@ test.describe('Cross-Container Drag Debug - Simple', () => {
       console.log('Actual: Items remained in original containers')
     }
 
-    expect(dragSequenceResult.error || dragSequenceResult.errors?.length || 0).toBe(0)
+    expect(
+      dragSequenceResult.error || dragSequenceResult.errors?.length || 0
+    ).toBe(0)
   })
 })

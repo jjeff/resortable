@@ -210,30 +210,35 @@
       list-style: none;
     }
 
+    /* Base sortable item - minimal styling */
     .sortable-item {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 0.375rem;
-      padding: 0.75rem 1rem;
-      margin-bottom: 0.5rem;
       cursor: grab;
       user-select: none;
       transition: all 0.15s ease;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
     }
 
     .sortable-item:active {
       cursor: grabbing;
     }
 
-    .sortable-item:hover {
+    /* Sortable items in vertical lists */
+    .sortable-list .sortable-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sortable-list .sortable-item:hover {
       border-color: var(--primary-light);
       box-shadow: var(--shadow);
     }
 
-    .sortable-item:last-child {
+    .sortable-list .sortable-item:last-child {
       margin-bottom: 0;
     }
 
@@ -341,7 +346,8 @@
       min-height: 150px;
     }
 
-    .grid-item {
+    /* Grid items - properly styled for grid layout */
+    .grid-sortable .sortable-item {
       aspect-ratio: 1;
       background: white;
       border: 1px solid var(--border);
@@ -351,11 +357,10 @@
       justify-content: center;
       font-weight: 600;
       font-size: 0.875rem;
-      cursor: grab;
-      transition: all 0.15s ease;
+      /* No margins or padding needed - grid gap handles spacing */
     }
 
-    .grid-item:hover {
+    .grid-sortable .sortable-item:hover {
       border-color: var(--primary-light);
       box-shadow: var(--shadow);
     }
@@ -941,12 +946,12 @@
         <div class="demo-content">
           <div class="demo-visual">
             <div class="grid-sortable" id="grid-layout">
-              <div class="grid-item sortable-item" data-id="grid-1" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">1</div>
-              <div class="grid-item sortable-item" data-id="grid-2" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">2</div>
-              <div class="grid-item sortable-item" data-id="grid-3" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">3</div>
-              <div class="grid-item sortable-item" data-id="grid-4" style="background: linear-gradient(135deg, #43e97b, #38f9d7); color: white;">4</div>
-              <div class="grid-item sortable-item" data-id="grid-5" style="background: linear-gradient(135deg, #fa709a, #fee140); color: white;">5</div>
-              <div class="grid-item sortable-item" data-id="grid-6" style="background: linear-gradient(135deg, #a8edea, #fed6e3); color: white;">6</div>
+              <div class="sortable-item" data-id="grid-1" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">1</div>
+              <div class="sortable-item" data-id="grid-2" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">2</div>
+              <div class="sortable-item" data-id="grid-3" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">3</div>
+              <div class="sortable-item" data-id="grid-4" style="background: linear-gradient(135deg, #43e97b, #38f9d7); color: white;">4</div>
+              <div class="sortable-item" data-id="grid-5" style="background: linear-gradient(135deg, #fa709a, #fee140); color: white;">5</div>
+              <div class="sortable-item" data-id="grid-6" style="background: linear-gradient(135deg, #a8edea, #fed6e3); color: white;">6</div>
             </div>
           </div>
           <div class="demo-code">

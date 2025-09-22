@@ -42,6 +42,9 @@ export class DragManager implements DragManagerInterface {
   private touchStartThreshold: number
   private dragStartTimer?: number
   private dragStartPosition?: { x: number; y: number }
+  private multiSelect: boolean
+  private multiSelectKey?: 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
+  private draggedItems: HTMLElement[] = []
   // private swapThreshold?: number  // Not used anymore
   // private invertSwap: boolean  // Not used anymore
   // private invertedSwapThreshold?: number  // Not used anymore
@@ -109,6 +112,7 @@ export class DragManager implements DragManagerInterface {
     options?: {
       enableAccessibility?: boolean
       multiSelect?: boolean
+      multiSelectKey?: 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'
       selectedClass?: string
       focusClass?: string
       handle?: string
@@ -154,6 +158,8 @@ export class DragManager implements DragManagerInterface {
 
     // Initialize draggable selector and delay options
     this.draggable = options?.draggable || '.sortable-item'
+    this.multiSelect = options?.multiSelect ?? false
+    this.multiSelectKey = options?.multiSelectKey
     // Set the draggable selector on the drop zone
     this.zone.setDraggableSelector(this.draggable)
     this.delay = options?.delay || 0
@@ -235,6 +241,11 @@ export class DragManager implements DragManagerInterface {
     el.addEventListener('dragenter', this.onDragEnter, false)
     el.addEventListener('dragleave', this.onDragLeave, false)
 
+    // Add click handler for multi-select if enabled
+    if (this._selectionManager && this.multiSelect) {
+      el.addEventListener('click', this.onItemClick, false)
+    }
+
     // Also add a global dragover handler during drags to catch events on empty containers
     // This is a workaround for browsers not firing dragover on empty elements
     const globalDragOverHandler = (e: DragEvent) => {
@@ -282,6 +293,11 @@ export class DragManager implements DragManagerInterface {
     el.removeEventListener('dragenter', this.onDragEnter, false)
     el.removeEventListener('dragleave', this.onDragLeave, false)
 
+    // Remove click handler for multi-select
+    if (this._selectionManager && this.multiSelect) {
+      el.removeEventListener('click', this.onItemClick, false)
+    }
+
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
     // Document listeners are removed in onPointerUp
@@ -301,6 +317,67 @@ export class DragManager implements DragManagerInterface {
 
     // Unregister from global registry
     DragManager.registry.delete(this.zone.element)
+  }
+
+  private onItemClick = (e: MouseEvent): void => {
+    // Only handle clicks on sortable items
+    const target = e.target as HTMLElement
+    const item = target.closest(this.draggable)
+
+    if (!item || !this.zone.element.contains(item)) return
+
+    // Stop propagation to prevent parent handlers
+    e.stopPropagation()
+
+    // Check for modifier keys
+    const isShiftSelect = e.shiftKey
+
+    // If no multiSelectKey is specified, allow plain clicks to toggle
+    if (!this.multiSelectKey) {
+      e.preventDefault()
+      if (isShiftSelect && this._selectionManager.getLastSelected()) {
+        // Shift+click: select range
+        this._selectionManager.selectRange(
+          this._selectionManager.getLastSelected()!,
+          item as HTMLElement
+        )
+      } else {
+        // Plain click: toggle selection
+        this._selectionManager.toggle(item as HTMLElement)
+      }
+    } else {
+      // A modifier key is required
+      const multiSelectKey = this.multiSelectKey
+      const isMultiSelect = e[multiSelectKey as keyof MouseEvent] as boolean
+
+      if (isShiftSelect && this._selectionManager.getLastSelected()) {
+        // Shift+click: select range
+        e.preventDefault()
+        this._selectionManager.selectRange(
+          this._selectionManager.getLastSelected()!,
+          item as HTMLElement
+        )
+      } else if (isMultiSelect) {
+        // Modifier+click: toggle selection
+        e.preventDefault()
+        this._selectionManager.toggle(item as HTMLElement)
+      } else {
+        // Regular click without modifier: do nothing (allow normal behavior)
+        return
+      }
+    }
+
+    // Update visual state of the item
+    this.updateItemSelectionState(item as HTMLElement)
+  }
+
+  private updateItemSelectionState(item: HTMLElement): void {
+    // Update data attribute for CSS styling
+    if (this._selectionManager.isSelected(item)) {
+      item.setAttribute('data-selected', 'true')
+    } else {
+      item.removeAttribute('data-selected')
+    }
   }
 
   private onDragStart = (e: DragEvent): void => {
@@ -326,6 +403,16 @@ export class DragManager implements DragManagerInterface {
     }
 
     this.startIndex = this.zone.getIndex(target)
+
+    // Get selected items if multiSelect is enabled
+    if (this._selectionManager.isSelected(target)) {
+      // If the target is already selected, drag all selected items
+      this.draggedItems = this._selectionManager.getSelected()
+    } else {
+      // If target is not selected, select only it
+      this._selectionManager.select(target)
+      this.draggedItems = [target]
+    }
 
     // For HTML5 drag API, we need to set the data FIRST
     if (e.dataTransfer) {
@@ -358,7 +445,7 @@ export class DragManager implements DragManagerInterface {
 
     const evt: SortableEvent = {
       item: target,
-      items: [target],
+      items: this.draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
@@ -714,6 +801,9 @@ export class DragManager implements DragManagerInterface {
     // Clear the saved mouse down target
     this.originalMouseDownTarget = null
 
+    // Clear multi-drag state
+    this.draggedItems = []
+
     // Global drag state handles the end event and cleanup
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
@@ -890,13 +980,13 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
 
     // Get selected items if multiSelect is enabled
-    let draggedItems: HTMLElement[] = [target]
     if (this._selectionManager.isSelected(target)) {
       // If the target is already selected, drag all selected items
-      draggedItems = this._selectionManager.getSelected()
+      this.draggedItems = this._selectionManager.getSelected()
     } else {
       // If target is not selected, select only it
       this._selectionManager.select(target)
+      this.draggedItems = [target]
     }
 
     // Capture the pointer to ensure we receive all subsequent events
@@ -930,7 +1020,7 @@ export class DragManager implements DragManagerInterface {
 
     const evt: SortableEvent = {
       item: target,
-      items: draggedItems,
+      items: this.draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,

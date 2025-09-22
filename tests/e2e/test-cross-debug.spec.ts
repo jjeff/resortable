@@ -2,12 +2,14 @@ import { test } from '@playwright/test'
 
 test.describe('Debug Cross-Container', () => {
   test('debug why drag ends immediately', async ({ page }) => {
-    await page.goto('http://localhost:5173/html-tests/test-horizontal-list.html')
+    await page.goto(
+      'http://localhost:5173/html-tests/test-horizontal-list.html'
+    )
     await page.waitForLoadState('networkidle')
 
     // Monitor console FIRST
     const logs: string[] = []
-    page.on('console', msg => {
+    page.on('console', (msg) => {
       const text = msg.text()
       logs.push(text)
       console.log(text)
@@ -19,36 +21,56 @@ test.describe('Debug Cross-Container', () => {
       const multi2 = document.getElementById('multi-2')
 
       // Track ALL events
-      const events = ['dragstart', 'dragenter', 'dragover', 'dragleave', 'drop', 'dragend']
+      const events = [
+        'dragstart',
+        'dragenter',
+        'dragover',
+        'dragleave',
+        'drop',
+        'dragend',
+      ]
 
-      events.forEach(eventName => {
+      events.forEach((eventName) => {
         // Monitor on containers
-        multi1?.addEventListener(eventName, (e) => {
-          console.log(`[Container1] ${eventName}`)
-          if (eventName === 'dragstart' || eventName === 'dragend') {
-            const target = e.target as HTMLElement
-            console.log(`  Target: ${target.textContent}`)
-            console.log(`  Display: ${window.getComputedStyle(target).display}`)
-          }
-        }, true)
+        multi1?.addEventListener(
+          eventName,
+          (e) => {
+            console.log(`[Container1] ${eventName}`)
+            if (eventName === 'dragstart' || eventName === 'dragend') {
+              const target = e.target as HTMLElement
+              console.log(`  Target: ${target.textContent}`)
+              console.log(
+                `  Display: ${window.getComputedStyle(target).display}`
+              )
+            }
+          },
+          true
+        )
 
-        multi2?.addEventListener(eventName, (e) => {
-          console.log(`[Container2] ${eventName}`)
-        }, true)
+        multi2?.addEventListener(
+          eventName,
+          (e) => {
+            console.log(`[Container2] ${eventName}`)
+          },
+          true
+        )
 
         // Monitor on document
-        document.addEventListener(eventName, (e) => {
-          const target = e.target as HTMLElement
-          if (target.classList?.contains('horizontal-item')) {
-            console.log(`[Document] ${eventName} on ${target.textContent}`)
-          }
-        }, true)
+        document.addEventListener(
+          eventName,
+          (e) => {
+            const target = e.target as HTMLElement
+            if (target.classList?.contains('horizontal-item')) {
+              console.log(`[Document] ${eventName} on ${target.textContent}`)
+            }
+          },
+          true
+        )
       })
 
       // Check if global handler was added
       console.log('Global handler check: Will be monitored via events...')
     })
-
 
     // Try manual drag with precise control
     console.log('\n=== Starting manual drag test ===')
@@ -61,18 +83,28 @@ test.describe('Debug Cross-Container', () => {
 
     if (sourceBox && targetBox) {
       // Move to source
-      await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+      await page.mouse.move(
+        sourceBox.x + sourceBox.width / 2,
+        sourceBox.y + sourceBox.height / 2
+      )
 
       // Start drag
       await page.mouse.down()
       await page.waitForTimeout(200)
 
       // Move just a little bit first (to trigger dragover on the source container)
-      await page.mouse.move(sourceBox.x + sourceBox.width / 2 + 20, sourceBox.y + sourceBox.height / 2)
+      await page.mouse.move(
+        sourceBox.x + sourceBox.width / 2 + 20,
+        sourceBox.y + sourceBox.height / 2
+      )
       await page.waitForTimeout(100)
 
       // Now move to target container
-      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
+      await page.mouse.move(
+        targetBox.x + targetBox.width / 2,
+        targetBox.y + targetBox.height / 2,
+        { steps: 10 }
+      )
       await page.waitForTimeout(200)
 
       // Release
@@ -87,7 +119,7 @@ test.describe('Debug Cross-Container', () => {
       return {
         list1Count: multi1?.querySelectorAll('.horizontal-item').length,
         list2Count: multi2?.querySelectorAll('.horizontal-item').length,
-        status: document.getElementById('status')?.textContent
+        status: document.getElementById('status')?.textContent,
       }
     })
 
@@ -97,10 +129,10 @@ test.describe('Debug Cross-Container', () => {
     console.log('Status:', finalState.status)
 
     // Analyze logs
-    const dragEvents = logs.filter(log =>
-      log.includes('[Container') || log.includes('[Document]')
+    const dragEvents = logs.filter(
+      (log) => log.includes('[Container') || log.includes('[Document]')
     )
     console.log('\n=== Event sequence ===')
-    dragEvents.forEach(event => console.log(event))
+    dragEvents.forEach((event) => console.log(event))
   })
 })
