@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Handle Fix</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    .container {
+      border: 2px solid #ddd;
+      padding: 10px;
+      min-height: 150px;
+      background: #f9f9f9;
+      margin: 20px 0;
+    }
+    .item {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .handle {
+      cursor: grab;
+      padding: 5px;
+      background: #007bff;
+      color: white;
+      border-radius: 3px;
+      user-select: none;
+      font-weight: bold;
+    }
+    .handle:active {
+      cursor: grabbing;
+    }
+    .content {
+      flex: 1;
+    }
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #c8ebfb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Handle Fix Verification</h1>
+
+  <div id="status"></div>
+
+  <h2>Test 1: With Handle (should only drag from blue DRAG button)</h2>
+  <div id="list1" class="container">
+    <div class="item">
+      <div class="handle">DRAG</div>
+      <div class="content">Item 1 - Try dragging from DRAG button vs text</div>
+    </div>
+    <div class="item">
+      <div class="handle">DRAG</div>
+      <div class="content">Item 2 - Should only work from DRAG button</div>
+    </div>
+  </div>
+
+  <h2>Test 2: Without Handle (should drag from anywhere)</h2>
+  <div id="list2" class="container">
+    <div class="item">
+      <div class="content">Item A - Can drag from anywhere</div>
+    </div>
+    <div class="item">
+      <div class="content">Item B - Can drag from anywhere</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const statusEl = document.getElementById('status');
+
+    function addStatus(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.textContent = message;
+      statusEl.appendChild(div);
+    }
+
+    // Test 1: With handle
+    try {
+      const sortable1 = new Sortable(document.getElementById('list1'), {
+        draggable: '.item',
+        handle: '.handle',
+        ghostClass: 'sortable-ghost',
+        onStart: function(evt) {
+          addStatus('✓ Handle drag started: ' + evt.item.textContent.trim().substring(0, 30), 'success');
+        }
+      });
+      addStatus('Test 1 initialized: Handle = ".handle"', 'info');
+    } catch(e) {
+      addStatus('✗ Test 1 failed: ' + e.message, 'error');
+    }
+
+    // Test 2: Without handle
+    try {
+      const sortable2 = new Sortable(document.getElementById('list2'), {
+        draggable: '.item',
+        ghostClass: 'sortable-ghost',
+        onStart: function(evt) {
+          addStatus('✓ Normal drag started: ' + evt.item.textContent.trim().substring(0, 30), 'success');
+        }
+      });
+      addStatus('Test 2 initialized: No handle', 'info');
+    } catch(e) {
+      addStatus('✗ Test 2 failed: ' + e.message, 'error');
+    }
+
+    addStatus('Ready for testing! Console will show debug output.', 'info');
+  </script>
+</body>
+</html>

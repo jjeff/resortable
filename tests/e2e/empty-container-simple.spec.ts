@@ -5,7 +5,9 @@ test.describe('Simple Empty Container Test', () => {
     page,
   }) => {
     // Navigate to the simple test page
-    await page.goto('http://localhost:5173/test-empty-container.html')
+    await page.goto(
+      'http://localhost:5173/html-tests/test-empty-container.html'
+    )
 
     // Wait for Sortable to initialize
     await page.waitForSelector('#container1')
@@ -53,7 +55,9 @@ test.describe('Simple Empty Container Test', () => {
   test('should allow dragging items back from previously empty container', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/test-empty-container.html')
+    await page.goto(
+      'http://localhost:5173/html-tests/test-empty-container.html'
+    )
 
     // Wait for initialization
     await page.waitForSelector('#container1')

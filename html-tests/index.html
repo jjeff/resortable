@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Test Files - Resortable</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 0.5rem;
+    }
+    .test-list {
+      list-style: none;
+      padding: 0;
+    }
+    .test-item {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .test-item:hover {
+      background: #e9ecef;
+      transform: translateX(4px);
+    }
+    .test-link {
+      text-decoration: none;
+      color: #007bff;
+      font-weight: 500;
+      font-size: 1.1rem;
+    }
+    .test-description {
+      color: #666;
+      margin-top: 0.25rem;
+      font-size: 0.95rem;
+    }
+    .category {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      background: #007bff;
+      color: white;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      margin-right: 0.5rem;
+    }
+    .category.manual { background: #28a745; }
+    .category.verify { background: #ffc107; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>📝 HTML Test Files</h1>
+  <p>These are manual test files for debugging and verifying Resortable functionality.</p>
+
+  <ul class="test-list">
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-drag.html" class="test-link">test-drag.html</a>
+      <div class="test-description">Basic drag and drop functionality test</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-empty-container.html" class="test-link">test-empty-container.html</a>
+      <div class="test-description">Test dragging items into empty containers (used by E2E tests)</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-reordering.html" class="test-link">test-reordering.html</a>
+      <div class="test-description">Test reordering items within the same container with event logging</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-handles.html" class="test-link">test-handles.html</a>
+      <div class="test-description">Test drag handle functionality with toggle to enable/disable handle requirement</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-handle-simple.html" class="test-link">test-handle-simple.html</a>
+      <div class="test-description">Simple drag handle test with minimal setup</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-horizontal-list.html" class="test-link">test-horizontal-list.html</a>
+      <div class="test-description">Test horizontal layouts including flexbox, inline-block, and multi-container</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category">test</span>
+      <a href="test-grid-layout.html" class="test-link">test-grid-layout.html</a>
+      <div class="test-description">Test CSS Grid layouts including responsive grids, masonry, and card layouts</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category manual">manual</span>
+      <a href="manual-test-empty.html" class="test-link">manual-test-empty.html</a>
+      <div class="test-description">Manual test for empty container drag and drop</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category verify">verify</span>
+      <a href="verify-handle.html" class="test-link">verify-handle.html</a>
+      <div class="test-description">Verification page for handle functionality with status messages</div>
+    </li>
+
+    <li class="test-item">
+      <span class="category verify">verify</span>
+      <a href="verify-listeners.html" class="test-link">verify-listeners.html</a>
+      <div class="test-description">Verify event listeners are properly attached and detached</div>
+    </li>
+  </ul>
+
+  <hr style="margin-top: 3rem; border: none; border-top: 1px solid #dee2e6;">
+  <p style="color: #666; font-size: 0.9rem;">
+    💡 These test files are for manual testing and debugging. For automated tests, see <code>/tests/e2e/</code>
+  </p>
+</body>
+</html>

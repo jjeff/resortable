@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Handle Test</title>
+  <style>
+    .container {
+      border: 2px solid #ccc;
+      padding: 10px;
+      min-height: 100px;
+    }
+    .item {
+      background: #f0f0f0;
+      padding: 10px;
+      margin: 5px;
+      cursor: move;
+    }
+    .handle {
+      display: inline-block;
+      background: #333;
+      color: white;
+      padding: 5px 10px;
+      margin-right: 10px;
+      cursor: grab;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Handle Test</h1>
+
+  <div id="list" class="container">
+    <div class="item">
+      <span class="handle">HANDLE</span>
+      Item 1
+    </div>
+    <div class="item">
+      <span class="handle">HANDLE</span>
+      Item 2
+    </div>
+  </div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    // Create with explicit handle
+    const sortable = new Sortable(document.getElementById('list'), {
+      draggable: '.item',
+      handle: '.handle'
+    });
+
+    console.log('Sortable created with handle=".handle"');
+
+    // Log all drag attempts
+    document.querySelectorAll('.item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        console.log('Native dragstart on:', e.target);
+      }, true);
+    });
+  </script>
+</body>
+</html>

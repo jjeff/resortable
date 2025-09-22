@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Handles</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #list {
+      border: 2px solid #ddd;
+      padding: 10px;
+      min-height: 200px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .handle {
+      cursor: grab;
+      padding: 5px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      user-select: none;
+    }
+    .handle:active {
+      cursor: grabbing;
+    }
+    .content {
+      flex: 1;
+    }
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #c8ebfb;
+    }
+    .sortable-chosen {
+      background: #fef3c7;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f0f0f0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Handle Dragging</h1>
+  <p>Try to drag items using the handle (⋮⋮) vs clicking on the content</p>
+
+  <button id="toggleHandle" style="margin-bottom: 10px;">Toggle Handle Requirement</button>
+  <span id="handleStatus">Handle: Required</span>
+
+  <div id="list">
+    <div class="item" data-id="1">
+      <div class="handle">⋮⋮</div>
+      <div class="content">Item 1 - Should only drag from handle</div>
+    </div>
+    <div class="item" data-id="2">
+      <div class="handle">⋮⋮</div>
+      <div class="content">Item 2 - Should only drag from handle</div>
+    </div>
+    <div class="item" data-id="3">
+      <div class="handle">⋮⋮</div>
+      <div class="content">Item 3 - Should only drag from handle</div>
+    </div>
+    <div class="item" data-id="4">
+      <div class="handle">⋮⋮</div>
+      <div class="content">Item 4 - Should only drag from handle</div>
+    </div>
+  </div>
+
+  <h2>Console Output:</h2>
+  <div id="output">Check browser console for debug messages...</div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const output = document.getElementById('output');
+
+    // Intercept console.log to display in the page
+    const originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      const message = args.map(arg =>
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
+      const time = new Date().toLocaleTimeString();
+      output.textContent = `[${time}] ${message}\n` + output.textContent;
+    };
+
+    console.log('Initializing Sortable with handle...');
+
+    let sortable = new Sortable(document.getElementById('list'), {
+      animation: 150,
+      draggable: '.item',
+      handle: '.handle', // THIS IS THE KEY - only allow dragging from handle
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onStart: function(evt) {
+        console.log(`onStart: dragging ${evt.item.textContent.trim()} from index ${evt.oldIndex}`);
+      },
+      onEnd: function(evt) {
+        console.log(`onEnd: ${evt.item.textContent.trim()} from index ${evt.oldIndex} to ${evt.newIndex}`);
+      }
+    });
+
+    console.log('Sortable initialized with handle: ".handle"');
+    console.log('Try dragging from the handle (⋮⋮) vs the content area');
+
+    // Toggle handle requirement for testing
+    let useHandle = true;
+    document.getElementById('toggleHandle').addEventListener('click', () => {
+      useHandle = !useHandle;
+      sortable.destroy();
+
+      const config = {
+        animation: 150,
+        draggable: '.item',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onStart: function(evt) {
+          console.log(`onStart: dragging ${evt.item.textContent.trim()} from index ${evt.oldIndex}`);
+        },
+        onEnd: function(evt) {
+          console.log(`onEnd: ${evt.item.textContent.trim()} from index ${evt.oldIndex} to ${evt.newIndex}`);
+        }
+      };
+
+      if (useHandle) {
+        config.handle = '.handle';
+      }
+
+      sortable = new Sortable(document.getElementById('list'), config);
+      document.getElementById('handleStatus').textContent = `Handle: ${useHandle ? 'Required' : 'Not Required'}`;
+      console.log(`Sortable re-initialized ${useHandle ? 'WITH' : 'WITHOUT'} handle requirement`);
+    });
+  </script>
+</body>
+</html>

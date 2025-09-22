@@ -28,6 +28,7 @@ export class DragManager implements DragManagerInterface {
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
   private lastHoveredElement: HTMLElement | null = null
+  private originalMouseDownTarget: HTMLElement | null = null
   private lastMoveTime = 0
   private _selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
@@ -319,6 +320,8 @@ export class DragManager implements DragManagerInterface {
     // Check if drag should be allowed based on handle/filter options
     if (!this.shouldAllowDrag(e, target)) {
       e.preventDefault()
+      // Clear the saved mouse down target since drag is not allowed
+      this.originalMouseDownTarget = null
       return
     }
 
@@ -673,6 +676,9 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDragEnd = (): void => {
+    // Clear the saved mouse down target
+    this.originalMouseDownTarget = null
+
     // Global drag state handles the end event and cleanup
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
@@ -747,6 +753,8 @@ export class DragManager implements DragManagerInterface {
     // CRITICAL: For mouse events, let the native HTML5 drag API handle it
     // Only use pointer-based dragging for touch events
     if (e.pointerType === 'mouse') {
+      // For mouse, save the original target for handle checking in onDragStart
+      this.originalMouseDownTarget = e.target as HTMLElement
       // Don't interfere with native HTML5 drag for mouse
       return
     }
@@ -1225,7 +1233,12 @@ export class DragManager implements DragManagerInterface {
    * @returns true if drag should be allowed, false otherwise
    */
   private shouldAllowDrag(event: Event, dragTarget: HTMLElement): boolean {
-    const eventTarget = event.target as HTMLElement
+    // For HTML5 drag (mouse), use the saved originalMouseDownTarget if available
+    // This is because dragstart event.target is always the draggable element, not what was clicked
+    const eventTarget =
+      event.type === 'dragstart' && this.originalMouseDownTarget
+        ? this.originalMouseDownTarget
+        : (event.target as HTMLElement)
 
     // Check filter option - if event target matches filter, prevent drag
     if (this.filter && eventTarget.matches(this.filter)) {

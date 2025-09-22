@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grid Layout Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .description {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .test-section {
+      margin-bottom: 40px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .test-section h2 {
+      margin-top: 0;
+      color: #495057;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 10px;
+    }
+
+    /* CSS Grid layouts */
+    .grid-container {
+      display: grid;
+      gap: 15px;
+      padding: 20px;
+      background: #f8f9fa;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      min-height: 200px;
+    }
+
+    /* 3-column grid */
+    .grid-3col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* 4-column grid */
+    .grid-4col {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* Auto-fit responsive grid */
+    .grid-auto {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    /* Masonry-style grid */
+    .grid-masonry {
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 50px;
+    }
+
+    /* Grid items */
+    .grid-item {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .grid-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.1);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .grid-item:hover::before {
+      transform: translateX(0);
+    }
+
+    .grid-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .grid-item:active {
+      cursor: grabbing;
+    }
+
+    /* Different colored items for variety */
+    .grid-item:nth-child(3n+1) {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .grid-item:nth-child(3n+2) {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .grid-item:nth-child(3n) {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    /* Masonry items with different heights */
+    .tall {
+      grid-row: span 3;
+    }
+
+    .medium {
+      grid-row: span 2;
+    }
+
+    .wide {
+      grid-column: span 2;
+    }
+
+    /* Card-style grid */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 20px;
+      background: transparent;
+      border: none;
+    }
+
+    .card-item {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      cursor: grab;
+      transition: all 0.3s ease;
+    }
+
+    .card-item:hover {
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+      transform: translateY(-5px);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .card-content {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Ghost and drag states */
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #e0e0e0 !important;
+    }
+
+    .sortable-chosen {
+      transform: scale(1.02);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+
+    .sortable-drag {
+      opacity: 0.5;
+    }
+
+    /* Status display */
+    #status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: #28a745;
+      color: white;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 400px;
+      z-index: 1000;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .grid-4col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .grid-masonry {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .grid-3col, .grid-4col, .grid-masonry {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📱 Grid Layout Test</h1>
+  <p class="description">Test drag and drop functionality with CSS Grid layouts</p>
+
+  <!-- Test 1: 3-Column Grid -->
+  <div class="test-section">
+    <h2>1. Three Column Grid</h2>
+    <p>Standard 3-column CSS grid layout</p>
+    <div id="grid-3col" class="grid-container grid-3col">
+      <div class="grid-item" data-id="3col-1">Item 1</div>
+      <div class="grid-item" data-id="3col-2">Item 2</div>
+      <div class="grid-item" data-id="3col-3">Item 3</div>
+      <div class="grid-item" data-id="3col-4">Item 4</div>
+      <div class="grid-item" data-id="3col-5">Item 5</div>
+      <div class="grid-item" data-id="3col-6">Item 6</div>
+      <div class="grid-item" data-id="3col-7">Item 7</div>
+      <div class="grid-item" data-id="3col-8">Item 8</div>
+      <div class="grid-item" data-id="3col-9">Item 9</div>
+    </div>
+  </div>
+
+  <!-- Test 2: 4-Column Grid -->
+  <div class="test-section">
+    <h2>2. Four Column Grid</h2>
+    <p>4-column grid for more items per row</p>
+    <div id="grid-4col" class="grid-container grid-4col">
+      <div class="grid-item" data-id="4col-1">A</div>
+      <div class="grid-item" data-id="4col-2">B</div>
+      <div class="grid-item" data-id="4col-3">C</div>
+      <div class="grid-item" data-id="4col-4">D</div>
+      <div class="grid-item" data-id="4col-5">E</div>
+      <div class="grid-item" data-id="4col-6">F</div>
+      <div class="grid-item" data-id="4col-7">G</div>
+      <div class="grid-item" data-id="4col-8">H</div>
+    </div>
+  </div>
+
+  <!-- Test 3: Auto-fit Responsive Grid -->
+  <div class="test-section">
+    <h2>3. Auto-fit Responsive Grid</h2>
+    <p>Automatically adjusts columns based on available space</p>
+    <div id="grid-auto" class="grid-container grid-auto">
+      <div class="grid-item" data-id="auto-1">Auto 1</div>
+      <div class="grid-item" data-id="auto-2">Auto 2</div>
+      <div class="grid-item" data-id="auto-3">Auto 3</div>
+      <div class="grid-item" data-id="auto-4">Auto 4</div>
+      <div class="grid-item" data-id="auto-5">Auto 5</div>
+      <div class="grid-item" data-id="auto-6">Auto 6</div>
+      <div class="grid-item" data-id="auto-7">Auto 7</div>
+    </div>
+  </div>
+
+  <!-- Test 4: Masonry-style Grid -->
+  <div class="test-section">
+    <h2>4. Masonry-style Grid</h2>
+    <p>Grid with items of different sizes</p>
+    <div id="grid-masonry" class="grid-container grid-masonry">
+      <div class="grid-item" data-id="mas-1">Normal</div>
+      <div class="grid-item tall" data-id="mas-2">Tall Item</div>
+      <div class="grid-item" data-id="mas-3">Normal</div>
+      <div class="grid-item medium" data-id="mas-4">Medium</div>
+      <div class="grid-item" data-id="mas-5">Normal</div>
+      <div class="grid-item wide" data-id="mas-6">Wide Item</div>
+      <div class="grid-item" data-id="mas-7">Normal</div>
+      <div class="grid-item tall" data-id="mas-8">Tall Item</div>
+    </div>
+  </div>
+
+  <!-- Test 5: Card Grid -->
+  <div class="test-section">
+    <h2>5. Card Grid Layout</h2>
+    <p>Card-based grid with rich content</p>
+    <div id="card-grid" class="card-grid">
+      <div class="card-item" data-id="card-1">
+        <div class="card-title">Card One</div>
+        <div class="card-content">This is a draggable card with some content inside.</div>
+      </div>
+      <div class="card-item" data-id="card-2">
+        <div class="card-title">Card Two</div>
+        <div class="card-content">Another card that can be reordered by dragging.</div>
+      </div>
+      <div class="card-item" data-id="card-3">
+        <div class="card-title">Card Three</div>
+        <div class="card-content">Cards maintain their content while being dragged.</div>
+      </div>
+      <div class="card-item" data-id="card-4">
+        <div class="card-title">Card Four</div>
+        <div class="card-content">Try dragging this card to a new position.</div>
+      </div>
+      <div class="card-item" data-id="card-5">
+        <div class="card-title">Card Five</div>
+        <div class="card-content">Grid automatically adjusts to screen size.</div>
+      </div>
+      <div class="card-item" data-id="card-6">
+        <div class="card-title">Card Six</div>
+        <div class="card-content">Responsive design works well with drag and drop.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status">Ready - Try dragging grid items</div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const status = document.getElementById('status');
+    let eventCount = 0;
+
+    function updateStatus(message) {
+      eventCount++;
+      status.textContent = `[${eventCount}] ${message}`;
+      status.style.background = '#007bff';
+      setTimeout(() => {
+        status.style.background = '#28a745';
+      }, 300);
+    }
+
+    // Initialize 3-column grid
+    new Sortable(document.getElementById('grid-3col'), {
+      animation: 150,
+      draggable: '.grid-item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        updateStatus(`3-Column Grid: Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
+      }
+    });
+
+    // Initialize 4-column grid
+    new Sortable(document.getElementById('grid-4col'), {
+      animation: 150,
+      draggable: '.grid-item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        updateStatus(`4-Column Grid: Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
+      }
+    });
+
+    // Initialize auto-fit grid
+    new Sortable(document.getElementById('grid-auto'), {
+      animation: 150,
+      draggable: '.grid-item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        updateStatus(`Auto Grid: Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
+      }
+    });
+
+    // Initialize masonry grid
+    new Sortable(document.getElementById('grid-masonry'), {
+      animation: 150,
+      draggable: '.grid-item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        const item = evt.item;
+        const size = item.classList.contains('tall') ? 'tall' :
+                    item.classList.contains('medium') ? 'medium' :
+                    item.classList.contains('wide') ? 'wide' : 'normal';
+        updateStatus(`Masonry: Moved ${size} item from ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
+      }
+    });
+
+    // Initialize card grid
+    new Sortable(document.getElementById('card-grid'), {
+      animation: 150,
+      draggable: '.card-item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        const cardTitle = evt.item.querySelector('.card-title').textContent;
+        updateStatus(`Card Grid: "${cardTitle}" moved from ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
+      }
+    });
+
+    console.log('All grid layouts initialized');
+
+    // Add a resize observer to show responsive behavior
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const width = entry.contentRect.width;
+        if (entry.target.id === 'grid-auto') {
+          const cols = Math.floor(width / 150);
+          console.log(`Auto grid adjusted to ~${cols} columns at ${width}px width`);
+        }
+      }
+    });
+
+    resizeObserver.observe(document.getElementById('grid-auto'));
+  </script>
+</body>
+</html>
