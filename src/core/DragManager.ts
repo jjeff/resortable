@@ -327,12 +327,30 @@ export class DragManager implements DragManagerInterface {
 
     this.startIndex = this.zone.getIndex(target)
 
-    // Mark all compatible empty containers
-    this.markEmptyContainers()
+    // CRITICAL: Check for inline-block FIRST before ANY DOM modifications
+    const computedStyle = window.getComputedStyle(target)
+    const isInlineBlock = computedStyle.display === 'inline-block'
 
-    // Add global dragover handler for empty containers
-    if (this._globalDragOverHandler) {
-      document.addEventListener('dragover', this._globalDragOverHandler, true)
+    // For HTML5 drag API, we need to set the data FIRST
+    if (e.dataTransfer) {
+      // Set drag data - MUST have a value for Firefox
+      e.dataTransfer.setData('text/plain', 'sortable-item')
+      e.dataTransfer.effectAllowed = 'move'
+    }
+
+    // Skip ALL DOM modifications for inline-block to avoid Chrome bug
+    if (!isInlineBlock) {
+      // Mark all compatible empty containers
+      this.markEmptyContainers()
+
+      // Add global dragover handler for empty containers
+      if (this._globalDragOverHandler) {
+        document.addEventListener('dragover', this._globalDragOverHandler, true)
+      }
+    } else {
+      console.log(
+        '[DragManager] Inline-block detected - skipping ALL DOM modifications in dragstart'
+      )
     }
 
     // Register with global drag state using HTML5 drag API as ID
@@ -358,18 +376,12 @@ export class DragManager implements DragManagerInterface {
     // Emit choose event first
     this.events.emit('choose', evt)
 
-    // For HTML5 drag API, we need to set the data FIRST before any DOM manipulation
+    // Now handle visual feedback
     if (e.dataTransfer) {
-      // Set drag data - MUST have a value for Firefox
-      e.dataTransfer.setData('text/plain', 'sortable-item')
-      e.dataTransfer.effectAllowed = 'move'
-
-      // Apply visual feedback classes
-      target.classList.add(this.ghostManager.getChosenClass())
-      target.classList.add(this.ghostManager.getDragClass())
-
-      // Reduce opacity of original item during drag for visual feedback
-      target.style.opacity = '0.5'
+      if (!isInlineBlock) {
+        // Only add class for non-inline-block elements
+        target.classList.add(this.ghostManager.getChosenClass())
+      }
 
       // For HTML5 drag, DON'T create a placeholder yet - it will be created on first dragover
       // The browser needs the original element to stay in place for the drag to work
@@ -463,11 +475,42 @@ export class DragManager implements DragManagerInterface {
 
     const originalItem = activeDrag.item
 
+    // Check if this is an inline-block element that needs deferred setup
+    const computedStyle = window.getComputedStyle(originalItem)
+    const isInlineBlock = computedStyle.display === 'inline-block'
+
+    // For inline-block, also handle deferred empty container marking on first dragover
+    if (isInlineBlock && !originalItem.dataset.deferredSetupDone) {
+      // Mark that we've done the deferred setup
+      originalItem.dataset.deferredSetupDone = 'true'
+
+      // Now it's safe to mark empty containers
+      this.markEmptyContainers()
+
+      // Add global dragover handler for empty containers
+      if (this._globalDragOverHandler) {
+        document.addEventListener('dragover', this._globalDragOverHandler, true)
+      }
+    }
+
     // For HTML5 drag, we don't use a placeholder anymore
     // Just ensure the item is semi-transparent
     if (!originalItem.style.opacity) {
       originalItem.style.opacity = '0.5'
-      originalItem.style.pointerEvents = 'none'
+
+      // Add visual feedback classes that were deferred from dragstart
+      if (
+        !originalItem.classList.contains(this.ghostManager.getChosenClass())
+      ) {
+        originalItem.classList.add(this.ghostManager.getChosenClass())
+      }
+      if (!originalItem.classList.contains(this.ghostManager.getDragClass())) {
+        originalItem.classList.add(this.ghostManager.getDragClass())
+      }
+
+      // Note: Setting pointerEvents='none' here can cause issues with inline-block elements
+      // where the drag ends immediately. The browser needs the element to remain interactive.
+      // originalItem.style.pointerEvents = 'none'
     }
 
     // Get the actual event target element
@@ -690,6 +733,9 @@ export class DragManager implements DragManagerInterface {
       activeDrag.item.style.display = ''
       activeDrag.item.style.visibility = ''
       activeDrag.item.style.pointerEvents = ''
+
+      // Clean up deferred setup marker
+      delete activeDrag.item.dataset.deferredSetupDone
 
       // Remove drag-related classes
       activeDrag.item.classList.remove(this.ghostManager.getDragClass())
@@ -1293,6 +1339,7 @@ export class DragManager implements DragManagerInterface {
         }
 
         // Set draggable based on whether it matches the selector
+
         if (child.matches(this.draggable)) {
           // Set draggable=true for HTML5 drag API
           // When using handle, we still need draggable=true for HTML5 drag,

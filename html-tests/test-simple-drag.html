@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Drag Test</title>
+  <style>
+    .container {
+      border: 2px solid #ccc;
+      padding: 20px;
+      margin: 20px 0;
+      min-height: 100px;
+    }
+    .test-item {
+      display: inline-block;
+      padding: 10px 20px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      cursor: move;
+    }
+    .custom-item {
+      display: inline-block;
+      padding: 10px 20px;
+      margin: 5px;
+      background: #28a745;
+      color: white;
+      cursor: move;
+    }
+    [draggable="true"] {
+      outline: 2px solid green;
+    }
+    [draggable="false"] {
+      outline: 2px solid red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Drag Test</h1>
+
+  <h2>Test 1: Default selector (.sortable-item)</h2>
+  <div id="test1" class="container">
+    <div class="sortable-item test-item">Default 1</div>
+    <div class="sortable-item test-item">Default 2</div>
+    <div class="sortable-item test-item">Default 3</div>
+  </div>
+
+  <h2>Test 2: Custom selector (.custom-item)</h2>
+  <div id="test2" class="container">
+    <div class="custom-item">Custom 1</div>
+    <div class="custom-item">Custom 2</div>
+    <div class="custom-item">Custom 3</div>
+  </div>
+
+  <h2>Test 3: Native HTML5 drag (for comparison)</h2>
+  <div id="test3" class="container">
+    <div class="test-item" draggable="true" ondragstart="console.log('Native drag started')">Native 1</div>
+    <div class="test-item" draggable="true" ondragstart="console.log('Native drag started')">Native 2</div>
+    <div class="test-item" draggable="true" ondragstart="console.log('Native drag started')">Native 3</div>
+  </div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    // Test 1: Default selector
+    console.log('=== Test 1: Default selector ===');
+    const sortable1 = new Sortable(document.getElementById('test1'), {
+      animation: 150,
+      onStart: () => console.log('Test 1: Drag started!'),
+      onEnd: () => console.log('Test 1: Drag ended!')
+    });
+
+    // Test 2: Custom selector
+    console.log('=== Test 2: Custom selector ===');
+    const sortable2 = new Sortable(document.getElementById('test2'), {
+      draggable: '.custom-item',
+      animation: 150,
+      onStart: () => console.log('Test 2: Drag started!'),
+      onEnd: () => console.log('Test 2: Drag ended!')
+    });
+
+    // Check draggable attributes after initialization
+    setTimeout(() => {
+      console.log('\n=== Checking draggable attributes ===');
+
+      document.querySelectorAll('#test1 .sortable-item').forEach((el, i) => {
+        console.log(`Test1 item ${i}: draggable=${el.draggable}, classes="${el.className}"`);
+      });
+
+      document.querySelectorAll('#test2 .custom-item').forEach((el, i) => {
+        console.log(`Test2 item ${i}: draggable=${el.draggable}, classes="${el.className}"`);
+      });
+
+      // Try to manually trigger a drag
+      console.log('\n=== Manual drag test ===');
+      const customItem = document.querySelector('#test2 .custom-item');
+      if (customItem) {
+        console.log('Custom item found:', customItem);
+        console.log('Is draggable?', customItem.draggable);
+        console.log('Parent element:', customItem.parentElement);
+        console.log('Parent ID:', customItem.parentElement.id);
+      }
+    }, 500);
+  </script>
+</body>
+</html>

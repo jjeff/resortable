@@ -95,20 +95,21 @@
       border: 2px solid #dee2e6;
       border-radius: 6px;
       min-height: 100px;
-      white-space: nowrap;
-      overflow-x: auto;
+      /* Note: white-space: nowrap and overflow-x: auto can interfere with drag and drop */
+      /* white-space: nowrap; */
+      /* overflow-x: auto; */
     }
 
     .inline-item {
       display: inline-block;
       padding: 12px 18px;
-      margin-right: 10px;
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-      color: #333;
-      border-radius: 6px;
+      margin: 5px;
+      /* Very simple styles to avoid Chrome bug */
+      background: #fa709a;
+      color: white;
       cursor: grab;
       user-select: none;
-      vertical-align: middle;
+      /* No border-radius, no transitions, no transforms */
     }
 
     /* Ghost and drag states */
@@ -117,8 +118,8 @@
     }
 
     .sortable-chosen {
-      transform: scale(1.05);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      /* Use background color instead of opacity to avoid Chrome bug */
+      background: #ffc107 !important;
     }
 
     .sortable-drag {
@@ -266,11 +267,15 @@
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
+      onStart: function(evt) {
+        console.log('[INLINE] Drag started');
+        updateStatus(`Inline: Started dragging item ${evt.oldIndex + 1}`);
+      },
       onEnd: function(evt) {
+        console.log('[INLINE] Drag ended');
         updateStatus(`Inline: Moved from position ${evt.oldIndex + 1} to ${evt.newIndex + 1}`);
       }
     });
-    console.log('Inline list initialized:', inlineList);
 
     // Initialize multi-container lists with shared group
     const multiGroup = 'shared-horizontal';

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inline-Block Drag Bug Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .container {
+      border: 2px solid #ccc;
+      padding: 20px;
+      margin: 20px 0;
+      min-height: 100px;
+    }
+
+    /* Inline-block items */
+    .inline-item {
+      display: inline-block;
+      padding: 15px 25px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      cursor: move;
+      border-radius: 4px;
+    }
+
+    /* Block items for comparison */
+    .block-item {
+      display: block;
+      padding: 15px 25px;
+      margin: 5px;
+      background: #28a745;
+      color: white;
+      cursor: move;
+      border-radius: 4px;
+    }
+
+    /* Flex items for comparison */
+    .flex-container {
+      display: flex;
+      gap: 10px;
+    }
+
+    .flex-item {
+      padding: 15px 25px;
+      background: #dc3545;
+      color: white;
+      cursor: move;
+      border-radius: 4px;
+    }
+
+    .log {
+      background: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+
+    .sortable-ghost {
+      opacity: 0.4;
+    }
+
+    .sortable-chosen {
+      background: #ffc107 !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>Inline-Block Drag Bug Test</h1>
+  <p>Testing if the drag issue is specific to inline-block elements</p>
+
+  <h2>Test 1: Inline-Block Elements</h2>
+  <div id="inline-container" class="container">
+    <div class="inline-item">Inline 1</div>
+    <div class="inline-item">Inline 2</div>
+    <div class="inline-item">Inline 3</div>
+    <div class="inline-item">Inline 4</div>
+  </div>
+
+  <h2>Test 2: Block Elements (for comparison)</h2>
+  <div id="block-container" class="container">
+    <div class="block-item">Block 1</div>
+    <div class="block-item">Block 2</div>
+    <div class="block-item">Block 3</div>
+  </div>
+
+  <h2>Test 3: Flex Container</h2>
+  <div id="flex-container" class="container flex-container">
+    <div class="flex-item">Flex 1</div>
+    <div class="flex-item">Flex 2</div>
+    <div class="flex-item">Flex 3</div>
+    <div class="flex-item">Flex 4</div>
+  </div>
+
+  <h2>Event Log:</h2>
+  <div id="log" class="log"></div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const log = document.getElementById('log');
+    const logs = [];
+
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, timeZoneName: 'short' }).slice(0, -4);
+      logs.push(`[${time}] ${msg}`);
+      if (logs.length > 100) logs.shift();
+      log.textContent = logs.join('\n');
+      log.scrollTop = log.scrollHeight;
+      console.log(msg);
+    }
+
+    // Test 1: Inline-block
+    const inlineSortable = new Sortable(document.getElementById('inline-container'), {
+      draggable: '.inline-item',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onStart: (evt) => addLog(`INLINE START: ${evt.item.textContent} at index ${evt.oldIndex}`),
+      onEnd: (evt) => addLog(`INLINE END: ${evt.item.textContent} from ${evt.oldIndex} to ${evt.newIndex}`),
+      onMove: (evt) => addLog(`INLINE MOVE: over ${evt.related?.textContent || 'empty'}`),
+    });
+
+    // Test 2: Block
+    const blockSortable = new Sortable(document.getElementById('block-container'), {
+      draggable: '.block-item',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onStart: (evt) => addLog(`BLOCK START: ${evt.item.textContent} at index ${evt.oldIndex}`),
+      onEnd: (evt) => addLog(`BLOCK END: ${evt.item.textContent} from ${evt.oldIndex} to ${evt.newIndex}`),
+    });
+
+    // Test 3: Flex
+    const flexSortable = new Sortable(document.getElementById('flex-container'), {
+      draggable: '.flex-item',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onStart: (evt) => addLog(`FLEX START: ${evt.item.textContent} at index ${evt.oldIndex}`),
+      onEnd: (evt) => addLog(`FLEX END: ${evt.item.textContent} from ${evt.oldIndex} to ${evt.newIndex}`),
+    });
+
+    addLog('All sortables initialized');
+
+    // Check draggable attributes
+    setTimeout(() => {
+      document.querySelectorAll('.inline-item').forEach((el, i) => {
+        addLog(`Inline item ${i}: draggable=${el.draggable}`);
+      });
+    }, 100);
+  </script>
+</body>
+</html>

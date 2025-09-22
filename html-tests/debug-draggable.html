@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Draggable Issue</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+    }
+    .container {
+      border: 2px solid #ccc;
+      padding: 10px;
+      margin: 20px 0;
+      min-height: 50px;
+    }
+    .inline-item, .horizontal-item {
+      display: inline-block;
+      padding: 10px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      cursor: move;
+    }
+    .status {
+      background: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+    .draggable-true {
+      border: 3px solid green;
+    }
+    .draggable-false {
+      border: 3px solid red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug Draggable Issue</h1>
+
+  <h2>Test 1: Inline Items</h2>
+  <div id="inline-list" class="container">
+    <div class="inline-item">Inline 1</div>
+    <div class="inline-item">Inline 2</div>
+    <div class="inline-item">Inline 3</div>
+  </div>
+
+  <h2>Test 2: Horizontal Items</h2>
+  <div id="horizontal-list" class="container">
+    <div class="horizontal-item">Horizontal 1</div>
+    <div class="horizontal-item">Horizontal 2</div>
+    <div class="horizontal-item">Horizontal 3</div>
+  </div>
+
+  <h2>Debug Output:</h2>
+  <div id="status" class="status"></div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const status = document.getElementById('status');
+    let logs = [];
+
+    function log(msg) {
+      logs.push(msg);
+      status.textContent = logs.join('\n');
+      console.log(msg);
+    }
+
+    // Test inline-item selector
+    log('=== Testing inline-item selector ===');
+    const inlineList = document.getElementById('inline-list');
+    const inlineItems = inlineList.querySelectorAll('.inline-item');
+    log(`Found ${inlineItems.length} inline items`);
+
+    // Check initial draggable state
+    inlineItems.forEach((item, i) => {
+      log(`Before Sortable - Inline item ${i}: draggable=${item.draggable}`);
+    });
+
+    // Initialize Sortable with inline-item selector
+    try {
+      const sortableInline = new Sortable(inlineList, {
+        draggable: '.inline-item',
+        animation: 150,
+        onStart: () => log('Inline drag started!'),
+        onEnd: () => log('Inline drag ended!')
+      });
+      log('Sortable initialized for inline-list with draggable=".inline-item"');
+    } catch(e) {
+      log('ERROR initializing inline Sortable: ' + e.message);
+    }
+
+    // Check draggable state after Sortable
+    setTimeout(() => {
+      log('\nAfter Sortable initialization:');
+      inlineItems.forEach((item, i) => {
+        const isDraggable = item.draggable;
+        log(`Inline item ${i}: draggable=${isDraggable}`);
+        item.classList.add(isDraggable ? 'draggable-true' : 'draggable-false');
+
+        // Check if matches selector
+        if (item.matches('.inline-item')) {
+          log(`  -> Item ${i} DOES match '.inline-item' selector`);
+        } else {
+          log(`  -> Item ${i} does NOT match '.inline-item' selector`);
+        }
+      });
+
+      // Test horizontal items
+      log('\n=== Testing horizontal-item selector ===');
+      const horizontalList = document.getElementById('horizontal-list');
+      const horizontalItems = horizontalList.querySelectorAll('.horizontal-item');
+      log(`Found ${horizontalItems.length} horizontal items`);
+
+      try {
+        const sortableHorizontal = new Sortable(horizontalList, {
+          draggable: '.horizontal-item',
+          animation: 150,
+          onStart: () => log('Horizontal drag started!'),
+          onEnd: () => log('Horizontal drag ended!')
+        });
+        log('Sortable initialized for horizontal-list with draggable=".horizontal-item"');
+      } catch(e) {
+        log('ERROR initializing horizontal Sortable: ' + e.message);
+      }
+
+      setTimeout(() => {
+        log('\nAfter Sortable initialization:');
+        horizontalItems.forEach((item, i) => {
+          const isDraggable = item.draggable;
+          log(`Horizontal item ${i}: draggable=${isDraggable}`);
+          item.classList.add(isDraggable ? 'draggable-true' : 'draggable-false');
+
+          // Check if matches selector
+          if (item.matches('.horizontal-item')) {
+            log(`  -> Item ${i} DOES match '.horizontal-item' selector`);
+          } else {
+            log(`  -> Item ${i} does NOT match '.horizontal-item' selector`);
+          }
+        });
+
+        // Also check what the DragManager thinks
+        log('\n=== Checking internal state ===');
+        log('Check browser console for DragManager logs');
+
+      }, 100);
+    }, 100);
+
+    // Add manual draggable test
+    log('\n=== Manual draggable test ===');
+    const testItem = document.createElement('div');
+    testItem.className = 'inline-item';
+    testItem.textContent = 'Test Item';
+    testItem.draggable = true;
+    inlineList.appendChild(testItem);
+    log('Added test item with draggable=true manually');
+  </script>
+</body>
+</html>
