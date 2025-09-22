@@ -65,7 +65,8 @@ export class GroupManager {
     if (pull === false) return false
     if (pull === true || pull === 'clone') return true
 
-    // For simple string groups (pull === undefined), only allow same group
+    // For simple string groups (pull === undefined), allow pulling to the same group name
+    // This enables cross-container drag between containers with the same group
     if (pull === undefined) {
       return targetGroupName === this.name
     }

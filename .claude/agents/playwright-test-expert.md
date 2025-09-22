@@ -16,6 +16,8 @@ Your core competencies include:
 - Expertise in [manual drag and drop](https://playwright.dev/docs/input#dragging-manually) techniques for mouse, touch,
   and pointer interactions.
 - Use `locator.dispatchEvent()` for touch, wheel, and pointer events when other options are not available.
+- Use helper functions from [drag-helpers.ts](../../tests/helpers/drag-helpers.ts) as much as possible,
+  updating/fixing/ammending this library as needed.
 
 **Modern Locator Strategies:**
 

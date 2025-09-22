@@ -327,10 +327,6 @@ export class DragManager implements DragManagerInterface {
 
     this.startIndex = this.zone.getIndex(target)
 
-    // CRITICAL: Check for inline-block FIRST before ANY DOM modifications
-    const computedStyle = window.getComputedStyle(target)
-    const isInlineBlock = computedStyle.display === 'inline-block'
-
     // For HTML5 drag API, we need to set the data FIRST
     if (e.dataTransfer) {
       // Set drag data - MUST have a value for Firefox
@@ -338,19 +334,14 @@ export class DragManager implements DragManagerInterface {
       e.dataTransfer.effectAllowed = 'move'
     }
 
-    // Skip ALL DOM modifications for inline-block to avoid Chrome bug
-    if (!isInlineBlock) {
-      // Mark all compatible empty containers
-      this.markEmptyContainers()
+    // NEVER modify DOM during dragstart to avoid Chrome bug
+    // The global dragover handler must ALWAYS be added for cross-container to work
+    // We'll defer markEmptyContainers to the first dragover event for ALL elements
 
-      // Add global dragover handler for empty containers
-      if (this._globalDragOverHandler) {
-        document.addEventListener('dragover', this._globalDragOverHandler, true)
-      }
-    } else {
-      console.log(
-        '[DragManager] Inline-block detected - skipping ALL DOM modifications in dragstart'
-      )
+    // ALWAYS add global dragover handler - this is needed for cross-container drag
+    // This doesn't modify DOM directly, just adds an event listener
+    if (this._globalDragOverHandler) {
+      document.addEventListener('dragover', this._globalDragOverHandler, true)
     }
 
     // Register with global drag state using HTML5 drag API as ID
@@ -378,11 +369,8 @@ export class DragManager implements DragManagerInterface {
 
     // Now handle visual feedback
     if (e.dataTransfer) {
-      if (!isInlineBlock) {
-        // Only add class for non-inline-block elements
-        target.classList.add(this.ghostManager.getChosenClass())
-      }
-
+      // Don't modify classes during dragstart to avoid Chrome bug
+      // Visual feedback will be applied in onDragOver
       // For HTML5 drag, DON'T create a placeholder yet - it will be created on first dragover
       // The browser needs the original element to stay in place for the drag to work
       // We'll create the placeholder when we first detect movement
@@ -475,22 +463,17 @@ export class DragManager implements DragManagerInterface {
 
     const originalItem = activeDrag.item
 
-    // Check if this is an inline-block element that needs deferred setup
-    const computedStyle = window.getComputedStyle(originalItem)
-    const isInlineBlock = computedStyle.display === 'inline-block'
-
-    // For inline-block, also handle deferred empty container marking on first dragover
-    if (isInlineBlock && !originalItem.dataset.deferredSetupDone) {
+    // Handle deferred empty container marking on first dragover
+    // This is done for ALL elements to avoid the Chrome bug where DOM modifications
+    // during dragstart cause immediate dragend
+    if (!originalItem.dataset.deferredSetupDone) {
       // Mark that we've done the deferred setup
       originalItem.dataset.deferredSetupDone = 'true'
 
-      // Now it's safe to mark empty containers
+      // Now it's safe to mark empty containers (drag is established)
       this.markEmptyContainers()
 
-      // Add global dragover handler for empty containers
-      if (this._globalDragOverHandler) {
-        document.addEventListener('dragover', this._globalDragOverHandler, true)
-      }
+      // Note: global dragover handler is already added in onDragStart for all cases
     }
 
     // For HTML5 drag, we don't use a placeholder anymore

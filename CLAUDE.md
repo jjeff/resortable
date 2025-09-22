@@ -52,3 +52,4 @@ Currently no build system is set up. Based on the implementation plan:
 - Detailed implementation plan in `sortable-rewrite-implementation-plan.md`
 - Legacy source code in `legacy-sortable/src/` for reference during rewrite
 - Always fix eslint & typescript typing issues before pushing to origin.
+- Give me at least one URL to test functionality if you've made changes and the dev server is still running.

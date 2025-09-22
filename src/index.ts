@@ -586,3 +586,10 @@ const defaultOptions: SortableOptions = {
 
 // Default export for compatibility
 export default Sortable
+
+// TEMPORARY: Expose globalDragState for debugging
+import { globalDragState } from './core/GlobalDragState.js'
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+  ;(window as any).__globalDragState = globalDragState
+}
