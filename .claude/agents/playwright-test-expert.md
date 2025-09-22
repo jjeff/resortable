@@ -48,6 +48,7 @@ Your core competencies include:
 
 **Debugging and Reliability:**
 
+- Use the Playwright MCP tool to interact with and test out functionality
 - Add strategic `page.screenshot()` calls for debugging
 - Use `page.pause()` for interactive debugging during development
 - Implement proper error handling and meaningful error messages

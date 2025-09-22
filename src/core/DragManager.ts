@@ -41,10 +41,10 @@ export class DragManager implements DragManagerInterface {
   private touchStartThreshold: number
   private dragStartTimer?: number
   private dragStartPosition?: { x: number; y: number }
-  private swapThreshold?: number
-  private invertSwap: boolean
-  private invertedSwapThreshold?: number
-  private direction: 'vertical' | 'horizontal'
+  // private swapThreshold?: number  // Not used anymore
+  // private invertSwap: boolean  // Not used anymore
+  // private invertedSwapThreshold?: number  // Not used anymore
+  // private direction: 'vertical' | 'horizontal'  // Not used anymore
   // Fallback system properties - to be fully implemented in future phase
   // @ts-expect-error - Will be implemented in fallback system
 
@@ -159,12 +159,11 @@ export class DragManager implements DragManagerInterface {
     this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
     this.touchStartThreshold = options?.touchStartThreshold || 5
 
-    // Initialize swap behavior options
-    // swapThreshold is undefined by default (no threshold checking)
-    this.swapThreshold = options?.swapThreshold
-    this.invertSwap = options?.invertSwap ?? false
-    this.invertedSwapThreshold = options?.invertedSwapThreshold
-    this.direction = options?.direction ?? 'vertical'
+    // Initialize swap behavior options - commented out as not used anymore
+    // this.swapThreshold = options?.swapThreshold
+    // this.invertSwap = options?.invertSwap ?? false
+    // this.invertedSwapThreshold = options?.invertedSwapThreshold
+    // this.direction = options?.direction ?? 'vertical'  // Not used anymore
 
     // Initialize fallback options (to be fully implemented)
     this._forceFallback = options?.forceFallback ?? false
@@ -356,16 +355,14 @@ export class DragManager implements DragManagerInterface {
     // Emit choose event first
     this.events.emit('choose', evt)
 
-    // Apply chosen class to the dragged element
-    target.classList.add(this.ghostManager.getChosenClass())
-
     // For HTML5 drag API, we need to set the data FIRST before any DOM manipulation
     if (e.dataTransfer) {
       // Set drag data - MUST have a value for Firefox
       e.dataTransfer.setData('text/plain', 'sortable-item')
       e.dataTransfer.effectAllowed = 'move'
 
-      // Apply drag class to the original element
+      // Apply visual feedback classes
+      target.classList.add(this.ghostManager.getChosenClass())
       target.classList.add(this.ghostManager.getDragClass())
 
       // Reduce opacity of original item during drag for visual feedback
@@ -388,44 +385,44 @@ export class DragManager implements DragManagerInterface {
     this.events.emit('start', evt)
   }
 
-  /**
-   * Calculate if swap should occur based on overlap (only if threshold is set)
-   */
-  private shouldSwap(
-    dragRect: DOMRect,
-    targetRect: DOMRect,
-    _dragDirection: 'forward' | 'backward'
-  ): boolean {
-    // If no threshold is set, always allow swap (legacy behavior)
-    if (this.swapThreshold === undefined) {
-      return true
-    }
+  // /**
+  //  * Calculate if swap should occur based on overlap (only if threshold is set)
+  //  */
+  // private shouldSwap(
+  //   dragRect: DOMRect,
+  //   targetRect: DOMRect,
+  //   _dragDirection: 'forward' | 'backward'
+  // ): boolean {
+  //   // If no threshold is set, always allow swap (legacy behavior)
+  //   if (this.swapThreshold === undefined) {
+  //     return true
+  //   }
 
-    // Calculate overlap percentage based on direction
-    let overlap: number
-    if (this.direction === 'vertical') {
-      const overlapHeight =
-        Math.min(dragRect.bottom, targetRect.bottom) -
-        Math.max(dragRect.top, targetRect.top)
-      overlap = Math.max(0, overlapHeight) / targetRect.height
-    } else {
-      const overlapWidth =
-        Math.min(dragRect.right, targetRect.right) -
-        Math.max(dragRect.left, targetRect.left)
-      overlap = Math.max(0, overlapWidth) / targetRect.width
-    }
+  //   // Calculate overlap percentage based on direction
+  //   let overlap: number
+  //   if (this.direction === 'vertical') {
+  //     const overlapHeight =
+  //       Math.min(dragRect.bottom, targetRect.bottom) -
+  //       Math.max(dragRect.top, targetRect.top)
+  //     overlap = Math.max(0, overlapHeight) / targetRect.height
+  //   } else {
+  //     const overlapWidth =
+  //       Math.min(dragRect.right, targetRect.right) -
+  //       Math.max(dragRect.left, targetRect.left)
+  //     overlap = Math.max(0, overlapWidth) / targetRect.width
+  //   }
 
-    // Apply swap threshold logic
-    let threshold = this.swapThreshold
-    if (this.invertSwap) {
-      // In inverted mode, swap occurs when overlap is less than the threshold
-      threshold = this.invertedSwapThreshold ?? this.swapThreshold
-      return overlap < threshold
-    }
+  //   // Apply swap threshold logic
+  //   let threshold = this.swapThreshold
+  //   if (this.invertSwap) {
+  //     // In inverted mode, swap occurs when overlap is less than the threshold
+  //     threshold = this.invertedSwapThreshold ?? this.swapThreshold
+  //     return overlap < threshold
+  //   }
 
-    // Normal mode: swap when overlap exceeds threshold
-    return overlap >= threshold
-  }
+  //   // Normal mode: swap when overlap exceeds threshold
+  //   return overlap >= threshold
+  // }
 
   private onDragOver = (e: DragEvent): void => {
     // IMPORTANT: We must ALWAYS call preventDefault() on dragover to allow drops
@@ -463,15 +460,12 @@ export class DragManager implements DragManagerInterface {
 
     const originalItem = activeDrag.item
 
-    // For HTML5 drag, create placeholder on first dragover if it doesn't exist
-    let placeholder = this.ghostManager.getPlaceholderElement()
-    if (!placeholder && originalItem.parentElement) {
-      placeholder = this.ghostManager.createPlaceholder(originalItem)
-      // Make the original item invisible but keep its space (for nested containers)
-      originalItem.style.visibility = 'hidden'
+    // For HTML5 drag, we don't use a placeholder anymore
+    // Just ensure the item is semi-transparent
+    if (!originalItem.style.opacity) {
+      originalItem.style.opacity = '0.5'
       originalItem.style.pointerEvents = 'none'
     }
-    if (!placeholder) return
 
     // Get the actual event target element
     const eventTarget = e.target as HTMLElement
@@ -486,7 +480,6 @@ export class DragManager implements DragManagerInterface {
     const draggableChildren = Array.from(this.zone.element.children).filter(
       (child) =>
         child.matches(this.draggable) &&
-        child !== placeholder &&
         child !== originalItem &&
         child !== activeDrag.clone &&
         !child.classList.contains('sortable-empty-drop-helper') &&
@@ -495,9 +488,9 @@ export class DragManager implements DragManagerInterface {
 
     // Handle empty container or dragging over empty space in container
     if (isOverContainer && draggableChildren.length === 0) {
-      // Container is empty - add placeholder to show drop zone
-      if (placeholder.parentElement !== this.zone.element) {
-        this.zone.element.appendChild(placeholder)
+      // Container is empty - move item here if not already
+      if (originalItem.parentElement !== this.zone.element) {
+        this.zone.element.appendChild(originalItem)
         // Add visual indication for empty container
         this.zone.element.classList.add('sortable-empty-drop-zone')
       }
@@ -511,15 +504,15 @@ export class DragManager implements DragManagerInterface {
       this.zone.element.classList.remove('sortable-empty-drop-zone')
     }
 
-    // Determine which item to use for positioning (original or clone)
-    let dragItem = originalItem
-    if (
-      activeDrag.pullMode === 'clone' &&
-      activeDrag.clone &&
-      activeDrag.clone.parentElement === this.zone.element
-    ) {
-      dragItem = activeDrag.clone
-    }
+    // Use placeholder for positioning calculations instead of the hidden original item
+    // let dragItem = placeholder || originalItem  // Not needed anymore
+    // if (
+    //   activeDrag.pullMode === 'clone' &&
+    //   activeDrag.clone &&
+    //   activeDrag.clone.parentElement === this.zone.element
+    // ) {
+    //   dragItem = activeDrag.clone
+    // }
 
     // Handle cross-zone dragging
     if (originalItem.parentElement !== this.zone.element) {
@@ -528,7 +521,7 @@ export class DragManager implements DragManagerInterface {
       if (activeDrag.pullMode === 'clone' && activeDrag.clone) {
         // Use the clone for display in the target zone
         itemToInsert = activeDrag.clone
-        dragItem = itemToInsert // Update reference for subsequent operations
+        // dragItem = itemToInsert // Update reference for subsequent operations - not needed anymore
       }
 
       // Move item (or clone) to this zone if not already here
@@ -539,125 +532,87 @@ export class DragManager implements DragManagerInterface {
       }
     }
 
-    // Update placeholder position
-    if (over instanceof HTMLElement && over !== dragItem) {
-      const placeholder = this.ghostManager.getPlaceholderElement()
-      if (placeholder) {
-        // Insert placeholder at the potential drop position
-        const overIndex = this.zone.getIndex(over)
-        const dragIndex = this.zone.getIndex(dragItem)
-        if (dragIndex < overIndex) {
-          // Dragging down - insert after
-          over.parentElement?.insertBefore(placeholder, over.nextSibling)
-        } else {
-          // Dragging up - insert before
-          over.parentElement?.insertBefore(placeholder, over)
-        }
-      }
-    }
-
+    // Update item position if we're over a different item
     if (
-      !(over instanceof HTMLElement) ||
-      over === dragItem ||
-      over.parentElement !== this.zone.element
+      over instanceof HTMLElement &&
+      over !== originalItem &&
+      !over.classList.contains('sortable-ghost')
     ) {
-      return
-    }
+      if (originalItem.parentElement === this.zone.element) {
+        // Get current positions
+        const overRect = over.getBoundingClientRect()
 
-    const overIndex = this.zone.getIndex(over)
-    const dragIndex = this.zone.getIndex(dragItem)
-    if (overIndex === dragIndex) return
+        // Determine if we should move the item based on mouse position
+        // Check if it's a horizontal or vertical list based on element positions
+        const originalRect = originalItem.getBoundingClientRect()
+        const isHorizontal = Math.abs(originalRect.top - overRect.top) < 10
 
-    // Check swap threshold if configured
-    const dragRect = dragItem.getBoundingClientRect()
-    const targetRect = over.getBoundingClientRect()
-    const dragDirection = dragIndex < overIndex ? 'forward' : 'backward'
+        if (isHorizontal) {
+          // Horizontal list - use X coordinates
+          const mouseX = e.clientX
+          const overMidpoint = overRect.left + overRect.width / 2
 
-    if (!this.shouldSwap(dragRect, targetRect, dragDirection)) {
-      return // Don't swap if threshold not met
-    }
-
-    // Create MoveEvent for onMove callback (always use original item for events)
-    const moveEvent: import('../types/index.js').MoveEvent = {
-      item: originalItem,
-      items: [originalItem],
-      from: this.zone.element,
-      to: this.zone.element,
-      oldIndex: dragIndex,
-      newIndex: overIndex,
-      related: over,
-      willInsertAfter: dragIndex < overIndex,
-      draggedRect: dragRect,
-      targetRect,
-    }
-
-    // Fire onMove event
-    this.events.emit('move', moveEvent)
-
-    // Determine the correct insertion index based on drag direction
-    // We want to insert the dragged item before the item we're hovering over
-    let targetIndex = overIndex
-    if (dragIndex < overIndex) {
-      // Dragging downwards: insert at the position that will be before the target
-      // After removing the dragged item, target shifts down by 1, so we insert at overIndex - 1
-      targetIndex = overIndex - 1
-    } else {
-      // Dragging upwards: insert before the target (overIndex stays the same)
-      targetIndex = overIndex
-    }
-
-    // During drag, just move the placeholder, not the actual item
-    // The actual move will happen on drop
-    if (placeholder && placeholder.parentElement) {
-      // Move the placeholder to show where the item will drop
-      const targetElement = this.zone.getItems()[targetIndex]
-      if (targetElement && targetElement !== placeholder) {
-        if (dragIndex < overIndex) {
-          // Moving down - insert after target
-          targetElement.parentElement?.insertBefore(
-            placeholder,
-            targetElement.nextSibling
-          )
+          if (mouseX < overMidpoint) {
+            // Mouse is in left half - insert before
+            if (originalItem.nextSibling !== over) {
+              over.parentElement?.insertBefore(originalItem, over)
+            }
+          } else {
+            // Mouse is in right half - insert after
+            if (originalItem !== over.nextSibling) {
+              over.parentElement?.insertBefore(originalItem, over.nextSibling)
+            }
+          }
         } else {
-          // Moving up - insert before target
-          targetElement.parentElement?.insertBefore(placeholder, targetElement)
+          // Vertical list - use Y coordinates
+          const mouseY = e.clientY
+          const overMidpoint = overRect.top + overRect.height / 2
+
+          if (mouseY < overMidpoint) {
+            // Mouse is in upper half - insert before
+            if (originalItem.nextSibling !== over) {
+              over.parentElement?.insertBefore(originalItem, over)
+            }
+          } else {
+            // Mouse is in lower half - insert after
+            if (originalItem !== over.nextSibling) {
+              over.parentElement?.insertBefore(originalItem, over.nextSibling)
+            }
+          }
         }
       }
     }
 
-    // Don't actually move the item yet, just track where it should go
-    // this.zone.move(dragItem, targetIndex) // Commented out - will do on drop
+    // Emit move event if we're over an item
+    if (over instanceof HTMLElement && over !== originalItem) {
+      const moveEvent: import('../types/index.js').MoveEvent = {
+        item: originalItem,
+        items: [originalItem],
+        from: this.zone.element,
+        to: this.zone.element,
+        oldIndex: activeDrag.startIndex,
+        newIndex: this.zone.getIndex(over),
+        related: over,
+        willInsertAfter: false,
+        draggedRect: originalItem.getBoundingClientRect(),
+        targetRect: over.getBoundingClientRect(),
+      }
+      this.events.emit('move', moveEvent)
+    }
 
-    // Emit sort event (always fired when sorting changes) - use original item for events
-    this.events.emit('sort', {
-      item: originalItem,
-      items: [originalItem],
-      from: this.zone.element,
-      to: this.zone.element,
-      oldIndex: dragIndex,
-      newIndex: overIndex,
-    })
-
-    // Only emit update if it's within the same zone originally
+    // Emit sort event when dragging within same container
     if (activeDrag.fromZone === this.zone.element) {
-      this.events.emit('update', {
-        item: originalItem,
-        items: [originalItem],
-        from: this.zone.element,
-        to: this.zone.element,
-        oldIndex: dragIndex,
-        newIndex: overIndex,
-      })
-
-      // Emit change event when order changes within same list
-      this.events.emit('change', {
-        item: originalItem,
-        items: [originalItem],
-        from: this.zone.element,
-        to: this.zone.element,
-        oldIndex: dragIndex,
-        newIndex: overIndex,
-      })
+      const currentIndex = this.zone.getIndex(originalItem)
+      if (currentIndex >= 0 && currentIndex !== activeDrag.startIndex) {
+        this.events.emit('sort', {
+          item: originalItem,
+          items: [originalItem],
+          from: this.zone.element,
+          to: this.zone.element,
+          oldIndex: activeDrag.startIndex,
+          newIndex: currentIndex,
+        })
+      }
     }
   }
 
@@ -672,7 +627,6 @@ export class DragManager implements DragManagerInterface {
     }
 
     const originalItem = activeDrag.item
-    const placeholder = this.ghostManager.getPlaceholderElement()
 
     // Clear empty container styling
     this.zone.element.classList.remove('sortable-empty-drop-zone')
@@ -691,81 +645,29 @@ export class DragManager implements DragManagerInterface {
     if (isDropOnThisContainer) {
       // Clear the empty marker
       delete this.zone.element.dataset.dragOverEmpty
+      this.zone.element.classList.remove('sortable-empty-drop-zone')
 
-      if (placeholder && placeholder.parentElement === this.zone.element) {
-        // Get the target index based on placeholder position
-        const items = this.zone.getItems()
-        const placeholderIndex = Array.from(this.zone.element.children).indexOf(
-          placeholder
-        )
-
-        // Remove the placeholder
-        placeholder.remove()
-
-        // Determine which item to use (original or clone)
-        let itemToPlace = originalItem
-        const isDifferentZone = originalItem.parentElement !== this.zone.element
-        if (
-          isDifferentZone &&
-          activeDrag.pullMode === 'clone' &&
-          activeDrag.clone
-        ) {
-          // For cross-zone clone operations, use the clone
-          itemToPlace = activeDrag.clone
+      // The item is already in the correct position from the dragover events
+      // Just handle clone mode if needed
+      const isDifferentZone = activeDrag.fromZone !== this.zone.element
+      if (
+        isDifferentZone &&
+        activeDrag.pullMode === 'clone' &&
+        activeDrag.clone
+      ) {
+        // For cross-zone clone operations, replace original with clone
+        const currentIndex = this.zone.getIndex(originalItem)
+        if (currentIndex >= 0) {
+          this.zone.element.replaceChild(activeDrag.clone, originalItem)
+          // Put original back in source container
+          activeDrag.fromZone.appendChild(originalItem)
         }
+      }
 
-        // Special handling for empty containers
-        if (
-          items.length === 0 ||
-          (items.length === 1 && items[0] === itemToPlace)
-        ) {
-          // Container is empty or only contains the item being dragged
-          if (isDifferentZone) {
-            // Move or clone item to this empty container
-            if (activeDrag.pullMode === 'clone') {
-              // Use the clone
-              this.zone.element.appendChild(itemToPlace)
-            } else {
-              // Move the original
-              this.zone.element.appendChild(originalItem)
-            }
-          } else {
-            // Same container, just append
-            this.zone.element.appendChild(itemToPlace)
-          }
-          // Remove the helper element since container is no longer empty
-          this.removeEmptyContainerHelper()
-        } else {
-          // Normal case: container has items
-          // Now calculate where to insert the item
-          const currentIndex = items.indexOf(itemToPlace)
-          let targetIndex = 0
-
-          // Count how many draggable items come before the placeholder position
-          const children = Array.from(this.zone.element.children)
-          for (let i = 0; i < placeholderIndex && i < children.length; i++) {
-            if (
-              children[i].matches(this.draggable) &&
-              children[i] !== itemToPlace
-            ) {
-              targetIndex++
-            }
-          }
-
-          // Perform the actual placement with animation
-          if (currentIndex !== targetIndex || itemToPlace !== originalItem) {
-            // For clone operations, we need to handle positioning differently
-            if (itemToPlace === activeDrag.clone) {
-              // For clones, use the zone's move method to position correctly
-              if (currentIndex !== targetIndex) {
-                this.zone.move(itemToPlace, targetIndex)
-              }
-            } else if (currentIndex !== targetIndex) {
-              // Move existing item to new position
-              this.zone.move(itemToPlace, targetIndex)
-            }
-          }
-        }
+      // Remove any empty container helper if needed
+      const items = this.zone.getItems()
+      if (items.length > 0) {
+        this.removeEmptyContainerHelper()
       }
     }
   }
@@ -777,23 +679,18 @@ export class DragManager implements DragManagerInterface {
 
     // Clean up ghost elements and restore visibility
     if (activeDrag) {
+      // Restore all styles
       activeDrag.item.style.opacity = ''
       activeDrag.item.style.display = ''
       activeDrag.item.style.visibility = ''
       activeDrag.item.style.pointerEvents = ''
+
+      // Remove drag-related classes
       activeDrag.item.classList.remove(this.ghostManager.getDragClass())
       activeDrag.item.classList.remove(this.ghostManager.getChosenClass())
 
-      // Clean up any remaining placeholder or ghost elements
+      // Clean up any remaining ghost elements
       this.ghostManager.destroy(activeDrag.item)
-
-      // Clean up any ghost class elements that might be lingering
-      const ghosts = document.querySelectorAll('.sortable-ghost')
-      ghosts.forEach((ghost) => {
-        if (!ghost.classList.contains('sortable-placeholder')) {
-          ghost.remove()
-        }
-      })
     }
 
     // Clean up empty container markers

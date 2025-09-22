@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Reordering</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #list {
+      border: 2px solid #ddd;
+      padding: 10px;
+      min-height: 200px;
+      background: #f9f9f9;
+    }
+    .item {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 5px 0;
+      cursor: move;
+      transition: background-color 0.3s;
+    }
+    .item:hover {
+      background: #f0f0f0;
+    }
+    .sortable-ghost {
+      opacity: 0.4;
+      background: #c8ebfb;
+    }
+    .sortable-chosen {
+      background: #fef3c7;
+    }
+    .sortable-drag {
+      opacity: 0.5;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f0f0f0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Reordering Within Same Container</h1>
+
+  <div id="list">
+    <div class="item" data-id="1">Item 1</div>
+    <div class="item" data-id="2">Item 2</div>
+    <div class="item" data-id="3">Item 3</div>
+    <div class="item" data-id="4">Item 4</div>
+  </div>
+
+  <div id="output">Waiting for events...</div>
+
+  <script type="module">
+    import Sortable from '/src/index.ts';
+
+    const output = document.getElementById('output');
+    let eventCount = 0;
+
+    function log(message) {
+      eventCount++;
+      const time = new Date().toLocaleTimeString();
+      output.textContent = `[${eventCount}] [${time}] ${message}\n` + output.textContent;
+    }
+
+    const sortable = new Sortable(document.getElementById('list'), {
+      animation: 150,
+      draggable: '.item',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onStart: function(evt) {
+        log(`Start: dragging ${evt.item.textContent} from index ${evt.oldIndex}`);
+      },
+      onEnd: function(evt) {
+        const order = Array.from(document.querySelectorAll('#list .item'))
+          .map(el => el.textContent)
+          .join(', ');
+        log(`End: ${evt.item.textContent} from index ${evt.oldIndex} to ${evt.newIndex}\n  Current order: ${order}`);
+      },
+      onChange: function(evt) {
+        log(`Change: ${evt.item.textContent} from ${evt.oldIndex} to ${evt.newIndex}`);
+      },
+      onUpdate: function(evt) {
+        log(`Update: ${evt.item.textContent} from ${evt.oldIndex} to ${evt.newIndex}`);
+      },
+      onSort: function(evt) {
+        log(`Sort: ${evt.item.textContent} at index ${evt.newIndex}`);
+      },
+      onMove: function(evt) {
+        log(`Move: over ${evt.related?.textContent || 'empty'}`);
+      }
+    });
+
+    log('Sortable initialized. Try dragging items to reorder them.');
+  </script>
+</body>
+</html>
