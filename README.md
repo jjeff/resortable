@@ -1,24 +1,20 @@
-⚠️⚠️⚠️ WARNING: Development in progress. Not yet ready for external use. ⚠️⚠️⚠️
-
 # Resortable
 
-Modern TypeScript rewrite of Sortable.js - reorderable drag-and-drop lists
+Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
-## Overview
-
-Resortable is a complete rewrite of the popular Sortable.js library using modern TypeScript and contemporary development patterns. It provides a more maintainable, performant, and developer-friendly drag-and-drop library while maintaining API compatibility with the original Sortable.js.
+> **Alpha** — Core functionality is working. API may change before v2.0 stable release.
 
 ## Features
 
-- **Modern TypeScript**: Built with TypeScript and strict typing
-- **Performance Focused**: Target bundle size <25KB gzipped with 60fps animations
-- **Plugin Architecture**: Extensible design with composition over inheritance
-- **API Compatible**: Maintains compatibility with existing Sortable.js APIs
-- **Tree Shakeable**: Plugin-based architecture for optimal bundle sizes
-
-## Status
-
-⚠️⚠️⚠️ **Pre-Alpha**: This project is in early development and very little works yet. Not ready for production use. ⚠️⚠️⚠️
+- **Drag & Drop** — HTML5 Drag API + Pointer Events for mouse, touch, and pen
+- **Cross-Container** — Drag items between lists with shared groups
+- **Clone Support** — `group.pull: 'clone'` to copy items instead of moving
+- **Animations** — FLIP-based 60fps reorder animations
+- **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support
+- **Multi-Select** — Shift+Click / Ctrl+Click selection with multi-drag
+- **Plugin System** — AutoScroll, MultiDrag, Swap plugins included
+- **TypeScript** — Strict types with full IntelliSense support
+- **Small** — ~16KB gzipped (ESM)
 
 ## Installation
 
@@ -34,68 +30,140 @@ import { Sortable } from 'resortable';
 const sortable = new Sortable(document.getElementById('my-list'), {
   animation: 150,
   ghostClass: 'sortable-ghost',
-  chosenClass: 'sortable-chosen',
-  dragClass: 'sortable-drag'
+  onEnd: (evt) => {
+    console.log(`Moved from ${evt.oldIndex} to ${evt.newIndex}`);
+  }
 });
 ```
 
-## Core API
+## Options
 
-Sortable emits lifecycle events during drag operations:
+```typescript
+new Sortable(element, {
+  // Behavior
+  group: 'shared',                    // Group name or { name, pull, put } config
+  sort: true,                         // Allow sorting within list
+  disabled: false,                    // Disable the sortable
+  draggable: '.sortable-item',       // CSS selector for draggable items
+  handle: '.drag-handle',            // Restrict drag to handle elements
+  filter: 'input, button',           // Prevent drag on these elements
+  delay: 0,                          // Delay in ms before drag starts
+  delayOnTouchOnly: 0,              // Touch-specific delay
+  touchStartThreshold: 5,            // Pixels of movement before cancelling delay
 
-- `start` – when dragging begins
-- `update` – when an item moves
-- `end` – when drag completes
+  // Visual
+  animation: 150,                    // Animation duration in ms
+  easing: 'cubic-bezier(0.4,0,0.2,1)', // CSS easing
+  ghostClass: 'sortable-ghost',      // Class on the ghost placeholder
+  chosenClass: 'sortable-chosen',    // Class on the chosen item
+  dragClass: 'sortable-drag',        // Class on the dragging item
 
-These can be subscribed to via options:
+  // Multi-drag
+  multiDrag: false,                  // Enable multi-selection
+  selectedClass: 'sortable-selected', // Class on selected items
 
-```ts
-const sortable = new Sortable(list, {
-  onStart: (evt) => console.log('start', evt),
-  onUpdate: (evt) => console.log('update', evt),
-  onEnd: (evt) => console.log('end', evt)
-})
+  // Accessibility
+  enableAccessibility: true,         // Keyboard nav + ARIA
+
+  // Events
+  onStart: (evt) => {},
+  onEnd: (evt) => {},
+  onAdd: (evt) => {},
+  onRemove: (evt) => {},
+  onUpdate: (evt) => {},
+  onSort: (evt) => {},
+  onChoose: (evt) => {},
+  onUnchoose: (evt) => {},
+  onClone: (evt) => {},
+  onChange: (evt) => {},
+  onMove: (evt, originalEvent) => {},
+  onSelect: (evt) => {},
+  onFilter: (evt) => {},
+});
 ```
+
+## Shared Groups / Clone
+
+```typescript
+// Source list — items are cloned when dragged out
+new Sortable(sourceList, {
+  group: { name: 'shared', pull: 'clone', put: false },
+});
+
+// Target list — accepts items from 'shared' group
+new Sortable(targetList, {
+  group: { name: 'shared', pull: true, put: true },
+});
+```
+
+## Methods
+
+```typescript
+sortable.toArray()              // Get order as array of data-id values
+sortable.sort(['c','a','b'])    // Set order by data-id values
+sortable.option('animation')    // Get option value
+sortable.option('animation', 300) // Set option value
+sortable.destroy()              // Remove instance and clean up
+```
+
+## Static API
+
+```typescript
+Sortable.active    // Currently active Sortable instance
+Sortable.dragged   // Currently dragged element
+Sortable.ghost     // Ghost placeholder element
+Sortable.clone     // Cloned element (clone operations)
+Sortable.get(el)   // Get Sortable instance by element
+Sortable.closest(el, selector) // Find closest Sortable ancestor
+Sortable.utils.on(el, event, handler) // addEventListener with unsubscribe
+Sortable.utils.index(el)              // Get element index in parent
+```
+
+## Plugins
+
+```typescript
+import { Sortable, PluginSystem } from 'resortable';
+import { registerAllPlugins } from 'resortable/plugins';
+
+// Register all built-in plugins
+registerAllPlugins();
+
+const sortable = new Sortable(element, { animation: 150 });
+sortable.usePlugin('AutoScroll');
+sortable.usePlugin('Swap');
+```
+
+**Built-in plugins:** AutoScroll, MultiDrag, Swap
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Run tests
-npm run test
-
-# Build library
-npm run build
-
-# Type checking
-npm run type-check
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
+npm install          # Install dependencies
+npm run dev          # Start Vite dev server
+npm run build        # Build library (ESM, CJS, UMD)
+npm run test         # Run unit tests (Vitest)
+npm run test:e2e     # Run E2E tests (Playwright)
+npm run type-check   # TypeScript strict check
+npm run lint         # ESLint
 ```
 
 ## Architecture
 
-The library is built with a modular architecture:
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for module documentation.
 
-- **Core**: Main Sortable class and drag/drop management
-- **Animation**: Modern animation system with CSS transitions
-- **Plugins**: Extensible plugin system for additional functionality
-- **Utils**: Shared utilities and helpers
-- **Types**: TypeScript type definitions
-
-## Migration from Sortable.js
-
-Resortable maintains API compatibility with Sortable.js while adding modern features and improved performance. See the migration guide for details on breaking changes and new features.
+| Module | Purpose |
+|--------|---------|
+| `core/DragManager` | Drag interaction handling (HTML5 + Pointer Events) |
+| `core/DropZone` | Container management and DOM operations |
+| `core/EventSystem` | Type-safe event emitter |
+| `core/GlobalDragState` | Cross-zone drag coordination |
+| `core/GroupManager` | Group config and clone detection |
+| `core/GhostManager` | Ghost/placeholder elements |
+| `core/KeyboardManager` | Keyboard navigation |
+| `core/SelectionManager` | Multi-item selection |
+| `core/PluginSystem` | Plugin lifecycle management |
+| `animation/AnimationManager` | FLIP-based animations |
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT
