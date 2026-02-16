@@ -817,13 +817,10 @@ export class DragManager implements DragManagerInterface {
     if (this.dragElement.parentElement !== targetZoneElement) {
       // Simple group compatibility check based on the zone element and current group
       if (this.canDropInZone(targetZoneElement)) {
-        // Insert at the position of the hovered item
-        targetZoneElement.insertBefore(this.dragElement, over)
-
-        // We need to find the actual DragManager instance for the target zone
-        // For now, create a minimal put target that will trigger the events
         const targetDragManager = this.findDragManagerForZone(targetZoneElement)
         const dragId = `pointer-${this.activePointerId}`
+
+        // Register put target so GlobalDragState can determine clone vs move
         if (targetDragManager) {
           globalDragState.setPutTarget(
             dragId,
@@ -832,7 +829,6 @@ export class DragManager implements DragManagerInterface {
             targetDragManager.groupManager.getName()
           )
         } else {
-          // Fallback: use current drag manager but with target zone
           globalDragState.setPutTarget(
             dragId,
             targetZoneElement,
@@ -840,31 +836,60 @@ export class DragManager implements DragManagerInterface {
             this.groupManager.getName()
           )
         }
+
+        // Determine which element to insert: clone or original
+        const currentActiveDrag = globalDragState.getActiveDrag(dragId)
+        if (
+          currentActiveDrag?.pullMode === 'clone' &&
+          currentActiveDrag.clone
+        ) {
+          // Clone operation: insert the clone into the target zone
+          // The original stays in the source zone
+          const clone = currentActiveDrag.clone
+          if (clone.parentElement !== targetZoneElement) {
+            targetZoneElement.insertBefore(clone, over)
+          }
+        } else {
+          // Move operation: move the original to the target zone
+          targetZoneElement.insertBefore(this.dragElement, over)
+        }
       }
-    } else if (over !== this.dragElement) {
-      // Same zone movement - use DropZone.move() for animations
-      const currentItems = this.zone.getItems()
-      const currentIndex = currentItems.indexOf(this.dragElement)
-      const targetIndex = currentItems.indexOf(over)
+    } else {
+      // Same zone movement — determine whether we're moving the clone or original
+      const currentActiveDrag = globalDragState.getActiveDrag(dragId)
+      const movingElement =
+        currentActiveDrag?.pullMode === 'clone' &&
+        currentActiveDrag.clone?.parentElement === targetZoneElement
+          ? currentActiveDrag.clone
+          : this.dragElement
 
-      if (
-        currentIndex !== -1 &&
-        targetIndex !== -1 &&
-        currentIndex !== targetIndex
-      ) {
-        // Use the DropZone's move method to get animations
-        this.zone.move(this.dragElement, targetIndex)
+      if (over !== movingElement) {
+        // Find the target DragManager's zone for proper index tracking
+        const targetDragManager = this.findDragManagerForZone(targetZoneElement)
+        const targetZone = targetDragManager?.zone ?? this.zone
+        const currentItems = targetZone.getItems()
+        const currentIndex = currentItems.indexOf(movingElement)
+        const targetIndex = currentItems.indexOf(over)
 
-        // Only emit update if it's within the original zone
-        if (activeDrag.fromZone === targetZoneElement) {
-          this.events.emit('update', {
-            item: this.dragElement,
-            items: [this.dragElement],
-            from: targetZoneElement,
-            to: targetZoneElement,
-            oldIndex: this.startIndex,
-            newIndex: targetIndex,
-          })
+        if (
+          currentIndex !== -1 &&
+          targetIndex !== -1 &&
+          currentIndex !== targetIndex
+        ) {
+          // Use the DropZone's move method to get animations
+          targetZone.move(movingElement, targetIndex)
+
+          // Only emit update if it's within the original zone
+          if (activeDrag.fromZone === targetZoneElement) {
+            this.events.emit('update', {
+              item: this.dragElement,
+              items: [this.dragElement],
+              from: targetZoneElement,
+              to: targetZoneElement,
+              oldIndex: this.startIndex,
+              newIndex: targetIndex,
+            })
+          }
         }
       }
     }
@@ -899,6 +924,11 @@ export class DragManager implements DragManagerInterface {
       const activeDrag = dragId ? globalDragState.getActiveDrag(dragId) : null
 
       if (activeDrag && activeDrag.fromZone) {
+        // If this was a clone operation, remove the clone from the target
+        if (activeDrag.pullMode === 'clone' && activeDrag.clone) {
+          activeDrag.clone.remove()
+        }
+
         // Move the element back to its original position
         const fromZone = activeDrag.fromZone
         // Get only sortable items, not all children
@@ -1000,51 +1030,10 @@ export class DragManager implements DragManagerInterface {
   }
 
   /** Fallback heuristic for group compatibility when no DragManager is found */
-  private canDropInZoneHeuristic(targetZone: HTMLElement): boolean {
-    if (this.activePointerId === null) return false
-
-    const dragId = `pointer-${this.activePointerId}`
-    const activeDrag = globalDragState.getActiveDrag(dragId)
-    if (!activeDrag) return false
-
-    // Check if this is the current group
-    if (targetZone === this.zone.element) return true
-
-    // Simple group matching based on common patterns
-    const currentGroup = this.groupManager.getName()
-    const zoneId = targetZone.id
-
-    // Hardcoded group mappings based on the HTML structure
-    if (currentGroup === 'group-a') {
-      return (
-        zoneId.includes('shared-a-') ||
-        zoneId.includes('grid-') ||
-        zoneId.includes('list')
-      )
-    }
-
-    if (currentGroup === 'independent-a') {
-      return zoneId === 'group-a-1'
-    }
-
-    if (currentGroup === 'independent-b') {
-      return zoneId === 'group-b-1'
-    }
-
-    if (currentGroup === 'grid-shared') {
-      return zoneId.includes('grid-')
-    }
-
-    if (currentGroup === 'shared') {
-      return zoneId.includes('list')
-    }
-
-    if (currentGroup === 'basic') {
-      return zoneId === 'basic-list'
-    }
-
-    // Default: allow if same group name (this should be improved)
-    return currentGroup === 'default'
+  private canDropInZoneHeuristic(_targetZone: HTMLElement): boolean {
+    // Without a registered DragManager for the target zone, we cannot
+    // determine group compatibility. Return false to be safe.
+    return false
   }
 
   /**
