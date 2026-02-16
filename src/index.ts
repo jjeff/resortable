@@ -39,7 +39,7 @@ import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
 import { PluginSystem } from './core/PluginSystem.js'
 import { SortableOptions, type SortableEvents } from './types/index.js'
-import { toArray as domToArray } from './utils/dom.js'
+import { toArray as domToArray, on, getIndex, insertAt } from './utils/dom.js'
 
 // Export PluginSystem
 export { PluginSystem }
@@ -85,6 +85,48 @@ export class Sortable {
    * @readonly
    */
   public static dragged: HTMLElement | null = null
+
+  /**
+   * The ghost element shown during drag (if any)
+   * @readonly
+   */
+  public static ghost: HTMLElement | null = null
+
+  /**
+   * The cloned element during clone operations (if any)
+   * @readonly
+   */
+  public static clone: HTMLElement | null = null
+
+  /**
+   * Gets the Sortable instance associated with a given element
+   *
+   * @param element - The DOM element to look up
+   * @returns The Sortable instance, or undefined if none found
+   *
+   * @example
+   * ```typescript
+   * const sortable = Sortable.get(document.getElementById('my-list'));
+   * ```
+   *
+   * @public
+   */
+  public static get(element: HTMLElement): Sortable | undefined {
+    return sortableInstances.get(element)
+  }
+
+  /**
+   * Utility functions for DOM operations
+   * @public
+   */
+  public static utils = {
+    /** Add an event listener and return an unsubscribe function */
+    on,
+    /** Get the index of an element within its parent */
+    index: getIndex,
+    /** Insert an element at a specific index within a parent */
+    insertAt,
+  }
 
   /**
    * Finds the closest Sortable instance to a given element
@@ -245,8 +287,16 @@ export class Sortable {
     this.eventSystem.on('end', (event) => {
       Sortable.active = null
       Sortable.dragged = null
+      Sortable.ghost = null
+      Sortable.clone = null
       if (this.options.onEnd) {
         this.options.onEnd(event)
+      }
+    })
+
+    this.eventSystem.on('clone', (event) => {
+      if (event.clone) {
+        Sortable.clone = event.clone
       }
     })
 
@@ -404,6 +454,63 @@ export class Sortable {
    */
   public toArray(): string[] {
     return domToArray(this.element, this.options.dataIdAttr)
+  }
+
+  /**
+   * Sorts the elements according to the given order of data-id values
+   *
+   * @param order - Array of data-id values representing the desired order
+   * @param useAnimation - Whether to animate the reorder (default: true)
+   *
+   * @example
+   * ```typescript
+   * const sortable = new Sortable(element);
+   * sortable.sort(['item-3', 'item-1', 'item-2']);
+   * ```
+   *
+   * @example Without animation
+   * ```typescript
+   * sortable.sort(['item-3', 'item-1', 'item-2'], false);
+   * ```
+   *
+   * @public
+   */
+  public sort(order: string[], useAnimation = true): void {
+    const dataIdAttr = this.options.dataIdAttr ?? 'data-id'
+    const items = Array.from(this.element.children) as HTMLElement[]
+
+    // Build a map from data-id to element
+    const itemMap = new Map<string, HTMLElement>()
+    items.forEach((item, i) => {
+      const attrName = dataIdAttr.startsWith('data-')
+        ? dataIdAttr.slice(5)
+        : dataIdAttr
+      const id =
+        item.dataset[attrName] ?? item.getAttribute(dataIdAttr) ?? String(i)
+      itemMap.set(id, item)
+    })
+
+    const reorder = () => {
+      // Re-append elements in the desired order
+      for (const id of order) {
+        const item = itemMap.get(id)
+        if (item) {
+          this.element.appendChild(item)
+        }
+      }
+      // Append any remaining items not in the order array
+      for (const item of items) {
+        if (!item.parentElement) {
+          this.element.appendChild(item)
+        }
+      }
+    }
+
+    if (useAnimation && this.animationManager) {
+      this.animationManager.animateReorder(items, reorder)
+    } else {
+      reorder()
+    }
   }
 
   /**
