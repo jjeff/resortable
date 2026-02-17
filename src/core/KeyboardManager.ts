@@ -14,13 +14,18 @@ export class KeyboardManager {
   private announcer: HTMLElement | null = null
   private announceTimer: number | null = null
 
+  private deselectOnClickOutside: boolean
+  private onDocumentClick: ((e: MouseEvent) => void) | null = null
+
   constructor(
     private container: HTMLElement,
     private zone: DropZone,
     private selectionManager: SelectionManager,
     private events: SortableEventSystem,
-    private groupName: string
+    private groupName: string,
+    options?: { deselectOnClickOutside?: boolean }
   ) {
+    this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.setupAnnouncer()
   }
 
@@ -47,6 +52,16 @@ export class KeyboardManager {
 
     // Mark sortable items
     this.updateItemAttributes()
+
+    // Click outside to deselect
+    if (this.deselectOnClickOutside) {
+      this.onDocumentClick = (e: MouseEvent) => {
+        if (!this.container.contains(e.target as Node)) {
+          this.selectionManager.clearSelection()
+        }
+      }
+      document.addEventListener('click', this.onDocumentClick)
+    }
   }
 
   /**
@@ -56,6 +71,11 @@ export class KeyboardManager {
     this.container.removeEventListener('keydown', this.onKeyDown)
     this.container.removeEventListener('click', this.onClick)
     this.container.removeEventListener('focus', this.onFocus, true)
+
+    if (this.onDocumentClick) {
+      document.removeEventListener('click', this.onDocumentClick)
+      this.onDocumentClick = null
+    }
 
     // Clean up ARIA attributes
     this.container.removeAttribute('role')

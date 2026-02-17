@@ -271,6 +271,7 @@ export class Sortable {
         ghostClass: this.options.ghostClass,
         chosenClass: this.options.chosenClass,
         dragClass: this.options.dragClass,
+        deselectOnClickOutside: this.options.deselectOnClickOutside,
       }
     )
     this.dragManager.attach()
@@ -598,6 +599,7 @@ export class Sortable {
             ghostClass: this.options.ghostClass,
             chosenClass: this.options.chosenClass,
             dragClass: this.options.dragClass,
+            deselectOnClickOutside: this.options.deselectOnClickOutside,
           }
         )
         this.dragManager.attach()
@@ -630,6 +632,7 @@ export class Sortable {
             ghostClass: this.options.ghostClass,
             chosenClass: this.options.chosenClass,
             dragClass: this.options.dragClass,
+            deselectOnClickOutside: this.options.deselectOnClickOutside,
           }
         )
         this.dragManager.attach()
@@ -687,4 +690,5 @@ const defaultOptions: SortableOptions = {
   enableAccessibility: true,
   selectedClass: 'sortable-selected',
   focusClass: 'sortable-focused',
+  deselectOnClickOutside: true,
 }

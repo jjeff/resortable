@@ -114,6 +114,7 @@ export class DragManager implements DragManagerInterface {
       ghostClass?: string
       chosenClass?: string
       dragClass?: string
+      deselectOnClickOutside?: boolean
     }
   ) {
     // Initialize group manager
@@ -186,7 +187,8 @@ export class DragManager implements DragManagerInterface {
       this.zone,
       this._selectionManager,
       this.events,
-      this.groupManager.getName()
+      this.groupManager.getName(),
+      { deselectOnClickOutside: options?.deselectOnClickOutside }
     )
   }
 

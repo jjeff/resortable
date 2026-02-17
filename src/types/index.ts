@@ -127,6 +127,12 @@ export interface SortableOptions {
   selectedClass?: string
 
   /**
+   * Clear selection when clicking outside the sortable container
+   * @defaultValue true
+   */
+  deselectOnClickOutside?: boolean
+
+  /**
    * Callback fired when drag operation ends
    *
    * @param event - The sortable event containing drag details
