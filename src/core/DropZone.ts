@@ -111,34 +111,14 @@ export class DropZone {
       (a, b) => this.getIndex(a) - this.getIndex(b)
     )
 
-    // Remove all selected items from DOM
-    sortedItems.forEach((item) => item.remove())
+    // DOM manipulation: remove items and reinsert at target position
+    const doMove = () => {
+      sortedItems.forEach((item) => item.remove())
+      const remaining = this.getItems()
+      const insertIndex = Math.min(toIndex, remaining.length)
+      const refNode =
+        insertIndex < remaining.length ? remaining[insertIndex] : null
 
-    // Get remaining items after removal
-    const remaining = this.getItems()
-
-    // Clamp toIndex to valid range
-    const insertIndex = Math.min(toIndex, remaining.length)
-
-    // Determine the reference node to insert before
-    const refNode =
-      insertIndex < remaining.length ? remaining[insertIndex] : null
-
-    // Insert all items in order at the target position
-    if (this.animationManager) {
-      const allItems = [...remaining]
-      allItems.splice(insertIndex, 0, ...sortedItems)
-
-      this.animationManager.animateReorder(allItems, () => {
-        sortedItems.forEach((item) => {
-          if (refNode) {
-            this.element.insertBefore(item, refNode)
-          } else {
-            this.element.appendChild(item)
-          }
-        })
-      })
-    } else {
       sortedItems.forEach((item) => {
         if (refNode) {
           this.element.insertBefore(item, refNode)
@@ -146,6 +126,15 @@ export class DropZone {
           this.element.appendChild(item)
         }
       })
+    }
+
+    if (this.animationManager) {
+      // All items currently in the container need FLIP positions captured
+      // BEFORE any DOM changes — this is critical for correct animation origins
+      const allItems = this.getItems()
+      this.animationManager.animateReorder(allItems, doMove)
+    } else {
+      doMove()
     }
   }
 }
