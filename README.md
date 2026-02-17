@@ -2,7 +2,7 @@
 
 Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
-> **Alpha** — Core functionality is working. API may change before v2.0 stable release.
+> **Alpha — Not ready for production use.** This library is under active development and has not been published to npm. APIs will change. If you need a drag-and-drop library today, use [SortableJS](https://github.com/SortableJS/Sortable).
 
 ## Features
 
@@ -11,10 +11,10 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 - **Clone Support** — `group.pull: 'clone'` to copy items instead of moving
 - **Animations** — FLIP-based 60fps reorder animations
 - **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support
-- **Multi-Select** — Shift+Click / Ctrl+Click selection with multi-drag
-- **Plugin System** — AutoScroll, MultiDrag, Swap plugins included
+- **Multi-Drag** — Ctrl+Click / Shift+Click selection, drag multiple items together
+- **Plugin System** — AutoScroll, Swap plugins (extensible architecture)
 - **TypeScript** — Strict types with full IntelliSense support
-- **Small** — ~16KB gzipped (ESM)
+- **Small** — ~17KB gzipped (ESM)
 
 ## Installation
 
@@ -133,7 +133,9 @@ sortable.usePlugin('AutoScroll');
 sortable.usePlugin('Swap');
 ```
 
-**Built-in plugins:** AutoScroll, MultiDrag, Swap
+**Built-in plugins:** AutoScroll, Swap
+
+> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options.
 
 ## Development
 
