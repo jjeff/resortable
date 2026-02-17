@@ -777,7 +777,11 @@ export class DragManager implements DragManagerInterface {
     this.events.emit('choose', evt)
 
     // Create ghost element for visual feedback
-    this.ghostManager.createGhost(target, e)
+    if (this.draggedItems.length > 1) {
+      this.ghostManager.createStackedGhost(target, this.draggedItems.length, e)
+    } else {
+      this.ghostManager.createGhost(target, e)
+    }
     this.ghostManager.createPlaceholder(target)
 
     // Then emit start event

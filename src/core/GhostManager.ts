@@ -120,6 +120,49 @@ export class GhostManager {
   }
 
   /**
+   * Creates a stacked ghost for multi-item drag.
+   * Shows the anchor item with a count badge and stacked shadow effect.
+   */
+  createStackedGhost(
+    anchorElement: HTMLElement,
+    itemCount: number,
+    event: MouseEvent | DragEvent | PointerEvent
+  ): HTMLElement {
+    // Create the base ghost from anchor
+    const ghost = this.createGhost(anchorElement, event)
+
+    // Add stacked class
+    ghost.classList.add('sortable-ghost-stacked')
+
+    // Add subtle stacked shadow to suggest multiple items
+    ghost.style.boxShadow =
+      '3px 3px 0 rgba(0,0,0,0.1), 6px 6px 0 rgba(0,0,0,0.05)'
+
+    // Create count badge
+    const badge = document.createElement('span')
+    badge.className = 'sortable-drag-count'
+    badge.textContent = String(itemCount)
+    badge.style.position = 'absolute'
+    badge.style.top = '-8px'
+    badge.style.right = '-8px'
+    badge.style.minWidth = '20px'
+    badge.style.height = '20px'
+    badge.style.borderRadius = '10px'
+    badge.style.backgroundColor = '#4A90D9'
+    badge.style.color = 'white'
+    badge.style.fontSize = '12px'
+    badge.style.fontWeight = 'bold'
+    badge.style.display = 'flex'
+    badge.style.alignItems = 'center'
+    badge.style.justifyContent = 'center'
+    badge.style.lineHeight = '1'
+    badge.style.pointerEvents = 'none'
+    ghost.appendChild(badge)
+
+    return ghost
+  }
+
+  /**
    * Creates a placeholder element to show where the item will be dropped
    * @param referenceElement - Element to base the placeholder on
    * @returns The created placeholder element
