@@ -92,4 +92,55 @@ export class DropZone {
       insertAt(this.element, item, targetDOMIndex)
     }
   }
+
+  /** Move multiple items to a target index, preserving their relative order */
+  public moveMultiple(items: HTMLElement[], toIndex: number): void {
+    if (items.length === 0) return
+    if (items.length === 1) {
+      this.move(items[0], toIndex)
+      return
+    }
+
+    // Sort items by their current index to preserve relative order
+    const sortedItems = [...items].sort(
+      (a, b) => this.getIndex(a) - this.getIndex(b)
+    )
+
+    // Remove all selected items from DOM
+    sortedItems.forEach((item) => item.remove())
+
+    // Get remaining items after removal
+    const remaining = this.getItems()
+
+    // Clamp toIndex to valid range
+    const insertIndex = Math.min(toIndex, remaining.length)
+
+    // Determine the reference node to insert before
+    const refNode =
+      insertIndex < remaining.length ? remaining[insertIndex] : null
+
+    // Insert all items in order at the target position
+    if (this.animationManager) {
+      const allItems = [...remaining]
+      allItems.splice(insertIndex, 0, ...sortedItems)
+
+      this.animationManager.animateReorder(allItems, () => {
+        sortedItems.forEach((item) => {
+          if (refNode) {
+            this.element.insertBefore(item, refNode)
+          } else {
+            this.element.appendChild(item)
+          }
+        })
+      })
+    } else {
+      sortedItems.forEach((item) => {
+        if (refNode) {
+          this.element.insertBefore(item, refNode)
+        } else {
+          this.element.appendChild(item)
+        }
+      })
+    }
+  }
 }
