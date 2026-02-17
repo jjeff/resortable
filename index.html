@@ -586,7 +586,7 @@
       
       <div class="interaction-demos">
         <div>
-          <h3>Multi-Select (Click items to select)</h3>
+          <h3>Multi-Select (Ctrl/Cmd+Click, Shift+Click)</h3>
           <div class="multi-select-list" id="multi-select-list">
             <div class="sortable-item" data-id="multi-1">📝 Task Alpha</div>
             <div class="sortable-item" data-id="multi-2">📊 Task Beta</div>
@@ -936,34 +936,15 @@
         }));
       }
       
-      // Multi-Select Demo
+      // Multi-Select Demo — uses the library's built-in SelectionManager
       const multiSelectList = document.getElementById('multi-select-list');
       if (multiSelectList) {
-        let selectedItems = new Set();
-        
-        multiSelectList.addEventListener('click', (e) => {
-          const item = e.target.closest('.sortable-item');
-          if (item) {
-            if (selectedItems.has(item)) {
-              selectedItems.delete(item);
-              item.classList.remove('selected');
-            } else {
-              selectedItems.add(item);
-              item.classList.add('selected');
-            }
-          }
-        });
-        
         window.sortables.push(new Sortable(multiSelectList, {
           animation: 200,
           draggable: '.sortable-item',
           multiDrag: true,
           selectedClass: 'selected',
           group: 'multi-select-demo',
-          onEnd: () => {
-            selectedItems.forEach(item => item.classList.remove('selected'));
-            selectedItems.clear();
-          }
         }));
       }
       
