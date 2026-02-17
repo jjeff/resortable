@@ -13,14 +13,14 @@ interface DragManager {
 
 interface ActiveDrag {
   id: string // Unique identifier for this drag (e.g., pointerId)
-  item: HTMLElement
+  items: HTMLElement[]
   fromZone: HTMLElement
   fromDragManager: DragManager
   groupName: string
-  startIndex: number
+  startIndices: number[]
   eventSystem: SortableEventSystem
-  clone?: HTMLElement // Cloned element for clone operations
-  pullMode?: 'move' | 'clone' // How this item was pulled
+  clones?: HTMLElement[] // Cloned elements for clone operations
+  pullMode?: 'move' | 'clone' // How these items were pulled
 }
 
 interface PutTarget {
@@ -41,20 +41,22 @@ class GlobalDragStateManager {
   /** Start a drag operation */
   public startDrag(
     dragId: string,
-    item: HTMLElement,
+    items: HTMLElement | HTMLElement[],
     fromZone: HTMLElement,
     fromDragManager: DragManager,
     groupName: string,
-    startIndex: number,
+    startIndex: number | number[],
     eventSystem: SortableEventSystem
   ): void {
+    const itemsArray = Array.isArray(items) ? items : [items]
+    const indicesArray = Array.isArray(startIndex) ? startIndex : [startIndex]
     this.activeDrags.set(dragId, {
       id: dragId,
-      item,
+      items: itemsArray,
       fromZone,
       fromDragManager,
       groupName,
-      startIndex,
+      startIndices: indicesArray,
       eventSystem,
     })
     // Clear any existing put target for this drag
@@ -73,7 +75,7 @@ class GlobalDragStateManager {
     if (activeDrag && this.canAcceptDrop(dragId, groupName)) {
       // Check if we need to create a clone for this operation
       const isDifferentZone = zone !== activeDrag.fromZone
-      if (isDifferentZone && !activeDrag.clone) {
+      if (isDifferentZone && !activeDrag.clones) {
         try {
           const sourceGroupManager =
             activeDrag.fromDragManager.getGroupManager?.()
@@ -82,17 +84,20 @@ class GlobalDragStateManager {
             activeDrag.pullMode = pullMode
 
             if (pullMode === 'clone') {
-              // Create clone of the original item
-              const clone = activeDrag.item.cloneNode(true) as HTMLElement
-              // Clear any IDs to avoid duplicates
-              clone.removeAttribute('id')
-              // Remove any drag-related classes
-              clone.classList.remove(
-                'sortable-chosen',
-                'sortable-drag',
-                'sortable-ghost'
-              )
-              activeDrag.clone = clone
+              // Create clones of all dragged items
+              const clones = activeDrag.items.map((item) => {
+                const clone = item.cloneNode(true) as HTMLElement
+                // Clear any IDs to avoid duplicates
+                clone.removeAttribute('id')
+                // Remove any drag-related classes
+                clone.classList.remove(
+                  'sortable-chosen',
+                  'sortable-drag',
+                  'sortable-ghost'
+                )
+                return clone
+              })
+              activeDrag.clones = clones
             }
           } else {
             // Fallback: assume move operation
@@ -126,18 +131,18 @@ class GlobalDragStateManager {
       const isCloneOperation = activeDrag.pullMode === 'clone'
       let targetItem: HTMLElement
 
-      if (isCloneOperation && activeDrag.clone) {
-        // For clone operations, use the clone as the target item
-        targetItem = activeDrag.clone
+      if (isCloneOperation && activeDrag.clones?.[0]) {
+        // For clone operations, use the first clone as the target item
+        targetItem = activeDrag.clones[0]
         const newIndex = putTarget.dragManager.zone.getIndex(targetItem)
 
         // Fire clone event on source
         activeDrag.eventSystem.emit('clone', {
-          item: activeDrag.item,
-          items: [activeDrag.item],
+          item: activeDrag.items[0],
+          items: activeDrag.items,
           from: activeDrag.fromZone,
           to: putTarget.zone,
-          oldIndex: activeDrag.startIndex,
+          oldIndex: activeDrag.startIndices[0],
           newIndex,
           clone: targetItem,
           pullMode: 'clone',
@@ -147,10 +152,10 @@ class GlobalDragStateManager {
         if (putTarget.dragManager.events !== activeDrag.eventSystem) {
           putTarget.dragManager.events.emit('add', {
             item: targetItem,
-            items: [targetItem],
+            items: activeDrag.items,
             from: activeDrag.fromZone,
             to: putTarget.zone,
-            oldIndex: activeDrag.startIndex,
+            oldIndex: activeDrag.startIndices[0],
             newIndex,
             clone: targetItem,
             pullMode: 'clone',
@@ -158,16 +163,16 @@ class GlobalDragStateManager {
         }
       } else {
         // For move operations, use the original item
-        targetItem = activeDrag.item
+        targetItem = activeDrag.items[0]
         const newIndex = putTarget.dragManager.zone.getIndex(targetItem)
 
         // Fire remove event on source
         activeDrag.eventSystem.emit('remove', {
-          item: activeDrag.item,
-          items: [activeDrag.item],
+          item: activeDrag.items[0],
+          items: activeDrag.items,
           from: activeDrag.fromZone,
           to: putTarget.zone,
-          oldIndex: activeDrag.startIndex,
+          oldIndex: activeDrag.startIndices[0],
           newIndex,
           pullMode: activeDrag.pullMode || true,
         })
@@ -175,11 +180,11 @@ class GlobalDragStateManager {
         // Fire add event on target (if different event system)
         if (putTarget.dragManager.events !== activeDrag.eventSystem) {
           putTarget.dragManager.events.emit('add', {
-            item: activeDrag.item,
-            items: [activeDrag.item],
+            item: activeDrag.items[0],
+            items: activeDrag.items,
             from: activeDrag.fromZone,
             to: putTarget.zone,
-            oldIndex: activeDrag.startIndex,
+            oldIndex: activeDrag.startIndices[0],
             newIndex,
             pullMode: activeDrag.pullMode || true,
           })
@@ -189,27 +194,27 @@ class GlobalDragStateManager {
 
     // Fire unchoose event before end
     activeDrag.eventSystem.emit('unchoose', {
-      item: activeDrag.item,
-      items: [activeDrag.item],
+      item: activeDrag.items[0],
+      items: activeDrag.items,
       from: activeDrag.fromZone,
       to: putTarget?.zone || activeDrag.fromZone,
-      oldIndex: activeDrag.startIndex,
+      oldIndex: activeDrag.startIndices[0],
       newIndex: -1,
     })
 
     // Fire end event
-    const finalIndex = activeDrag.item.parentElement
-      ? Array.from(activeDrag.item.parentElement.children).indexOf(
-          activeDrag.item
+    const finalIndex = activeDrag.items[0].parentElement
+      ? Array.from(activeDrag.items[0].parentElement.children).indexOf(
+          activeDrag.items[0]
         )
       : -1
 
     activeDrag.eventSystem.emit('end', {
-      item: activeDrag.item,
-      items: [activeDrag.item],
+      item: activeDrag.items[0],
+      items: activeDrag.items,
       from: activeDrag.fromZone,
       to: putTarget?.zone || activeDrag.fromZone,
-      oldIndex: activeDrag.startIndex,
+      oldIndex: activeDrag.startIndices[0],
       newIndex: finalIndex,
     })
 
