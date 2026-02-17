@@ -13,3 +13,6 @@ playwright-report/
 # Core dump files (at root only)
 /core
 /core.*
+
+# Claude Code local settings (user-specific)
+.claude/settings.local.json
