@@ -182,6 +182,20 @@ export class AnimationManager {
   }
 
   /**
+   * Whether any FLIP animations are currently in progress
+   */
+  public get isAnimating(): boolean {
+    return this.activeAnimations.size > 0
+  }
+
+  /**
+   * Get the configured animation duration in milliseconds
+   */
+  public getDuration(): number {
+    return this.animationDuration
+  }
+
+  /**
    * Cancel all active animations
    */
   public cancelAll(): void {

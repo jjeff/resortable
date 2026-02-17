@@ -243,6 +243,12 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDragStart = (e: DragEvent): void => {
+    // If pointer-based drag is already active, prevent HTML5 drag from interfering
+    if (this.isPointerDragging) {
+      e.preventDefault()
+      return
+    }
+
     // Find the closest draggable item
     const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
@@ -892,6 +898,11 @@ export class DragManager implements DragManagerInterface {
         // Find the target DragManager's zone for proper index tracking
         const targetDragManager = this.findDragManagerForZone(targetZoneElement)
         const targetZone = targetDragManager?.zone ?? this.zone
+
+        // Skip move if FLIP animations are still in progress — prevents oscillation
+        // caused by elementFromPoint detecting elements at their animated positions
+        if (targetZone.isAnimating) return
+
         const currentItems = targetZone.getItems()
         const currentIndex = currentItems.indexOf(movingElement)
         const targetIndex = currentItems.indexOf(over)
@@ -1001,9 +1012,32 @@ export class DragManager implements DragManagerInterface {
       }
     }
 
-    // Clean up ghost elements
-    if (this.dragElement) {
-      this.ghostManager.destroy(this.dragElement)
+    // Animate ghost to final element position before destroying
+    const ghost = this.ghostManager.getGhostElement()
+    const dragEl = this.dragElement
+    if (ghost && dragEl && !revert) {
+      const finalRect = dragEl.getBoundingClientRect()
+      const ghostRect = ghost.getBoundingClientRect()
+      const deltaX = finalRect.left - ghostRect.left
+      const deltaY = finalRect.top - ghostRect.top
+
+      // Only animate if ghost is far enough from target
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        ghost.style.transition = 'transform 150ms cubic-bezier(0.2, 0, 0, 1)'
+        ghost.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+
+        // After animation, clean up
+        const cleanup = () => {
+          this.ghostManager.destroy(dragEl)
+        }
+        ghost.addEventListener('transitionend', cleanup, { once: true })
+        // Fallback timeout in case transitionend doesn't fire
+        window.setTimeout(cleanup, 200)
+      } else {
+        this.ghostManager.destroy(dragEl)
+      }
+    } else if (dragEl) {
+      this.ghostManager.destroy(dragEl)
     }
 
     // Global drag state handles the end event and cleanup

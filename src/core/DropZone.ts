@@ -21,6 +21,11 @@ export class DropZone {
     this.draggableSelector = selector
   }
 
+  /** Whether FLIP animations are currently in progress */
+  public get isAnimating(): boolean {
+    return this.animationManager?.isAnimating ?? false
+  }
+
   /** Get sortable items (only elements matching the draggable selector) */
   public getItems(): HTMLElement[] {
     return Array.from(this.element.querySelectorAll(this.draggableSelector))
