@@ -170,12 +170,9 @@ export class KeyboardManager {
               if (lastSelected) {
                 this.selectionManager.selectRange(lastSelected, focused)
               }
-            } else if (e.ctrlKey || e.metaKey) {
-              // Toggle selection with Ctrl/Cmd+Space
-              this.selectionManager.toggle(focused)
             } else {
-              // Single selection
-              this.selectionManager.select(focused)
+              // Toggle selection (add/remove from selection)
+              this.selectionManager.toggle(focused)
             }
           }
         }
