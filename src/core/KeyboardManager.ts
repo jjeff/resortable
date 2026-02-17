@@ -370,12 +370,13 @@ export class KeyboardManager {
       `Dropped ${this.grabbedItems.length} item${this.grabbedItems.length > 1 ? 's' : ''} at position ${newIndex + 1}`
     )
 
-    // Update ARIA attributes after drop
-    this.updateItemAttributes()
-
+    // Clear grab state before updating attributes so they reflect the new state
     this.isGrabbing = false
     this.grabbedItems = []
     this.originalIndices = []
+
+    // Update ARIA attributes after drop
+    this.updateItemAttributes()
   }
 
   /**
@@ -399,15 +400,16 @@ export class KeyboardManager {
     const dragId = 'keyboard-drag'
     globalDragState.endDrag(dragId)
 
-    // Update ARIA attributes after restore
-    this.updateItemAttributes()
-
     // Announce cancellation
     this.announce('Move cancelled')
 
+    // Clear grab state before updating attributes so they reflect the new state
     this.isGrabbing = false
     this.grabbedItems = []
     this.originalIndices = []
+
+    // Update ARIA attributes after restore
+    this.updateItemAttributes()
   }
 
   /**
@@ -485,15 +487,22 @@ export class KeyboardManager {
    */
   private updateItemAttributes(): void {
     const items = this.zone.getItems()
+    const focused = this.selectionManager.getFocused()
     items.forEach((item, index) => {
       item.setAttribute('role', 'listitem')
       item.setAttribute('aria-setsize', items.length.toString())
       item.setAttribute('aria-posinset', (index + 1).toString())
-      item.setAttribute('aria-selected', 'false')
-      item.setAttribute('aria-grabbed', 'false')
 
-      // Make items focusable - first item gets tabindex="0", others get "-1"
-      item.setAttribute('tabindex', index === 0 ? '0' : '-1')
+      // Preserve current selected/grabbed state instead of resetting
+      const isSelected = this.selectionManager.isSelected(item)
+      item.setAttribute('aria-selected', isSelected ? 'true' : 'false')
+
+      const isGrabbed = this.isGrabbing && this.grabbedItems.includes(item)
+      item.setAttribute('aria-grabbed', isGrabbed ? 'true' : 'false')
+
+      // Focused item gets tabindex="0"; if nothing focused, first item does
+      const isFocusTarget = focused ? item === focused : index === 0
+      item.setAttribute('tabindex', isFocusTarget ? '0' : '-1')
     })
   }
 
