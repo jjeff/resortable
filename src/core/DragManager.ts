@@ -262,6 +262,12 @@ export class DragManager implements DragManagerInterface {
       return
     }
 
+    // Skip drag when modifier keys are held — these indicate selection intent
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      e.preventDefault()
+      return
+    }
+
     this.startIndex = this.zone.getIndex(target)
 
     // Register with global drag state using HTML5 drag API as ID
@@ -646,6 +652,10 @@ export class DragManager implements DragManagerInterface {
 
     // Only start drag on primary button (left mouse or primary touch)
     if (e.button !== 0) return
+
+    // Skip drag when modifier keys are held — these indicate selection intent
+    // (Ctrl/Cmd+Click for toggle, Shift+Click for range selection)
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return
 
     // Ignore pen input - pen should use native drag API or be explicitly handled
     if (e.pointerType === 'pen') return

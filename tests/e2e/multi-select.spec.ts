@@ -1,389 +1,198 @@
 import { expect, test } from '@playwright/test'
 
-// @todo: Multi-select functionality requires full MultiDragPlugin implementation
-// The current MultiDragPlugin expects a fully integrated selection system that
-// coordinates with the DragManager, but the integration is incomplete. Tests fail
-// because aria-selected attributes are not being set properly and multi-select
-// click handlers are not functioning. This will be implemented in future phase.
-test.describe.skip(
-  'Multi-Select Functionality - Plugin System Implementation',
-  () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto('/')
-      // Wait for the library to fully load
-      await page.waitForFunction(() => window.resortableLoaded === true)
+test.describe('Multi-Select Functionality', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+    await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
+  })
 
-      // Initialize a sortable with multi-select enabled using the real plugin system
-      await page.evaluate(() => {
-        // Destroy existing sortable if any
-        const basicList = document.getElementById('basic-list')
-        interface WindowWithSortables extends Window {
-          sortables?: Array<{ el: HTMLElement; destroy: () => void }>
-          Sortable?: typeof import('../../src/index.js').Sortable
-          PluginSystem?: typeof import('../../src/core/PluginSystem.js').PluginSystem
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- E2E test needs to access plugin from global window
-          MultiDragPlugin?: any
-        }
-        const win = window as WindowWithSortables
+  test('selects multiple items with Ctrl/Cmd+Click', async ({ page }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
-        // eslint-disable-next-line no-console -- Debug logging for E2E test
-        console.log('Debug: Sortable available:', !!win.Sortable)
-        // eslint-disable-next-line no-console -- Debug logging for E2E test
-        console.log('Debug: PluginSystem available:', !!win.PluginSystem)
-        // eslint-disable-next-line no-console -- Debug logging for E2E test
-        console.log('Debug: MultiDragPlugin available:', !!win.MultiDragPlugin)
-        // eslint-disable-next-line no-console -- Debug logging for E2E test
-        console.log('Debug: basicList found:', !!basicList)
+    // Click first item
+    await firstItem.click()
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(firstItem).toHaveClass(/sortable-selected/)
 
-        if (basicList && win.sortables) {
-          const sortable = win.sortables.find((s) => s.el === basicList)
-          if (sortable) {
-            // eslint-disable-next-line no-console -- Debug logging for E2E test
-            console.log('Debug: Destroying existing sortable')
-            sortable.destroy()
-          }
-        }
+    // ControlOrMeta+Click third item (Ctrl on Win/Linux, Cmd on Mac)
+    await thirdItem.click({ modifiers: ['ControlOrMeta'] })
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
+    await expect(firstItem).toHaveClass(/sortable-selected/)
+    await expect(thirdItem).toHaveClass(/sortable-selected/)
+  })
 
-        // Create new sortable with multi-select using the real plugin system
-        const Sortable = win.Sortable
-        const PluginSystem = win.PluginSystem
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- E2E test accessing global plugin
-        const MultiDragPlugin = win.MultiDragPlugin
+  test('selects range with Shift+Click', async ({ page }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
-        if (Sortable && PluginSystem && basicList) {
-          // eslint-disable-next-line no-console -- Debug logging for E2E test
-          console.log('Debug: Creating new sortable with multiDrag: true')
-          const sortable = new Sortable(basicList, {
-            animation: 150,
-            multiDrag: true,
-            selectedClass: 'sortable-selected',
-            group: 'basic',
-            enableAccessibility: true,
-          })
+    // Click first item
+    await firstItem.click()
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
 
-          // eslint-disable-next-line no-console -- Debug logging for E2E test
-          console.log('Debug: Registered plugins:', PluginSystem.list())
+    // Shift+Click third item to select range
+    await thirdItem.click({ modifiers: ['Shift'] })
 
-          // Use the real MultiDragPlugin if available
-          if (MultiDragPlugin) {
-            try {
-              // eslint-disable-next-line no-console -- Debug logging for E2E test
-              console.log('Debug: Installing MultiDrag plugin on sortable')
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- E2E test needs to cast sortable for plugin system compatibility
-              PluginSystem.install(sortable as any, 'MultiDrag')
-              // eslint-disable-next-line no-console -- Debug logging for E2E test
-              console.log('Debug: MultiDrag plugin installed successfully')
-            } catch (e) {
-              // eslint-disable-next-line no-console -- Debug logging for E2E test error handling
-              console.error('Debug: Failed to install MultiDrag:', e)
-            }
-          } else {
-            // eslint-disable-next-line no-console -- Debug logging for E2E test
-            console.warn(
-              'Debug: MultiDragPlugin not available, creating fallback'
-            )
-            // Fallback: Create basic multi-select functionality for testing
-            sortable._selectedItems = new Set()
+    // All three items should be selected
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
+    await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
+  })
 
-            const handleClick = (event: MouseEvent) => {
-              const target = event.target as HTMLElement
-              if (!target) return
-              const item = target.closest('.sortable-item') as HTMLElement
-              if (!item) return
+  test('toggles selection with Ctrl/Cmd+Click', async ({ page }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
 
-              if (!sortable._selectedItems) sortable._selectedItems = new Set()
+    // Click to select
+    await firstItem.click()
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
 
-              if (event.ctrlKey || event.metaKey) {
-                event.preventDefault()
-                if (sortable._selectedItems.has(item)) {
-                  sortable._selectedItems.delete(item)
-                  item.classList.remove('sortable-selected')
-                  item.setAttribute('aria-selected', 'false')
-                } else {
-                  sortable._selectedItems.add(item)
-                  item.classList.add('sortable-selected')
-                  item.setAttribute('aria-selected', 'true')
-                }
-              } else if (event.shiftKey && sortable._lastSelected) {
-                event.preventDefault()
-                const items = Array.from(
-                  sortable.element.querySelectorAll('.sortable-item')
-                )
-                const startIdx = items.indexOf(sortable._lastSelected)
-                const endIdx = items.indexOf(item)
-                const start = Math.min(startIdx, endIdx)
-                const end = Math.max(startIdx, endIdx)
+    // ControlOrMeta+Click to deselect
+    await firstItem.click({ modifiers: ['ControlOrMeta'] })
+    await expect(firstItem).toHaveAttribute('aria-selected', 'false')
 
-                sortable._selectedItems.forEach((el: HTMLElement) => {
-                  el.classList.remove('sortable-selected')
-                  el.setAttribute('aria-selected', 'false')
-                })
-                sortable._selectedItems.clear()
+    // ControlOrMeta+Click to select again
+    await firstItem.click({ modifiers: ['ControlOrMeta'] })
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+  })
 
-                for (let i = start; i <= end; i++) {
-                  const targetItem = items[i]
-                  if (targetItem) {
-                    sortable._selectedItems.add(targetItem as HTMLElement)
-                    targetItem.classList.add('sortable-selected')
-                    targetItem.setAttribute('aria-selected', 'true')
-                  }
-                }
-              } else {
-                sortable._selectedItems.forEach((el: HTMLElement) => {
-                  el.classList.remove('sortable-selected')
-                  el.setAttribute('aria-selected', 'false')
-                })
-                sortable._selectedItems.clear()
-                sortable._selectedItems.add(item)
-                item.classList.add('sortable-selected')
-                item.setAttribute('aria-selected', 'true')
-                sortable._lastSelected = item
-              }
-            }
+  test('selects all items with Ctrl/Cmd+A', async ({ page }) => {
+    const items = page.locator('#basic-list .sortable-item')
 
-            // Keyboard handlers
-            const handleKeydown = (event: KeyboardEvent) => {
-              if (event.key === 'Escape') {
-                if (!sortable._selectedItems) return
-                sortable._selectedItems.forEach((el: HTMLElement) => {
-                  el.classList.remove('sortable-selected')
-                  el.setAttribute('aria-selected', 'false')
-                })
-                sortable._selectedItems.clear()
-              }
-            }
+    // Focus the first item so the container's keydown handler fires
+    await items.first().focus()
 
-            sortable.element.addEventListener('click', handleClick)
-            sortable.element.addEventListener('keydown', handleKeydown)
-          }
+    // Press Ctrl+A (ControlOrMeta maps correctly per platform)
+    await page.keyboard.press('ControlOrMeta+a')
 
-          // Store sortable globally for debugging
-          window.debugSortable = sortable
-        } else {
-          // eslint-disable-next-line no-console -- Debug logging for E2E test
-          console.error('Debug: Missing dependencies:', {
-            Sortable: !!Sortable,
-            PluginSystem: !!PluginSystem,
-            basicList: !!basicList,
-          })
-        }
-      })
+    // All items should be selected
+    for (let i = 0; i < 4; i++) {
+      await expect(items.nth(i)).toHaveAttribute('aria-selected', 'true')
+      await expect(items.nth(i)).toHaveClass(/sortable-selected/)
+    }
+  })
 
-      await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
-      // Wait for initialization
-      await page.waitForTimeout(100)
-    })
+  test('extends selection with Shift+ArrowKeys', async ({ page }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
-    test('selects multiple items with Ctrl+Click', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
+    // Focus and select first item
+    await firstItem.focus()
+    await page.keyboard.press('Space')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
 
-      // Click first item
-      await firstItem.click()
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(firstItem).toHaveClass(/sortable-selected/)
+    // Shift+ArrowDown to extend selection
+    await page.keyboard.press('Shift+ArrowDown')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
 
-      // Ctrl+Click third item
-      await thirdItem.click({ modifiers: ['Control'] })
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
-      await expect(firstItem).toHaveClass(/sortable-selected/)
-      await expect(thirdItem).toHaveClass(/sortable-selected/)
-    })
+    // Shift+ArrowDown again
+    await page.keyboard.press('Shift+ArrowDown')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
+    await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
+  })
 
-    test('selects multiple items with Cmd+Click on Mac', async ({
-      page,
-      browserName,
-    }) => {
-      // Skip on non-Mac or if we can't detect platform
-      // Skip test if not on webkit (Safari/Mac) since Cmd key is Mac-specific
-      const isMac = true // Assume we're testing Mac-like behavior
-      if (!isMac && browserName !== 'webkit') {
-        test.skip()
-      }
+  test.skip('drags multiple selected items together (pointer-based multi-drag not yet implemented)', async ({
+    page,
+  }) => {
+    const items = page.locator('#basic-list .sortable-item')
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
 
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
+    // Select first and second items
+    await firstItem.click()
+    await secondItem.click({ modifiers: ['ControlOrMeta'] })
 
-      // Click first item
-      await firstItem.click()
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    // Drag both items to after the fourth item
+    await firstItem.dragTo(fourthItem)
 
-      // Cmd+Click third item
-      await thirdItem.click({ modifiers: ['Meta'] })
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
-    })
+    // Wait for animation
+    await page.waitForTimeout(200)
 
-    test('selects range with Shift+Click', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    // Check new order - selected items should move together
+    await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-3')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-4')
+    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
+    await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
+  })
 
-      // Click first item
-      await firstItem.click()
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+  test('clears selection with Escape key', async ({ page }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
 
-      // Shift+Click third item to select range
-      await thirdItem.click({ modifiers: ['Shift'] })
+    // Select multiple items
+    await firstItem.click()
+    await secondItem.click({ modifiers: ['ControlOrMeta'] })
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
 
-      // All three items should be selected
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'true')
-      await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
-    })
+    // Press Escape to clear selection
+    await page.keyboard.press('Escape')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'false')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'false')
+  })
 
-    test('toggles selection with Ctrl+Click', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+  test.skip('maintains selection state after drag operation (pointer-based multi-drag not yet implemented)', async ({
+    page,
+  }) => {
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
 
-      // Click to select
-      await firstItem.click()
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    // Select two items
+    await firstItem.click()
+    await secondItem.click({ modifiers: ['ControlOrMeta'] })
 
-      // Ctrl+Click to deselect
-      await firstItem.click({ modifiers: ['Control'] })
-      await expect(firstItem).toHaveAttribute('aria-selected', 'false')
+    // Drag them
+    await firstItem.dragTo(fourthItem)
+    await page.waitForTimeout(200)
 
-      // Ctrl+Click to select again
-      await firstItem.click({ modifiers: ['Control'] })
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-    })
+    // Items should still be selected after drag
+    const movedFirst = page.locator('#basic-list [data-id="basic-1"]')
+    const movedSecond = page.locator('#basic-list [data-id="basic-2"]')
+    await expect(movedFirst).toHaveAttribute('aria-selected', 'true')
+    await expect(movedSecond).toHaveAttribute('aria-selected', 'true')
+  })
 
-    test('selects all items with Ctrl+A', async ({ page }) => {
-      const items = page.locator('#basic-list .sortable-item')
-      const container = page.locator('#basic-list')
+  test('handles keyboard multi-select with grabbed items', async ({ page }) => {
+    const items = page.locator('#basic-list .sortable-item')
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
 
-      // Focus the container
-      await container.focus()
+    // Focus first item
+    await firstItem.focus()
 
-      // Press Ctrl+A
-      await page.keyboard.press('Control+a')
+    // Select first item
+    await page.keyboard.press('Space')
 
-      // All items should be selected
-      for (let i = 0; i < 4; i++) {
-        await expect(items.nth(i)).toHaveAttribute('aria-selected', 'true')
-        await expect(items.nth(i)).toHaveClass(/sortable-selected/)
-      }
-    })
+    // Extend selection to second item
+    await page.keyboard.press('Shift+ArrowDown')
 
-    test('extends selection with Shift+ArrowKeys', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
-      const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
+    // Both should be selected
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
 
-      // Focus and select first item
-      await firstItem.focus()
-      await page.keyboard.press('Space')
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    // Grab both items
+    await page.keyboard.press('Enter')
+    await expect(firstItem).toHaveAttribute('aria-grabbed', 'true')
+    await expect(secondItem).toHaveAttribute('aria-grabbed', 'true')
 
-      // Shift+ArrowDown to extend selection
-      await page.keyboard.press('Shift+ArrowDown')
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'true')
+    // Move down twice
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
 
-      // Shift+ArrowDown again
-      await page.keyboard.press('Shift+ArrowDown')
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'true')
-      await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
-    })
+    // Drop
+    await page.keyboard.press('Enter')
 
-    test('drags multiple selected items together', async ({ page }) => {
-      const items = page.locator('#basic-list .sortable-item')
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
-      const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
-
-      // Select first and second items
-      await firstItem.click()
-      await secondItem.click({ modifiers: ['Control'] })
-
-      // Drag both items to after the fourth item
-      await firstItem.dragTo(fourthItem)
-
-      // Wait for animation
-      await page.waitForTimeout(200)
-
-      // Check new order - selected items should move together
-      await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-3')
-      await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-4')
-      await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
-      await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
-    })
-
-    test('clears selection with Escape key', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
-
-      // Select multiple items
-      await firstItem.click()
-      await secondItem.click({ modifiers: ['Control'] })
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'true')
-
-      // Press Escape to clear selection
-      await page.keyboard.press('Escape')
-      await expect(firstItem).toHaveAttribute('aria-selected', 'false')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'false')
-    })
-
-    test('maintains selection state after drag operation', async ({ page }) => {
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
-      const fourthItem = page.locator('#basic-list [data-id="basic-4"]')
-
-      // Select two items
-      await firstItem.click()
-      await secondItem.click({ modifiers: ['Control'] })
-
-      // Drag them
-      await firstItem.dragTo(fourthItem)
-      await page.waitForTimeout(200)
-
-      // Items should still be selected after drag
-      const movedFirst = page.locator('#basic-list [data-id="basic-1"]')
-      const movedSecond = page.locator('#basic-list [data-id="basic-2"]')
-      await expect(movedFirst).toHaveAttribute('aria-selected', 'true')
-      await expect(movedSecond).toHaveAttribute('aria-selected', 'true')
-    })
-
-    test('handles keyboard multi-select with grabbed items', async ({
-      page,
-    }) => {
-      const items = page.locator('#basic-list .sortable-item')
-      const firstItem = page.locator('#basic-list [data-id="basic-1"]')
-      const secondItem = page.locator('#basic-list [data-id="basic-2"]')
-
-      // Focus first item
-      await firstItem.focus()
-
-      // Select first item
-      await page.keyboard.press('Space')
-
-      // Extend selection to second item
-      await page.keyboard.press('Shift+ArrowDown')
-
-      // Both should be selected
-      await expect(firstItem).toHaveAttribute('aria-selected', 'true')
-      await expect(secondItem).toHaveAttribute('aria-selected', 'true')
-
-      // Grab both items
-      await page.keyboard.press('Enter')
-      await expect(firstItem).toHaveAttribute('aria-grabbed', 'true')
-      await expect(secondItem).toHaveAttribute('aria-grabbed', 'true')
-
-      // Move down twice
-      await page.keyboard.press('ArrowDown')
-      await page.keyboard.press('ArrowDown')
-
-      // Drop
-      await page.keyboard.press('Enter')
-
-      // Check new order - both items should have moved together
-      await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-3')
-      await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-4')
-      await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
-      await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
-    })
-  }
-)
+    // Check new order - both items should have moved together
+    await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-3')
+    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-4')
+    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-1')
+    await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
+  })
+})

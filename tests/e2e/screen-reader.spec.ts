@@ -150,40 +150,14 @@ test.describe('Screen Reader Support', () => {
     expect(ariaLabel).toContain('enter')
   })
 
-  test.skip('announces multi-item operations correctly - TODO: Implement multi-drag in Phase 2.4', async ({
-    page,
-  }) => {
-    // Initialize multi-select sortable
-    await page.evaluate(() => {
-      const basicList = document.getElementById('basic-list')
-      interface WindowWithSortables extends Window {
-        sortables?: Array<{ el: HTMLElement; destroy: () => void }>
-        Sortable?: typeof import('../../src/index.js').Sortable
-      }
-      const win = window as WindowWithSortables
-      if (basicList && win.sortables) {
-        const sortable = win.sortables.find((s) => s.el === basicList)
-        if (sortable) sortable.destroy()
-      }
-
-      const Sortable = win.Sortable
-      if (Sortable && basicList) {
-        new Sortable(basicList, {
-          animation: 150,
-          multiDrag: true,
-          selectedClass: 'sortable-selected',
-          group: 'basic',
-        })
-      }
-    })
-
+  test('announces multi-item operations correctly', async ({ page }) => {
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const secondItem = page.locator('#basic-list [data-id="basic-2"]')
 
-    // Select multiple items
+    // Select multiple items (ControlOrMeta maps to Cmd on Mac, Ctrl on Win/Linux)
     await firstItem.click()
-    await secondItem.click({ modifiers: ['Control'] })
+    await secondItem.click({ modifiers: ['ControlOrMeta'] })
 
     // Focus first item and grab both
     await firstItem.focus()
