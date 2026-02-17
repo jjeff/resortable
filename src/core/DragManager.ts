@@ -24,6 +24,7 @@ export class DragManager implements DragManagerInterface {
   private isPointerDragging = false
   private activePointerId: number | null = null
   private dragElement: HTMLElement | null = null
+  private draggedItems: HTMLElement[] = []
   private _selectionManager: SelectionManager
   private keyboardManager: KeyboardManager
   private enableAccessibility: boolean
@@ -363,7 +364,8 @@ export class DragManager implements DragManagerInterface {
     if (!activeDrag) return
 
     // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
-    const isDifferentZone = activeDrag.item.parentElement !== this.zone.element
+    const isDifferentZone =
+      activeDrag.items[0].parentElement !== this.zone.element
     if (isDifferentZone) {
       globalDragState.setPutTarget(
         dragId,
@@ -373,15 +375,15 @@ export class DragManager implements DragManagerInterface {
       )
     }
 
-    const originalItem = activeDrag.item
+    const originalItem = activeDrag.items[0]
     // Determine which item to use for positioning (original or clone)
     let dragItem = originalItem
     if (
       activeDrag.pullMode === 'clone' &&
-      activeDrag.clone &&
-      activeDrag.clone.parentElement === this.zone.element
+      activeDrag.clones?.[0] &&
+      activeDrag.clones[0].parentElement === this.zone.element
     ) {
-      dragItem = activeDrag.clone
+      dragItem = activeDrag.clones[0]
     }
 
     const over = (e.target as HTMLElement).closest(this.draggable)
@@ -390,9 +392,9 @@ export class DragManager implements DragManagerInterface {
     if (originalItem.parentElement !== this.zone.element) {
       // Check if this is a clone operation
       let itemToInsert = originalItem
-      if (activeDrag.pullMode === 'clone' && activeDrag.clone) {
+      if (activeDrag.pullMode === 'clone' && activeDrag.clones?.[0]) {
         // Use the clone for display in the target zone
-        itemToInsert = activeDrag.clone
+        itemToInsert = activeDrag.clones[0]
         dragItem = itemToInsert // Update reference for subsequent operations
       }
 
@@ -532,7 +534,7 @@ export class DragManager implements DragManagerInterface {
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
-    const originalItem = activeDrag.item
+    const originalItem = activeDrag.items[0]
     const placeholder = this.ghostManager.getPlaceholderElement()
 
     if (placeholder && placeholder.parentElement === this.zone.element) {
@@ -551,10 +553,10 @@ export class DragManager implements DragManagerInterface {
       if (
         isDifferentZone &&
         activeDrag.pullMode === 'clone' &&
-        activeDrag.clone
+        activeDrag.clones?.[0]
       ) {
         // For cross-zone clone operations, use the clone
-        itemToPlace = activeDrag.clone
+        itemToPlace = activeDrag.clones[0]
       }
 
       // Now calculate where to insert the item
@@ -575,7 +577,7 @@ export class DragManager implements DragManagerInterface {
       // Perform the actual placement with animation
       if (currentIndex !== targetIndex || itemToPlace !== originalItem) {
         // For clone operations, we need to handle positioning differently
-        if (itemToPlace === activeDrag.clone) {
+        if (itemToPlace === activeDrag.clones?.[0]) {
           // For clones, use the zone's move method to position correctly
           if (currentIndex !== targetIndex) {
             this.zone.move(itemToPlace, targetIndex)
@@ -595,7 +597,7 @@ export class DragManager implements DragManagerInterface {
 
     // Clean up ghost elements
     if (activeDrag) {
-      this.ghostManager.destroy(activeDrag.item)
+      this.ghostManager.destroy(activeDrag.items[0])
     }
 
     globalDragState.endDrag(dragId)
@@ -718,14 +720,21 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
 
     // Get selected items if multiSelect is enabled
-    let draggedItems: HTMLElement[] = [target]
+    this.draggedItems = [target]
     if (this._selectionManager.isSelected(target)) {
       // If the target is already selected, drag all selected items
-      draggedItems = this._selectionManager.getSelected()
+      this.draggedItems = this._selectionManager.getSelected()
     } else {
       // If target is not selected, select only it
       this._selectionManager.select(target)
     }
+
+    // Dim non-anchor selected items
+    this.draggedItems.forEach((item) => {
+      if (item !== target) {
+        item.classList.add('sortable-multi-drag-source')
+      }
+    })
 
     // Capture the pointer to ensure we receive all subsequent events
     // Firefox throws an error for synthetic events, so we need to handle this gracefully
@@ -748,17 +757,17 @@ export class DragManager implements DragManagerInterface {
     const dragId = `pointer-${this.activePointerId}`
     globalDragState.startDrag(
       dragId,
-      target,
+      this.draggedItems,
       this.zone.element,
       this,
       this.groupManager.getName(),
-      this.startIndex,
+      this.draggedItems.map((item) => this.zone.getIndex(item)),
       this.events
     )
 
     const evt: SortableEvent = {
       item: target,
-      items: draggedItems,
+      items: this.draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
@@ -841,17 +850,19 @@ export class DragManager implements DragManagerInterface {
         const currentActiveDrag = globalDragState.getActiveDrag(dragId)
         if (
           currentActiveDrag?.pullMode === 'clone' &&
-          currentActiveDrag.clone
+          currentActiveDrag.clones
         ) {
-          // Clone operation: insert the clone into the target zone
-          // The original stays in the source zone
-          const clone = currentActiveDrag.clone
-          if (clone.parentElement !== targetZoneElement) {
-            targetZoneElement.insertBefore(clone, over)
-          }
+          // Clone operation: insert all clones into the target zone
+          currentActiveDrag.clones.forEach((clone) => {
+            if (clone.parentElement !== targetZoneElement) {
+              targetZoneElement.insertBefore(clone, over)
+            }
+          })
         } else {
-          // Move operation: move the original to the target zone
-          targetZoneElement.insertBefore(this.dragElement, over)
+          // Move operation: move all dragged items to the target zone
+          this.draggedItems.forEach((item) => {
+            targetZoneElement.insertBefore(item, over)
+          })
         }
       }
     } else {
@@ -859,8 +870,8 @@ export class DragManager implements DragManagerInterface {
       const currentActiveDrag = globalDragState.getActiveDrag(dragId)
       const movingElement =
         currentActiveDrag?.pullMode === 'clone' &&
-        currentActiveDrag.clone?.parentElement === targetZoneElement
-          ? currentActiveDrag.clone
+        currentActiveDrag.clones?.[0]?.parentElement === targetZoneElement
+          ? currentActiveDrag.clones[0]
           : this.dragElement
 
       if (over !== movingElement) {
@@ -877,13 +888,20 @@ export class DragManager implements DragManagerInterface {
           currentIndex !== targetIndex
         ) {
           // Use the DropZone's move method to get animations
-          targetZone.move(movingElement, targetIndex)
+          if (this.draggedItems.length > 1) {
+            targetZone.moveMultiple(this.draggedItems, targetIndex)
+          } else {
+            targetZone.move(movingElement, targetIndex)
+          }
 
           // Only emit update if it's within the original zone
           if (activeDrag.fromZone === targetZoneElement) {
             this.events.emit('update', {
               item: this.dragElement,
-              items: [this.dragElement],
+              items:
+                this.draggedItems.length > 0
+                  ? this.draggedItems
+                  : [this.dragElement as HTMLElement],
               from: targetZoneElement,
               to: targetZoneElement,
               oldIndex: this.startIndex,
@@ -908,6 +926,11 @@ export class DragManager implements DragManagerInterface {
   }
 
   private cleanupPointerDrag(revert = false): void {
+    // Remove multi-drag-source class from all items
+    this.draggedItems.forEach((item) => {
+      item.classList.remove('sortable-multi-drag-source')
+    })
+
     // Cancel any pending delay timer
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
@@ -925,8 +948,8 @@ export class DragManager implements DragManagerInterface {
 
       if (activeDrag && activeDrag.fromZone) {
         // If this was a clone operation, remove the clone from the target
-        if (activeDrag.pullMode === 'clone' && activeDrag.clone) {
-          activeDrag.clone.remove()
+        if (activeDrag.pullMode === 'clone' && activeDrag.clones) {
+          activeDrag.clones.forEach((clone) => clone.remove())
         }
 
         // Move the element back to its original position
@@ -978,6 +1001,7 @@ export class DragManager implements DragManagerInterface {
     this.isPointerDragging = false
     this.activePointerId = null
     this.dragElement = null
+    this.draggedItems = []
   }
 
   /** Find the DragManager instance that manages a specific zone */
