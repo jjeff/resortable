@@ -905,7 +905,7 @@ export class DragManager implements DragManagerInterface {
               items:
                 this.draggedItems.length > 0
                   ? this.draggedItems
-                  : [this.dragElement as HTMLElement],
+                  : [this.dragElement],
               from: targetZoneElement,
               to: targetZoneElement,
               oldIndex: this.startIndex,
