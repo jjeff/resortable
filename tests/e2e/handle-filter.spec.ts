@@ -108,9 +108,14 @@ test.describe('Handle and Filter Options', () => {
       expect(newOrder).toContain('item-3')
     })
 
-    test.skip('should work with nested handle elements', async ({ page }) => {
-      // @TODO: Fix cross-browser compatibility for nested handle elements
-      // Issue: Event target detection when clicking on nested elements within handles
+    test('should work with nested handle elements', async ({
+      page,
+      browserName,
+    }) => {
+      test.skip(
+        browserName !== 'firefox',
+        'Pointer event simulation differs across browsers'
+      )
       // Initialize sortable with nested handle structure
       await page.evaluate(() => {
         const container = document.createElement('div')
@@ -163,11 +168,14 @@ test.describe('Handle and Filter Options', () => {
   })
 
   test.describe('Filter Option', () => {
-    test.skip('should prevent drag when initiated from filtered elements', async ({
+    test('should prevent drag when initiated from filtered elements', async ({
       page,
+      browserName,
     }) => {
-      // @TODO: Fix cross-browser compatibility for filter drag prevention
-      // Issue: Drag prevention not working consistently across browsers in tests
+      test.skip(
+        browserName !== 'firefox',
+        'Pointer event simulation differs across browsers'
+      )
       // Initialize sortable with filter option
       await page.evaluate(() => {
         const container = document.createElement('div')
@@ -242,9 +250,14 @@ test.describe('Handle and Filter Options', () => {
       await expect(items.nth(2)).toHaveAttribute('data-id', 'item-1')
     })
 
-    test.skip('should call onFilter callback when filtered element is clicked - TODO: Fix onFilter implementation', async ({
+    test('should call onFilter callback when filtered element is clicked', async ({
       page,
+      browserName,
     }) => {
+      test.skip(
+        browserName !== 'firefox',
+        'Pointer event simulation differs across browsers'
+      )
       // Track onFilter calls
       const filterCalls: string[] = []
       await page.exposeFunction('recordFilterCall', (target: string) => {
@@ -309,11 +322,14 @@ test.describe('Handle and Filter Options', () => {
   })
 
   test.describe('Handle and Filter Combined', () => {
-    test.skip('should respect both handle and filter options', async ({
+    test('should respect both handle and filter options', async ({
       page,
+      browserName,
     }) => {
-      // @TODO: Fix cross-browser compatibility for combined handle and filter
-      // Issue: Combined handle and filter logic needs browser-specific event handling
+      test.skip(
+        browserName !== 'firefox',
+        'Pointer event simulation differs across browsers'
+      )
       // Initialize sortable with both handle and filter
       await page.evaluate(() => {
         const container = document.createElement('div')

@@ -85,9 +85,7 @@ test.describe('Independent Groups Functionality', () => {
     await expect(page.locator('#group-a-1 [data-id="gb-2"]')).not.toBeVisible()
   })
 
-  test.skip('maintains independence after multiple operations', async ({
-    page,
-  }) => {
+  test('maintains independence after multiple operations', async ({ page }) => {
     // Sort within Group A
     await dragAndDropWithAnimation(
       page,
@@ -110,13 +108,19 @@ test.describe('Independent Groups Functionality', () => {
     )
 
     // Verify final states
+    // After ga-2→ga-1 drag: ga-2, ga-1, ga-3
     const groupAItems = page.locator('#group-a-1 .sortable-item')
     await expect(groupAItems).toHaveCount(3)
     await expect(groupAItems.nth(0)).toHaveAttribute('data-id', 'ga-2')
+    await expect(groupAItems.nth(1)).toHaveAttribute('data-id', 'ga-1')
+    await expect(groupAItems.nth(2)).toHaveAttribute('data-id', 'ga-3')
 
+    // After gb-1→gb-3 drag: gb-2, gb-3, gb-1
     const groupBItems = page.locator('#group-b-1 .sortable-item')
     await expect(groupBItems).toHaveCount(3)
-    await expect(groupBItems.nth(1)).toHaveAttribute('data-id', 'gb-2')
+    await expect(groupBItems.nth(0)).toHaveAttribute('data-id', 'gb-2')
+    await expect(groupBItems.nth(1)).toHaveAttribute('data-id', 'gb-3')
+    await expect(groupBItems.nth(2)).toHaveAttribute('data-id', 'gb-1')
 
     // Ensure no items crossed over
     await expect(page.locator('#group-a-1 [data-id^="gb-"]')).toHaveCount(0)

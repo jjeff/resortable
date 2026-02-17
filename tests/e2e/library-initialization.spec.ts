@@ -31,7 +31,7 @@ test.describe('Library Initialization and Error Handling', () => {
     await expect(sortableItems.first()).toHaveAttribute('draggable', 'true')
   })
 
-  test.skip('handles library loading errors gracefully', async ({ page }) => {
+  test('handles library loading errors gracefully', async ({ page }) => {
     // Intercept the module import to simulate an error
     await page.route('**/src/index.ts', (route) => {
       void route.fulfill({
@@ -42,12 +42,11 @@ test.describe('Library Initialization and Error Handling', () => {
     })
 
     await page.goto('/')
-    // Wait for the library to fully load
-    await page.waitForFunction(() => window.resortableLoaded === true)
 
-    // Check that error fallback message is displayed
+    // Wait for the error status to appear (don't wait for resortableLoaded since it won't be set)
     await expect(page.locator('#library-status')).toContainText(
-      'Error loading library'
+      'Error loading library',
+      { timeout: 10000 }
     )
   })
 

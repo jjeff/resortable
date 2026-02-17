@@ -12,6 +12,7 @@ export class KeyboardManager {
   private grabbedItems: HTMLElement[] = []
   private originalIndices: number[] = []
   private announcer: HTMLElement | null = null
+  private announceTimer: number | null = null
 
   constructor(
     private container: HTMLElement,
@@ -407,6 +408,9 @@ export class KeyboardManager {
         }
       })
 
+      // Re-focus the grabbed item (DOM move can cause focus loss)
+      firstItem.focus()
+
       // Announce move
       this.announce(`Moved to position ${currentIndex}`)
 
@@ -434,6 +438,9 @@ export class KeyboardManager {
           this.zone.move(item, itemIndex + 1)
         }
       }
+
+      // Re-focus the grabbed item (DOM move can cause focus loss)
+      this.grabbedItems[0].focus()
 
       // Announce move
       const newIndex = this.zone.getIndex(this.grabbedItems[0])
@@ -499,13 +506,18 @@ export class KeyboardManager {
    */
   public announce(message: string): void {
     if (this.announcer) {
+      // Cancel any pending clear timeout
+      if (this.announceTimer !== null) {
+        window.clearTimeout(this.announceTimer)
+      }
       this.announcer.textContent = message
       // Clear after a delay to allow re-announcement of same message
-      window.setTimeout(() => {
+      this.announceTimer = window.setTimeout(() => {
         if (this.announcer) {
           this.announcer.textContent = ''
         }
-      }, 100)
+        this.announceTimer = null
+      }, 1000)
     }
   }
 

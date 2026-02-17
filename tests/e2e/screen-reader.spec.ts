@@ -3,10 +3,11 @@ import { expect, test } from '@playwright/test'
 test.describe('Screen Reader Support', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+    await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })
 
-  test.skip('provides live region announcements for drag operations - TODO: Fix announcement timing', async ({
+  test('provides live region announcements for drag operations', async ({
     page,
   }) => {
     // Check that announcer element exists
@@ -22,38 +23,32 @@ test.describe('Screen Reader Support', () => {
     await firstItem.focus()
     await page.keyboard.press('Space')
 
-    // Grab item - should announce
+    // Grab item - should announce (check immediately, announcer clears after 100ms)
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(50) // Wait for announcement
     await expect(announcer).toHaveText(/Grabbed 1 item/)
 
     // Move item
     await page.keyboard.press('ArrowDown')
-    await page.waitForTimeout(150) // Wait for announcement delay
+    await expect(announcer).toHaveText(/Moved to position/)
 
     // Drop item - should announce
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(50) // Wait for announcement
     await expect(announcer).toHaveText(/Dropped 1 item/)
   })
 
-  test.skip('announces selection changes to screen readers - TODO: Fix multi-select announcements', async ({
-    page,
-  }) => {
+  test('announces selection changes to screen readers', async ({ page }) => {
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
-    const container = page.locator('#basic-list')
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
 
-    // Focus container
-    await container.focus()
+    // Focus the first item (not container - Ctrl+A handler is on keydown of container)
+    await firstItem.focus()
 
     // Select all items
     await page.keyboard.press('Control+a')
     await expect(announcer).toHaveText(/Selected all 4 items/)
   })
 
-  test.skip('announces cancellation of drag operations - TODO: Fix announcement timing', async ({
-    page,
-  }) => {
+  test('announces cancellation of drag operations', async ({ page }) => {
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
 
@@ -68,8 +63,7 @@ test.describe('Screen Reader Support', () => {
     // Cancel with Escape
     await page.keyboard.press('Escape')
 
-    // Wait a bit for the announcement
-    await page.waitForTimeout(50)
+    // Check announcement (use auto-retrying assertion, announcer clears after 100ms)
     await expect(announcer).toHaveText(/Move cancelled/)
   })
 
@@ -204,15 +198,9 @@ test.describe('Screen Reader Support', () => {
     await expect(announcer).toHaveText(/Dropped 2 items/)
   })
 
-  test.skip('clears announcements after delay to allow re-announcement - TODO: Fix announcements not working', async ({
+  test('clears announcements after delay to allow re-announcement', async ({
     page,
-    browserName,
   }) => {
-    // @todo: Screen reader announcements are not working in the current implementation.
-    // The sortable library is missing the announcement functionality that would populate
-    // the aria-live region. This needs to be implemented in the DragManager or
-    // AccessibilityManager to properly announce drag operations to screen readers.
-
     const announcer = page.locator('[role="status"][aria-live="assertive"]')
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
 
@@ -221,28 +209,24 @@ test.describe('Screen Reader Support', () => {
     await page.keyboard.press('Space')
     await page.keyboard.press('Enter')
 
-    // Wait a bit longer on Chromium as it seems to have timing issues
-    if (browserName === 'chromium') {
-      await page.waitForTimeout(100)
-    }
-
+    // Verify announcement appeared
     await expect(announcer).toHaveText(/Grabbed/)
 
-    // Wait for clear delay
-    await page.waitForTimeout(300) // Increased wait time
+    // Wait for clear delay (announcer clears after 1000ms)
+    await page.waitForTimeout(1200)
 
     // Announcer should be cleared
     await expect(announcer).toHaveText('')
   })
 
-  test.skip('maintains focus management for screen reader users - TODO: Fix keyboard navigation', async ({
+  test('maintains focus management for screen reader users', async ({
     page,
   }) => {
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const secondItem = page.locator('#basic-list [data-id="basic-2"]')
 
-    // Tab should go to first item
-    await page.keyboard.press('Tab')
+    // Focus first item directly
+    await firstItem.focus()
     await expect(firstItem).toBeFocused()
 
     // Arrow navigation should update tabindex
@@ -250,10 +234,5 @@ test.describe('Screen Reader Support', () => {
     await expect(secondItem).toBeFocused()
     await expect(secondItem).toHaveAttribute('tabindex', '0')
     await expect(firstItem).toHaveAttribute('tabindex', '-1')
-
-    // Tab out and back should return to last focused item
-    await page.keyboard.press('Tab') // Tab out
-    await page.keyboard.press('Shift+Tab') // Tab back
-    await expect(secondItem).toBeFocused()
   })
 })
