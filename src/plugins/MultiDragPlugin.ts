@@ -2,6 +2,10 @@
  * @fileoverview MultiDrag plugin for dragging multiple selected items
  * @author Resortable Team
  * @since 2.0.0
+ * @deprecated Multi-drag is now built into the core DragManager.
+ * Selection and multi-item dragging are handled natively by KeyboardManager
+ * and DragManager. This plugin is retained for backward compatibility but
+ * will be removed in a future major version.
  */
 
 import {
@@ -46,12 +50,12 @@ export interface MultiDragOptions {
 }
 
 /**
- * MultiDrag plugin for selecting and dragging multiple items
+ * @deprecated Multi-drag is now built into the core DragManager.
+ * This plugin is retained for backward compatibility only.
  *
  * @remarks
- * This plugin extends the core selection functionality to support
- * dragging multiple selected items as a group. It integrates with
- * the existing SelectionManager and provides visual feedback.
+ * Previously extended core selection functionality to support
+ * dragging multiple selected items. This behavior is now native.
  *
  * @example Basic usage
  * ```typescript
