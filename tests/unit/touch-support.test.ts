@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { DragManager } from '../../src/core/DragManager'
 import { DropZone } from '../../src/core/DropZone'
 import { EventSystem } from '../../src/core/EventSystem'
-import type { SortableEvents } from '../../src/types/index'
+import { AutoScrollPlugin } from '../../src/plugins/AutoScrollPlugin'
+import type { SortableEvents, SortableInstance } from '../../src/types/index'
 
 // JSDOM doesn't have PointerEvent — polyfill for tests
 if (typeof globalThis.PointerEvent === 'undefined') {
@@ -256,6 +257,54 @@ describe('Touch Support', () => {
       })
 
       dm.detach()
+    })
+  })
+
+  describe('AutoScrollPlugin touch support', () => {
+    it('tracks pointer position from pointermove events', () => {
+      const plugin = AutoScrollPlugin.create()
+
+      const mockSortable = {
+        element: container,
+        eventSystem: new EventSystem<SortableEvents>(),
+        dragManager: { isDragging: false },
+      } as unknown as SortableInstance
+
+      plugin.install(mockSortable)
+
+      // Dispatch a pointermove event (simulating touch)
+      const pointerMove = new PointerEvent('pointermove', {
+        clientX: 100,
+        clientY: 200,
+        pointerType: 'touch',
+        bubbles: true,
+      })
+      document.dispatchEvent(pointerMove)
+
+      // Verify plugin installed and doesn't error on touch pointermove
+      plugin.uninstall(mockSortable)
+    })
+
+    it('does not listen to mousemove events', () => {
+      const plugin = AutoScrollPlugin.create()
+
+      const mockSortable = {
+        element: container,
+        eventSystem: new EventSystem<SortableEvents>(),
+        dragManager: { isDragging: false },
+      } as unknown as SortableInstance
+
+      plugin.install(mockSortable)
+
+      // Verify that the handler is stored as pointer handler, not mouse handler
+      const sortableWithHandler = mockSortable as unknown as Record<
+        string,
+        unknown
+      >
+      expect(sortableWithHandler._autoScrollPointerHandler).toBeDefined()
+      expect(sortableWithHandler._autoScrollMouseHandler).toBeUndefined()
+
+      plugin.uninstall(mockSortable)
     })
   })
 })

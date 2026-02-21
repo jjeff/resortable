@@ -148,36 +148,36 @@ export class AutoScrollPlugin implements SortablePlugin {
   }
 
   /**
-   * Attach mouse tracking for auto-scroll
+   * Attach pointer tracking for auto-scroll
    */
   private attachMouseTracking(sortable: SortableInstance): void {
-    const handleMouseMove = (event: MouseEvent) => {
+    const handlePointerMove = (event: PointerEvent) => {
       this.lastMousePosition = { x: event.clientX, y: event.clientY }
     }
 
     // Store the handler for cleanup using explicit type extension
     const sortableWithAutoScroll = sortable as SortableInstance & {
-      _autoScrollMouseHandler?: (event: MouseEvent) => void
+      _autoScrollPointerHandler?: (event: PointerEvent) => void
     }
-    if (!sortableWithAutoScroll._autoScrollMouseHandler) {
-      sortableWithAutoScroll._autoScrollMouseHandler = handleMouseMove
-      document.addEventListener('mousemove', handleMouseMove)
+    if (!sortableWithAutoScroll._autoScrollPointerHandler) {
+      sortableWithAutoScroll._autoScrollPointerHandler = handlePointerMove
+      document.addEventListener('pointermove', handlePointerMove)
     }
   }
 
   /**
-   * Detach mouse tracking
+   * Detach pointer tracking
    */
   private detachMouseTracking(sortable: SortableInstance): void {
     const sortableWithAutoScroll = sortable as SortableInstance & {
-      _autoScrollMouseHandler?: (event: MouseEvent) => void
+      _autoScrollPointerHandler?: (event: PointerEvent) => void
     }
-    if (sortableWithAutoScroll._autoScrollMouseHandler) {
+    if (sortableWithAutoScroll._autoScrollPointerHandler) {
       document.removeEventListener(
-        'mousemove',
-        sortableWithAutoScroll._autoScrollMouseHandler
+        'pointermove',
+        sortableWithAutoScroll._autoScrollPointerHandler
       )
-      delete sortableWithAutoScroll._autoScrollMouseHandler
+      delete sortableWithAutoScroll._autoScrollPointerHandler
     }
   }
 
