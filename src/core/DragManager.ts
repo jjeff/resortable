@@ -82,6 +82,13 @@ export class DragManager implements DragManagerInterface {
 
   private originalTouchActions = new Map<HTMLElement, string>()
 
+  private holdTarget: HTMLElement | null = null
+  private holdOriginalStyles: {
+    transform: string
+    boxShadow: string
+    transition: string
+  } | null = null
+
   constructor(
     public zone: DropZone,
     public events: SortableEventSystem,
@@ -1224,7 +1231,7 @@ export class DragManager implements DragManagerInterface {
    */
   private startDragDelay(
     event: PointerEvent,
-    _target: HTMLElement,
+    target: HTMLElement,
     callback: () => void
   ): void {
     // Determine if delay should be applied
@@ -1239,10 +1246,25 @@ export class DragManager implements DragManagerInterface {
     // Store initial position for threshold checking
     this.dragStartPosition = { x: event.clientX, y: event.clientY }
 
+    // Apply hold feedback for touch
+    if (isTouch) {
+      this.holdTarget = target
+      this.holdOriginalStyles = {
+        transform: target.style.transform,
+        boxShadow: target.style.boxShadow,
+        transition: target.style.transition,
+      }
+      target.classList.add('sortable-holding')
+      target.style.transition = 'transform 150ms ease, box-shadow 150ms ease'
+      target.style.transform = 'scale(1.03)'
+      target.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'
+    }
+
     // Set up delay timer
     this.dragStartTimer = window.setTimeout(() => {
       this.dragStartTimer = undefined
       this.dragStartPosition = undefined
+      this.clearHoldFeedback()
       callback()
     }, effectiveDelay)
 
@@ -1285,5 +1307,20 @@ export class DragManager implements DragManagerInterface {
       this.dragStartTimer = undefined
     }
     this.dragStartPosition = undefined
+    this.clearHoldFeedback()
+  }
+
+  /**
+   * Clear hold-to-drag visual feedback
+   */
+  private clearHoldFeedback(): void {
+    if (this.holdTarget && this.holdOriginalStyles) {
+      this.holdTarget.classList.remove('sortable-holding')
+      this.holdTarget.style.transform = this.holdOriginalStyles.transform
+      this.holdTarget.style.boxShadow = this.holdOriginalStyles.boxShadow
+      this.holdTarget.style.transition = this.holdOriginalStyles.transition
+    }
+    this.holdTarget = null
+    this.holdOriginalStyles = null
   }
 }
