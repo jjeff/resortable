@@ -145,7 +145,7 @@ export class DragManager implements DragManagerInterface {
     // Set the draggable selector on the drop zone
     this.zone.setDraggableSelector(this.draggable)
     this.delay = options?.delay || 0
-    this.delayOnTouchOnly = options?.delayOnTouchOnly ?? options?.delay ?? 0
+    this.delayOnTouchOnly = options?.delayOnTouchOnly ?? 200
     this.touchStartThreshold = options?.touchStartThreshold || 5
 
     // Initialize swap behavior options

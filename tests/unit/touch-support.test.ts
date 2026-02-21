@@ -260,6 +260,36 @@ describe('Touch Support', () => {
     })
   })
 
+  describe('default touch options', () => {
+    it('defaults delayOnTouchOnly to 200ms when not specified', () => {
+      const zone = new DropZone(container)
+      const events = new EventSystem<SortableEvents>()
+      // No delayOnTouchOnly option provided
+      const dm = new DragManager(zone, events, undefined)
+      dm.attach()
+
+      const item = container.querySelector('.sortable-item') as HTMLElement
+
+      // Simulate touch pointerdown — should start a delay, not immediate drag
+      const pointerDown = new PointerEvent('pointerdown', {
+        pointerId: 1,
+        pointerType: 'touch',
+        clientX: 50,
+        clientY: 50,
+        bubbles: true,
+        isPrimary: true,
+        button: 0,
+      })
+      item.dispatchEvent(pointerDown)
+
+      // If delay is working, the item should have the holding class (from Task 3)
+      // indicating a delay is in progress, not an immediate drag
+      expect(item.classList.contains('sortable-holding')).toBe(true)
+
+      dm.detach()
+    })
+  })
+
   describe('AutoScrollPlugin touch support', () => {
     it('tracks pointer position from pointermove events', () => {
       const plugin = AutoScrollPlugin.create()
