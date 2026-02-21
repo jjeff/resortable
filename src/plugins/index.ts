@@ -5,6 +5,11 @@
  */
 
 export { AutoScrollPlugin, type AutoScrollOptions } from './AutoScrollPlugin.js'
+export {
+  MarqueeSelectPlugin,
+  type MarqueeSelectOptions,
+  type MarqueeFilterConfig,
+} from './MarqueeSelectPlugin.js'
 export { MultiDragPlugin, type MultiDragOptions } from './MultiDragPlugin.js'
 export { SwapPlugin, type SwapOptions } from './SwapPlugin.js'
 
@@ -14,6 +19,7 @@ export { PluginSystem } from '../core/PluginSystem.js'
 // Import types and classes for internal use
 import { PluginSystem } from '../core/PluginSystem.js'
 import { AutoScrollPlugin } from './AutoScrollPlugin.js'
+import { MarqueeSelectPlugin } from './MarqueeSelectPlugin.js'
 import { MultiDragPlugin } from './MultiDragPlugin.js'
 import { SwapPlugin } from './SwapPlugin.js'
 import type { SortableInstance } from '../types/index.js'
@@ -36,6 +42,9 @@ export function registerAllPlugins(): void {
   }
   if (!PluginSystem.get('MultiDrag')) {
     PluginSystem.register(MultiDragPlugin.create())
+  }
+  if (!PluginSystem.get('MarqueeSelect')) {
+    PluginSystem.register(MarqueeSelectPlugin.create())
   }
   if (!PluginSystem.get('Swap')) {
     PluginSystem.register(SwapPlugin.create())

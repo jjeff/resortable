@@ -726,6 +726,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Marquee Select Demo -->
+    <div class="demo-section" id="marquee-demo">
+      <h2>🔲 Marquee Select</h2>
+      <p class="subtitle">Rubber-band selection like Finder / Explorer</p>
+
+      <div class="interaction-demos">
+        <div>
+          <h3>Drag empty space to select — Shift adds, Alt subtracts</h3>
+          <div class="marquee-list" id="marquee-list" style="padding: 24px; gap: 12px; display: flex; flex-wrap: wrap; min-height: 180px;">
+            <div class="sortable-item" data-id="mq-1" style="flex: 0 0 calc(50% - 6px);">🟦 Item One</div>
+            <div class="sortable-item" data-id="mq-2" style="flex: 0 0 calc(50% - 6px);">🟩 Item Two</div>
+            <div class="sortable-item" data-id="mq-3" style="flex: 0 0 calc(50% - 6px);">🟨 Item Three</div>
+            <div class="sortable-item" data-id="mq-4" style="flex: 0 0 calc(50% - 6px);">🟧 Item Four</div>
+            <div class="sortable-item" data-id="mq-5" style="flex: 0 0 calc(50% - 6px);">🟥 Item Five</div>
+            <div class="sortable-item" data-id="mq-6" style="flex: 0 0 calc(50% - 6px);">🟪 Item Six</div>
+          </div>
+          <div class="keyboard-hint">
+            💡 <strong>Try:</strong> Click+drag empty space → marquee selects items &nbsp;|&nbsp;
+            Shift+drag → add to selection &nbsp;|&nbsp;
+            Alt+drag on items → starts marquee (not drag), removes from selection
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Developer Testing Section -->
@@ -845,12 +870,19 @@
       const { Sortable, PluginSystem } = await import('/src/index.ts');
 
       // Import plugins
-      let AutoScrollPlugin, MultiDragPlugin, SwapPlugin;
+      let AutoScrollPlugin, MarqueeSelectPlugin, MultiDragPlugin, SwapPlugin;
       try {
         const autoModule = await import('/src/plugins/AutoScrollPlugin.ts');
         AutoScrollPlugin = autoModule.AutoScrollPlugin;
       } catch (e) {
         console.warn('Could not import AutoScrollPlugin:', e);
+      }
+
+      try {
+        const marqueeModule = await import('/src/plugins/MarqueeSelectPlugin.ts');
+        MarqueeSelectPlugin = marqueeModule.MarqueeSelectPlugin;
+      } catch (e) {
+        console.warn('Could not import MarqueeSelectPlugin:', e);
       }
 
       try {
@@ -877,6 +909,17 @@
         }
       }
 
+      if (MarqueeSelectPlugin) {
+        try {
+          PluginSystem.register(MarqueeSelectPlugin.create({
+            marqueeArea: '#marquee-demo',
+          }));
+          console.log('MarqueeSelectPlugin registered successfully');
+        } catch (e) {
+          console.warn('Failed to register MarqueeSelectPlugin:', e);
+        }
+      }
+
       if (MultiDragPlugin) {
         try {
           PluginSystem.register(MultiDragPlugin);
@@ -899,6 +942,7 @@
       window.Sortable = Sortable;
       window.PluginSystem = PluginSystem;
       window.AutoScrollPlugin = AutoScrollPlugin;
+      window.MarqueeSelectPlugin = MarqueeSelectPlugin;
       window.MultiDragPlugin = MultiDragPlugin;
       window.SwapPlugin = SwapPlugin;
       window.sortables = [];
@@ -966,6 +1010,26 @@
         }));
       }
       
+      // Marquee Select Demo
+      const marqueeList = document.getElementById('marquee-list');
+      if (marqueeList) {
+        const marqueeSortable = new Sortable(marqueeList, {
+          animation: 200,
+          draggable: '.sortable-item',
+          multiDrag: true,
+          selectedClass: 'sortable-selected',
+          group: 'marquee-demo',
+        });
+        window.sortables.push(marqueeSortable);
+        // Install MarqueeSelect plugin
+        try {
+          PluginSystem.install(marqueeSortable, 'MarqueeSelect');
+          console.log('MarqueeSelect installed on marquee-list');
+        } catch (e) {
+          console.warn('Failed to install MarqueeSelect:', e);
+        }
+      }
+
       // Kanban Board
       const kanbanOptions = {
         group: 'kanban',

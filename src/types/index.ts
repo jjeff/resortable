@@ -632,6 +632,7 @@ export interface DragManagerInterface {
   readonly isDragging: boolean
   // selectionManager is always available in DragManager implementation
   readonly selectionManager: SelectionManagerInterface
+  getGroupManager?(): { getName(): string }
 }
 
 /**

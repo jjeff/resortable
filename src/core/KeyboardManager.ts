@@ -53,9 +53,11 @@ export class KeyboardManager {
     // Mark sortable items
     this.updateItemAttributes()
 
-    // Click outside to deselect
+    // Click outside to deselect (yielded to MarqueeSelectPlugin when active)
     if (this.deselectOnClickOutside) {
       this.onDocumentClick = (e: MouseEvent) => {
+        // If MarqueeSelectPlugin is handling click-away, yield to it
+        if (this.container.dataset?.marqueeClickAway === 'true') return
         if (!this.container.contains(e.target as Node)) {
           this.selectionManager.clearSelection()
         }
