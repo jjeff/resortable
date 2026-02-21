@@ -80,6 +80,8 @@ export class DragManager implements DragManagerInterface {
 
   private groupManager: GroupManager
 
+  private originalTouchActions = new Map<HTMLElement, string>()
+
   constructor(
     public zone: DropZone,
     public events: SortableEventSystem,
@@ -218,6 +220,12 @@ export class DragManager implements DragManagerInterface {
 
   /** Detach event listeners */
   public detach(): void {
+    // Restore original touch-action values
+    this.originalTouchActions.forEach((originalValue, element) => {
+      element.style.touchAction = originalValue
+    })
+    this.originalTouchActions.clear()
+
     const el = this.zone.element
     el.removeEventListener('dragstart', this.onDragStart)
     el.removeEventListener('dragover', this.onDragOver)
@@ -1171,6 +1179,22 @@ export class DragManager implements DragManagerInterface {
         // When using handle, we still need draggable=true for HTML5 drag,
         // the handle check happens in onDragStart
         item.draggable = true
+
+        // Set touch-action: none so the browser doesn't intercept touches
+        // for scrolling/zooming. When a handle is configured, only set it
+        // on the handle elements — the rest of the item should allow native scrolling.
+        if (this.handle) {
+          const handles = item.querySelectorAll(this.handle)
+          handles.forEach((handle) => {
+            if (handle instanceof HTMLElement) {
+              this.originalTouchActions.set(handle, handle.style.touchAction)
+              handle.style.touchAction = 'none'
+            }
+          })
+        } else {
+          this.originalTouchActions.set(item, item.style.touchAction)
+          item.style.touchAction = 'none'
+        }
       }
     }
 
