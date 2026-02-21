@@ -259,6 +259,12 @@ export class DragManager implements DragManagerInterface {
       return
     }
 
+    // On touch-capable devices, always prevent HTML5 drag — use pointer events instead
+    if (navigator.maxTouchPoints > 0) {
+      e.preventDefault()
+      return
+    }
+
     // Find the closest draggable item
     const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
@@ -1175,10 +1181,10 @@ export class DragManager implements DragManagerInterface {
         item instanceof HTMLElement &&
         item.parentElement === this.zone.element
       ) {
-        // Set draggable=true for HTML5 drag API
-        // When using handle, we still need draggable=true for HTML5 drag,
-        // the handle check happens in onDragStart
-        item.draggable = true
+        // Don't set draggable=true on touch devices — it triggers HTML5 DnD
+        // which has zero mobile browser support and interferes with pointer events
+        const isTouchDevice = navigator.maxTouchPoints > 0
+        item.draggable = !isTouchDevice
 
         // Set touch-action: none so the browser doesn't intercept touches
         // for scrolling/zooming. When a handle is configured, only set it

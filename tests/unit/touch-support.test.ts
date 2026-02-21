@@ -81,4 +81,51 @@ describe('Touch Support', () => {
       dm.detach()
     })
   })
+
+  describe('HTML5 DnD suppression', () => {
+    it('does not set draggable=true on touch-capable devices', () => {
+      // Simulate touch capability
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 5,
+        configurable: true,
+      })
+
+      const zone = new DropZone(container)
+      const events = new EventSystem<SortableEvents>()
+      const dm = new DragManager(zone, events, undefined)
+      dm.attach()
+
+      const items = container.querySelectorAll('.sortable-item')
+      items.forEach((item) => {
+        expect((item as HTMLElement).draggable).toBe(false)
+      })
+
+      dm.detach()
+
+      // Clean up
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 0,
+        configurable: true,
+      })
+    })
+
+    it('sets draggable=true on non-touch devices', () => {
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        value: 0,
+        configurable: true,
+      })
+
+      const zone = new DropZone(container)
+      const events = new EventSystem<SortableEvents>()
+      const dm = new DragManager(zone, events, undefined)
+      dm.attach()
+
+      const items = container.querySelectorAll('.sortable-item')
+      items.forEach((item) => {
+        expect((item as HTMLElement).draggable).toBe(true)
+      })
+
+      dm.detach()
+    })
+  })
 })
