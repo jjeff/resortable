@@ -35,6 +35,10 @@ export interface MarqueeSelectOptions {
   deselectOnClickAway?: boolean
   /** Filter where click-away deselection is suppressed. */
   deselectFilter?: MarqueeFilterConfig
+  /** Hold delay in ms before marquee starts on touch devices. Default: 300 */
+  touchHoldDelay?: number
+  /** Pixels of movement allowed during touch hold before cancelling. Default: 10 */
+  touchHoldThreshold?: number
 }
 
 interface MarqueeState {
@@ -47,6 +51,10 @@ interface MarqueeState {
   pointerId: number | null
   initialSelectionSnapshot: Set<HTMLElement>
   anchorGroupName: string | null
+  /** Touch hold timer ID (waiting for hold to confirm marquee intent) */
+  holdTimer: number | null
+  /** Whether marquee was triggered via touch hold */
+  isTouchHold: boolean
 }
 
 type DocumentHandlers = {
@@ -62,6 +70,8 @@ const DEFAULT_OPTIONS: Required<MarqueeSelectOptions> = {
   marqueeFilter: {},
   deselectOnClickAway: true,
   deselectFilter: {},
+  touchHoldDelay: 300,
+  touchHoldThreshold: 10,
 }
 
 function createDefaultState(): MarqueeState {
@@ -75,6 +85,8 @@ function createDefaultState(): MarqueeState {
     pointerId: null,
     initialSelectionSnapshot: new Set(),
     anchorGroupName: null,
+    holdTimer: null,
+    isTouchHold: false,
   }
 }
 
@@ -203,6 +215,14 @@ export class MarqueeSelectPlugin extends BasePlugin {
     if (!this.canStartMarquee(e, sortable)) return
     if (!this.shouldAllowMarqueeStart(e, sortable)) return
 
+    // Touch devices: require a hold before starting marquee so scrolling
+    // is not interrupted. The hold timer fires after touchHoldDelay ms;
+    // if the finger moves beyond touchHoldThreshold, the hold is cancelled.
+    if (e.pointerType === 'touch' && this.opts.touchHoldDelay > 0) {
+      this.beginTouchHold(e, sortable)
+      return
+    }
+
     const area = this.areaElement.get(sortable)
 
     // For global areas (html/body), do NOT preventDefault — that would break
@@ -213,6 +233,107 @@ export class MarqueeSelectPlugin extends BasePlugin {
     }
 
     this.beginMarquee(e, sortable)
+  }
+
+  // ── Touch hold ───────────────────────────────────────────
+
+  /**
+   * Start a hold timer for touch-based marquee. During the hold period the
+   * browser is free to scroll; we only commit to marquee once the timer fires.
+   */
+  private beginTouchHold(e: PointerEvent, sortable: SortableInstance): void {
+    // Claim the multi-instance lock early so no other instance starts
+    activeMarqueeInstance = sortable
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const pointerId = e.pointerId
+
+    // Build a temporary state that tracks the hold
+    const sm = sortable.dragManager?.selectionManager
+    const snapshot = new Set<HTMLElement>()
+    if (sm) {
+      sm.selectedElements.forEach((el) => snapshot.add(el))
+    }
+
+    const state: MarqueeState = {
+      active: false,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY,
+      marqueeEl: null,
+      pointerId,
+      initialSelectionSnapshot: snapshot,
+      anchorGroupName: null,
+      holdTimer: null,
+      isTouchHold: true,
+    }
+
+    // Move/up handlers that live only during the hold period
+    const onHoldMove = (ev: PointerEvent): void => {
+      if (ev.pointerId !== pointerId) return
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (Math.sqrt(dx * dx + dy * dy) > this.opts.touchHoldThreshold) {
+        // Finger moved — cancel hold (user is scrolling)
+        cancelHold()
+      }
+    }
+
+    const onHoldUp = (ev: PointerEvent): void => {
+      if (ev.pointerId !== pointerId) return
+      // Finger lifted before hold completed — handle click-away deselect
+      cancelHold()
+      if (this.shouldDeselectOnClick(ev, sortable)) {
+        sm?.clearSelection()
+      }
+    }
+
+    const cancelHold = (): void => {
+      if (state.holdTimer !== null) {
+        window.clearTimeout(state.holdTimer)
+        state.holdTimer = null
+      }
+      document.removeEventListener('pointermove', onHoldMove)
+      document.removeEventListener('pointerup', onHoldUp)
+      document.removeEventListener('pointercancel', onHoldUp)
+      // Release lock
+      if (activeMarqueeInstance === sortable) {
+        activeMarqueeInstance = null
+      }
+      this.setState(sortable, createDefaultState())
+    }
+
+    state.holdTimer = window.setTimeout(() => {
+      state.holdTimer = null
+      // Remove hold-period listeners
+      document.removeEventListener('pointermove', onHoldMove)
+      document.removeEventListener('pointerup', onHoldUp)
+      document.removeEventListener('pointercancel', onHoldUp)
+
+      // Hold succeeded — commit to marquee. Set the state and attach
+      // the normal move/up handlers via beginMarquee's tail.
+      this.setState(sortable, state)
+
+      // Prevent the browser from scrolling now that marquee is active
+      this.savedUserSelect.set(sortable, document.body.style.userSelect)
+      document.body.style.userSelect = 'none'
+
+      // Attach document move/up handlers (same path as mouse marquee)
+      const moveHandler = (ev: PointerEvent) => this.onPointerMove(ev, sortable)
+      const upHandler = (ev: PointerEvent) => this.onPointerUp(ev, sortable)
+      this.documentHandlers.set(sortable, { moveHandler, upHandler })
+      document.addEventListener('pointermove', moveHandler)
+      document.addEventListener('pointerup', upHandler)
+
+      sortable.eventSystem.emit('marqueeHoldActivated')
+    }, this.opts.touchHoldDelay)
+
+    this.setState(sortable, state)
+    document.addEventListener('pointermove', onHoldMove)
+    document.addEventListener('pointerup', onHoldUp)
+    document.addEventListener('pointercancel', onHoldUp)
   }
 
   private onDocumentCapturePointerDown(
@@ -325,6 +446,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
       pointerId: e.pointerId,
       initialSelectionSnapshot: snapshot,
       anchorGroupName: null,
+      holdTimer: null,
+      isTouchHold: false,
     }
     this.setState(sortable, state)
 
@@ -398,6 +521,12 @@ export class MarqueeSelectPlugin extends BasePlugin {
   private endMarquee(sortable: SortableInstance): void {
     const state = this.getState<MarqueeState>(sortable)
     if (!state) return
+
+    // Clear any pending touch hold timer
+    if (state.holdTimer !== null) {
+      window.clearTimeout(state.holdTimer)
+      state.holdTimer = null
+    }
 
     // Remove marquee element
     if (state.marqueeEl) {
