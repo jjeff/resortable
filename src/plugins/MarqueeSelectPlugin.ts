@@ -112,6 +112,19 @@ function isGlobalArea(el: HTMLElement): boolean {
   return el === document.documentElement || el === document.body
 }
 
+/** Suppress text selection (iOS Safari requires the -webkit- prefix) */
+function suppressTextSelection(): void {
+  window.getSelection()?.removeAllRanges()
+  document.body.style.userSelect = 'none'
+  document.body.style.setProperty('-webkit-user-select', 'none')
+}
+
+/** Restore text selection to a previously saved value */
+function restoreTextSelection(saved: string): void {
+  document.body.style.userSelect = saved
+  document.body.style.setProperty('-webkit-user-select', saved || '')
+}
+
 /** Module-level lock: only one marquee can be active at a time across all instances */
 let activeMarqueeInstance: SortableInstance | null = null
 
@@ -316,9 +329,9 @@ export class MarqueeSelectPlugin extends BasePlugin {
       // the normal move/up handlers via beginMarquee's tail.
       this.setState(sortable, state)
 
-      // Prevent the browser from scrolling now that marquee is active
+      // Prevent text selection now that marquee is active
       this.savedUserSelect.set(sortable, document.body.style.userSelect)
-      document.body.style.userSelect = 'none'
+      suppressTextSelection()
 
       // Attach document move/up handlers (same path as mouse marquee)
       const moveHandler = (ev: PointerEvent) => this.onPointerMove(ev, sortable)
@@ -458,7 +471,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
     // For global areas, defer to threshold to avoid breaking inputs/scrolling.
     if (!global) {
       this.savedUserSelect.set(sortable, document.body.style.userSelect)
-      document.body.style.userSelect = 'none'
+      suppressTextSelection()
     }
 
     // Attach document move/up handlers
@@ -487,7 +500,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       // For global areas, defer user-select disabling until threshold is met
       if (!this.savedUserSelect.has(sortable)) {
         this.savedUserSelect.set(sortable, document.body.style.userSelect)
-        document.body.style.userSelect = 'none'
+        suppressTextSelection()
       }
 
       state.marqueeEl = this.createMarqueeElement()
@@ -536,7 +549,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
     // Restore userSelect
     const saved = this.savedUserSelect.get(sortable)
     if (saved !== undefined) {
-      document.body.style.userSelect = saved
+      restoreTextSelection(saved)
       this.savedUserSelect.delete(sortable)
     }
 
