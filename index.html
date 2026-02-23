@@ -404,6 +404,18 @@
       transform: scale(1.1) rotate(-5deg);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
+
+    @media (max-width: 768px) {
+      .image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+        padding: 0.75rem;
+      }
+
+      .gallery-item .image-placeholder {
+        font-size: 1.5rem;
+      }
+    }
     
     /* Nested Lists */
     .nested-list {
@@ -592,7 +604,7 @@
       
       <div class="interaction-demos">
         <div>
-          <h3>Multi-Select (Ctrl/Cmd+Click, Shift+Click)</h3>
+          <h3>Multi-Select (Click to Toggle)</h3>
           <div class="multi-select-list" id="multi-select-list">
             <div class="sortable-item" data-id="multi-1">📝 Task Alpha</div>
             <div class="sortable-item" data-id="multi-2">📊 Task Beta</div>

@@ -15,6 +15,7 @@ export class KeyboardManager {
   private announceTimer: number | null = null
 
   private deselectOnClickOutside: boolean
+  private multiDrag: boolean
   private onDocumentClick: ((e: MouseEvent) => void) | null = null
 
   constructor(
@@ -23,9 +24,10 @@ export class KeyboardManager {
     private selectionManager: SelectionManager,
     private events: SortableEventSystem,
     private groupName: string,
-    options?: { deselectOnClickOutside?: boolean }
+    options?: { deselectOnClickOutside?: boolean; multiDrag?: boolean }
   ) {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
+    this.multiDrag = options?.multiDrag ?? false
     this.setupAnnouncer()
   }
 
@@ -257,8 +259,11 @@ export class KeyboardManager {
         this.selectionManager.selectRange(lastSelected, target)
       }
     } else if (e.ctrlKey || e.metaKey) {
-      // Toggle selection
+      // Toggle selection (modifier key always toggles)
       e.preventDefault()
+      this.selectionManager.toggle(target)
+    } else if (this.multiDrag) {
+      // When multiDrag is enabled, plain click toggles selection
       this.selectionManager.toggle(target)
     } else {
       // Single selection (unless clicking on already selected item)

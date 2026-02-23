@@ -88,6 +88,7 @@ export class DragManager implements DragManagerInterface {
     boxShadow: string
     transition: string
   } | null = null
+  private savedBodyUserSelect: string = ''
 
   constructor(
     public zone: DropZone,
@@ -197,7 +198,10 @@ export class DragManager implements DragManagerInterface {
       this._selectionManager,
       this.events,
       this.groupManager.getName(),
-      { deselectOnClickOutside: options?.deselectOnClickOutside }
+      {
+        deselectOnClickOutside: options?.deselectOnClickOutside,
+        multiDrag: options?.multiSelect,
+      }
     )
   }
 
@@ -729,8 +733,12 @@ export class DragManager implements DragManagerInterface {
         document.addEventListener('pointermove', this.onPointerMoveBeforeDrag)
       }
 
-      // Prevent default to avoid text selection while waiting
-      e.preventDefault()
+      // For touch with a delay, do NOT preventDefault — allow the browser to
+      // scroll/pan normally. The drag will only start after the hold timer fires.
+      // For mouse with a delay, still prevent default to avoid text selection.
+      if (!isTouch) {
+        e.preventDefault()
+      }
     } else {
       // No delay, start drag immediately
       this.startPointerDrag(e, target)
@@ -757,6 +765,12 @@ export class DragManager implements DragManagerInterface {
     // Clear any delay timer
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+
+    // Prevent text selection during drag (especially needed on iOS Safari)
+    window.getSelection()?.removeAllRanges()
+    this.savedBodyUserSelect = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+    document.body.style.setProperty('-webkit-user-select', 'none')
 
     // Get selected items if multiSelect is enabled
     this.draggedItems = [target]
@@ -1068,6 +1082,14 @@ export class DragManager implements DragManagerInterface {
       const dragId = `pointer-${this.activePointerId}`
       globalDragState.endDrag(dragId)
     }
+    // Restore text selection ability
+    document.body.style.userSelect = this.savedBodyUserSelect
+    document.body.style.setProperty(
+      '-webkit-user-select',
+      this.savedBodyUserSelect || ''
+    )
+    this.savedBodyUserSelect = ''
+
     this.startIndex = -1
     this.isPointerDragging = false
     this.activePointerId = null
@@ -1193,20 +1215,25 @@ export class DragManager implements DragManagerInterface {
         const isTouchDevice = navigator.maxTouchPoints > 0
         item.draggable = !isTouchDevice
 
-        // Set touch-action: none so the browser doesn't intercept touches
-        // for scrolling/zooming. When a handle is configured, only set it
-        // on the handle elements — the rest of the item should allow native scrolling.
+        // Set touch-action on draggable items / handles.
+        // When a touch delay is configured, use 'manipulation' (allows scroll/tap
+        // but disables double-tap-zoom) so the page remains scrollable while the
+        // hold timer decides whether a drag is intended. Without a delay, use 'none'
+        // so the browser doesn't intercept the touch for scrolling.
+        const hasTouchDelay = this.delayOnTouchOnly > 0
+        const touchActionValue = hasTouchDelay ? 'manipulation' : 'none'
+
         if (this.handle) {
           const handles = item.querySelectorAll(this.handle)
           handles.forEach((handle) => {
             if (handle instanceof HTMLElement) {
               this.originalTouchActions.set(handle, handle.style.touchAction)
-              handle.style.touchAction = 'none'
+              handle.style.touchAction = touchActionValue
             }
           })
         } else {
           this.originalTouchActions.set(item, item.style.touchAction)
-          item.style.touchAction = 'none'
+          item.style.touchAction = touchActionValue
         }
       }
     }
