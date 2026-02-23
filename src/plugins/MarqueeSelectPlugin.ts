@@ -262,6 +262,13 @@ export class MarqueeSelectPlugin extends BasePlugin {
     const startY = e.clientY
     const pointerId = e.pointerId
 
+    // Prevent the browser from taking this touch for scrolling/zooming.
+    // Without this, iOS fires pointercancel once it decides to scroll,
+    // killing our hold timer and all subsequent pointer events.
+    // This is acceptable because the marquee area is a scoped container —
+    // the user can still scroll by touching outside it.
+    e.preventDefault()
+
     // Build a temporary state that tracks the hold
     const sm = sortable.dragManager?.selectionManager
     const snapshot = new Set<HTMLElement>()
@@ -289,7 +296,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
       if (Math.sqrt(dx * dx + dy * dy) > this.opts.touchHoldThreshold) {
-        // Finger moved — cancel hold (user is scrolling)
+        // Finger moved — cancel hold (user was trying to scroll)
         cancelHold()
       }
     }
