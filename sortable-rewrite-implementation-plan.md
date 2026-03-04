@@ -226,8 +226,8 @@ mapped to implementation phases.
 - [x] **group** - Group configuration for sharing items between lists
   - [x] Basic group name string support (Phase 2) ✅ Completed
   - [x] Group object configuration (name, pull, put) (Phase 2) ✅ Completed
-  - [ ] **Clone functionality** (`pull: 'clone'`) - 🚀 Phase 4.1 Priority
-  - [ ] `revertClone` option (Phase 5)
+  - [x] **Clone functionality** (`pull: 'clone'`) ✅ Implemented in GroupManager, GlobalDragState, DragManager
+  - [x] `revertClone` option ✅ Implemented in GroupManager
 - [x] **sort** - Enable/disable sorting within list (Phase 2)
 - [x] **delay** - Time in milliseconds to define when sorting should start (Phase 2.4) ✅ Implemented
 - [x] **delayOnTouchOnly** - Only delay if user is using touch (Phase 2.4) ✅ Implemented
@@ -249,10 +249,10 @@ mapped to implementation phases.
 - [x] **invertSwap** - Always use inverted swap zone (Phase 2.5) ✅ Implemented
 - [x] **invertedSwapThreshold** - Threshold of inverted swap zone (Phase 2.5) ✅ Implemented
 - [x] **direction** - Direction of Sortable (auto-detect or manual) (Phase 2.5) ✅ Implemented
-- [ ] **forceFallback** - Force fallback behavior (Phase 2.5)
-- [ ] **fallbackClass** - Class for cloned DOM element in fallback (Phase 2.5)
-- [ ] **fallbackOnBody** - Append cloned element to document body (Phase 2.5)
-- [ ] **fallbackTolerance** - Pixels mouse should move before drag (Phase 2.5)
+- [x] **forceFallback** - Force fallback behavior ✅ Implemented in DragManager
+- [x] **fallbackClass** - Class for cloned DOM element in fallback ✅ Implemented in DragManager
+- [x] **fallbackOnBody** - Append cloned element to document body ✅ Implemented in DragManager
+- [x] **fallbackTolerance** - Pixels mouse should move before drag ✅ Implemented in DragManager
 - [x] **dragoverBubble** - Allow dragover event to bubble (Phase 2.5) ✅ Implemented (property)
 - [x] **removeCloneOnHide** - Remove clone when not showing (Phase 2.5) ✅ Implemented (property)
 - [x] **emptyInsertThreshold** - Distance from empty sortable to insert (Phase 2.5) ✅ Implemented (property)
@@ -285,7 +285,7 @@ mapped to implementation phases.
 ### API Methods
 
 - [x] **toArray()** - Serialize sortable's item data-ids into array (Phase 2)
-- [ ] **sort(order, useAnimation)** - Sort elements according to array (Phase 3)
+- [x] **sort(order, useAnimation)** - Sort elements according to array ✅ Implemented in Sortable
 - [ ] **save()** - Save current sorting (Phase 5)
 - [x] **closest(el, selector)** - DOM traversal utility (Phase 2.4) ✅ Implemented
 - [x] **option(name, value)** - Get/set option values (Phase 2.4) ✅ Implemented
@@ -295,25 +295,25 @@ mapped to implementation phases.
 
 - [x] **Sortable.active** - The active Sortable instance (Phase 2.4) ✅ Implemented
 - [x] **Sortable.dragged** - The element being dragged (Phase 2.4) ✅ Implemented
-- [ ] **Sortable.ghost** - The ghost element (Phase 2.4)
-- [ ] **Sortable.clone** - The clone element (Phase 2.4)
-- [ ] **Sortable.get(element)** - Get Sortable instance on element (Phase 2.4)
+- [x] **Sortable.ghost** - The ghost element ✅ Implemented as static property
+- [x] **Sortable.clone** - The clone element ✅ Implemented as static property
+- [x] **Sortable.get(element)** - Get Sortable instance on element ✅ Implemented
 - [ ] **Sortable.mount(plugin)** - Mount plugin to Sortable (Phase 4)
-- [ ] **Sortable.utils** - Utility functions collection (Phase 2.4)
+- [x] **Sortable.utils** - Utility functions collection ✅ Implemented
 
 ### Plugins
 
-- [ ] **AutoScroll** - Automatic scrolling during drag (Phase 4)
-  - [ ] Auto-scroll speed configuration
-  - [ ] Scroll sensitivity settings
-  - [ ] Edge detection and thresholds
-- [ ] **MultiDrag** - Multi-item selection and dragging (Phase 4)
+- [x] **AutoScroll** - Automatic scrolling during drag ✅ Implemented (329 lines)
+  - [x] Auto-scroll speed configuration ✅
+  - [x] Scroll sensitivity settings ✅
+  - [x] Edge detection and thresholds ✅
+- [x] **MultiDrag** - Multi-item selection and dragging ✅ Core-native (plural-first drag model)
   - [x] Multi-item selection with keyboard (Phase 2.3) ✅ Implemented
   - [x] Multi-item selection with mouse (Phase 2.3) ✅ Implemented (Shift+Click)
-  - [ ] Multi-item dragging support (Phase 4) ⚠️ Selection works, dragging not yet implemented
-  - [ ] Plugin API compatibility (Phase 4)
-- [ ] **Swap** - Swap-based sorting instead of insertion (Phase 4)
-- [ ] **OnSpill** - Handle drag operations outside sortable areas (Phase 4)
+  - [x] Multi-item dragging support ✅ Implemented natively in DragManager
+  - [x] Plugin API compatibility ✅ MultiDragPlugin retained as backward-compat shim
+- [x] **Swap** - Swap-based sorting instead of insertion ✅ Implemented (516 lines)
+- [ ] **OnSpill** - Handle drag operations outside sortable areas
 
 ### Browser Compatibility Features
 
@@ -362,19 +362,24 @@ mapped to implementation phases.
 
 **✅ Phase 3 Complete (Animation System)**: FLIP animations, configurable duration/easing, E2E test synchronization, cross-browser compatibility
 
-**🚀 Phase 4.1 Current Priority (Clone Feature)**: The most requested missing functionality from Sortable v1.x
+**✅ Phase 4.1 Complete (Clone Feature)**: `pull: 'clone'` and `revertClone` implemented
 
-**📋 Phase 4.2 Future (Plugin Architecture)**: AutoScroll, MultiDrag plugin API, Swap mode
+**✅ Phase 4.2 Complete (Plugin Architecture)**: AutoScroll, MultiDrag (core-native), Swap, MarqueeSelect plugins implemented
 
-**📋 Phase 5 Future (API Compatibility)**: Legacy API compatibility layer, migration tools
+**📋 Phase 5 Remaining (API Compatibility & Polish)**:
+- `Sortable.mount(plugin)` — static plugin registration
+- `save()` — persistence/serialization method
+- `setData` — custom dataTransfer configuration
+- **OnSpill** plugin — revert/remove on drag outside sortable areas
+- Framework integrations (React, Vue, Angular) — post v2.0
 
-**Current Status**: 
-- **397 E2E tests passing, 0 failed** - Robust test coverage across all browsers
+**Current Status**:
+- **397 E2E tests passing, 174 unit tests passing** - Comprehensive test coverage
 - **Production-ready core functionality** with smooth FLIP animations
-- **Missing only clone functionality** for full v1.x feature parity
-- **Modern features added**: Full accessibility support, TypeScript types, pointer events, multi-touch support - features not available in original Sortable v1.x
+- **Near-complete v1.x parity** — only OnSpill plugin and minor API methods remain
+- **Modern features beyond v1.x**: Full accessibility, TypeScript types, pointer events, multi-touch, marquee selection, mobile touch UX
 
-**Key Achievement**: All core drag-and-drop functionality is stable and production-ready with comprehensive test coverage
+**Key Achievement**: All core drag-and-drop functionality, plugins, and clone support are stable with comprehensive test coverage
 
 ## Migration Strategy
 

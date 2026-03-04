@@ -61,7 +61,9 @@ describe('Touch Support', () => {
     it('sets touch-action: none on draggable items during attach', () => {
       const zone = new DropZone(container)
       const events = new EventSystem<SortableEvents>()
-      const dm = new DragManager(zone, events, undefined)
+      const dm = new DragManager(zone, events, undefined, {
+        delayOnTouchOnly: 0,
+      })
       dm.attach()
 
       const items = container.querySelectorAll('.sortable-item')
@@ -78,7 +80,9 @@ describe('Touch Support', () => {
 
       const zone = new DropZone(container)
       const events = new EventSystem<SortableEvents>()
-      const dm = new DragManager(zone, events, undefined)
+      const dm = new DragManager(zone, events, undefined, {
+        delayOnTouchOnly: 0,
+      })
       dm.attach()
       expect((items[0] as HTMLElement).style.touchAction).toBe('none')
 
@@ -98,6 +102,7 @@ describe('Touch Support', () => {
       const events = new EventSystem<SortableEvents>()
       const dm = new DragManager(zone, events, undefined, {
         handle: '.drag-handle',
+        delayOnTouchOnly: 0,
       })
       dm.attach()
 
