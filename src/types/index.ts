@@ -38,6 +38,17 @@
  *
  * @public
  */
+/**
+ * Minimal Sortable interface for store callbacks
+ * Avoids circular dependency with the full Sortable class.
+ * @public
+ */
+export interface SortableInstanceForStore {
+  readonly element: HTMLElement
+  readonly options: SortableOptions
+  toArray(): string[]
+}
+
 export interface SortableOptions {
   /**
    * CSS class applied to the ghost element during drag
@@ -430,6 +441,63 @@ export interface SortableOptions {
    * @param event - The sortable event
    */
   onChange?: (event: SortableEvent) => void
+
+  /**
+   * Callback fired when an item is dropped outside all sortable containers
+   * @param event - The sortable event
+   */
+  onSpill?: (event: SortableEvent) => void
+
+  /**
+   * Revert item to its original position when dropped outside sortable areas
+   * Requires the OnSpill plugin to be installed.
+   * @defaultValue false
+   */
+  revertOnSpill?: boolean
+
+  /**
+   * Remove item from the DOM when dropped outside sortable areas
+   * Requires the OnSpill plugin to be installed.
+   * @defaultValue false
+   */
+  removeOnSpill?: boolean
+
+  /**
+   * Custom function to set data on the DataTransfer object during drag start
+   *
+   * @param dataTransfer - The DataTransfer object from the drag event
+   * @param dragEl - The element being dragged
+   *
+   * @example
+   * ```typescript
+   * {
+   *   setData: (dataTransfer, dragEl) => {
+   *     dataTransfer.setData('text/html', dragEl.outerHTML);
+   *   }
+   * }
+   * ```
+   */
+  setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
+
+  /**
+   * Key to use when saving/restoring sort order via localStorage
+   * Used by the `save()` method.
+   * @defaultValue undefined
+   */
+  store?: {
+    /**
+     * Called when sort order changes — persist the array
+     * @param sortable - The Sortable instance
+     */
+    set?: (sortable: SortableInstanceForStore) => void
+
+    /**
+     * Called on initialization — return the stored order
+     * @param sortable - The Sortable instance
+     * @returns The stored order array
+     */
+    get?: (sortable: SortableInstanceForStore) => string[]
+  }
 }
 
 /**
@@ -733,6 +801,8 @@ export interface SortableEvents {
   clone: SortableEvent
   /** Fired when the sort order has changed */
   change: SortableEvent
+  /** Fired when an item is dropped outside all sortable containers */
+  spill: SortableEvent
   /** Allow additional custom events */
   [key: string]: unknown
 }

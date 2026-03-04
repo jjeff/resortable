@@ -11,6 +11,7 @@ export {
   type MarqueeFilterConfig,
 } from './MarqueeSelectPlugin.js'
 export { MultiDragPlugin, type MultiDragOptions } from './MultiDragPlugin.js'
+export { OnSpillPlugin, type OnSpillOptions } from './OnSpillPlugin.js'
 export { SwapPlugin, type SwapOptions } from './SwapPlugin.js'
 
 // Re-export the PluginSystem for convenience
@@ -21,6 +22,7 @@ import { PluginSystem } from '../core/PluginSystem.js'
 import { AutoScrollPlugin } from './AutoScrollPlugin.js'
 import { MarqueeSelectPlugin } from './MarqueeSelectPlugin.js'
 import { MultiDragPlugin } from './MultiDragPlugin.js'
+import { OnSpillPlugin } from './OnSpillPlugin.js'
 import { SwapPlugin } from './SwapPlugin.js'
 import type { SortableInstance } from '../types/index.js'
 
@@ -45,6 +47,9 @@ export function registerAllPlugins(): void {
   }
   if (!PluginSystem.get('MarqueeSelect')) {
     PluginSystem.register(MarqueeSelectPlugin.create())
+  }
+  if (!PluginSystem.get('OnSpill')) {
+    PluginSystem.register(OnSpillPlugin.create())
   }
   if (!PluginSystem.get('Swap')) {
     PluginSystem.register(SwapPlugin.create())

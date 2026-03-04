@@ -38,7 +38,11 @@ import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
 import { PluginSystem } from './core/PluginSystem.js'
-import { SortableOptions, type SortableEvents } from './types/index.js'
+import {
+  SortableOptions,
+  type SortablePlugin,
+  type SortableEvents,
+} from './types/index.js'
 import { toArray as domToArray, on, getIndex, insertAt } from './utils/dom.js'
 
 // Export PluginSystem
@@ -126,6 +130,31 @@ export class Sortable {
     index: getIndex,
     /** Insert an element at a specific index within a parent */
     insertAt,
+  }
+
+  /**
+   * Mount (register) a plugin globally so it can be used by any Sortable instance
+   *
+   * @param plugin - A SortablePlugin instance, or an array of plugins
+   *
+   * @example
+   * ```typescript
+   * import { Sortable } from 'resortable';
+   * import { AutoScrollPlugin } from 'resortable/plugins';
+   *
+   * Sortable.mount(AutoScrollPlugin.create());
+   *
+   * // Mount multiple plugins at once
+   * Sortable.mount([AutoScrollPlugin.create(), SwapPlugin.create()]);
+   * ```
+   *
+   * @public
+   */
+  public static mount(plugin: SortablePlugin | SortablePlugin[]): void {
+    const plugins = Array.isArray(plugin) ? plugin : [plugin]
+    for (const p of plugins) {
+      PluginSystem.register(p, { overwrite: true })
+    }
   }
 
   /**
@@ -272,6 +301,7 @@ export class Sortable {
         chosenClass: this.options.chosenClass,
         dragClass: this.options.dragClass,
         deselectOnClickOutside: this.options.deselectOnClickOutside,
+        setData: this.options.setData,
       }
     )
     this.dragManager.attach()
@@ -329,6 +359,24 @@ export class Sortable {
     }
     if (this.options.onChange) {
       this.eventSystem.on('change', this.options.onChange)
+    }
+    if (this.options.onSpill) {
+      this.eventSystem.on('spill', this.options.onSpill)
+    }
+
+    // Auto-save on sort events if store.set is configured
+    if (this.options.store?.set) {
+      this.eventSystem.on('sort', () => {
+        this.save()
+      })
+    }
+
+    // Restore order from store on initialization
+    if (this.options.store?.get) {
+      const order = this.options.store.get(this)
+      if (order && order.length > 0) {
+        this.sort(order, false)
+      }
     }
   }
 
@@ -512,6 +560,37 @@ export class Sortable {
     } else {
       reorder()
     }
+  }
+
+  /**
+   * Save the current sort order using the configured store
+   *
+   * @remarks
+   * Calls the `store.set` callback with this Sortable instance if configured.
+   * This allows persisting sort order to localStorage, a database, etc.
+   *
+   * @example
+   * ```typescript
+   * const sortable = new Sortable(element, {
+   *   store: {
+   *     get: (sortable) => {
+   *       const stored = localStorage.getItem('sort-order');
+   *       return stored ? JSON.parse(stored) : [];
+   *     },
+   *     set: (sortable) => {
+   *       localStorage.setItem('sort-order', JSON.stringify(sortable.toArray()));
+   *     }
+   *   }
+   * });
+   *
+   * // Later, manually trigger a save
+   * sortable.save();
+   * ```
+   *
+   * @public
+   */
+  public save(): void {
+    this.options.store?.set?.(this)
   }
 
   /**

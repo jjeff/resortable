@@ -76,6 +76,7 @@ export class DragManager implements DragManagerInterface {
   // @ts-expect-error - Will be implemented in data management
 
   private _dataIdAttr: string
+  private _setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
   private ghostManager: GhostManager
 
   private groupManager: GroupManager
@@ -125,6 +126,7 @@ export class DragManager implements DragManagerInterface {
       chosenClass?: string
       dragClass?: string
       deselectOnClickOutside?: boolean
+      setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
     }
   ) {
     // Initialize group manager
@@ -172,6 +174,7 @@ export class DragManager implements DragManagerInterface {
     // Initialize other options
     this.preventOnFilter = options?.preventOnFilter ?? true
     this._dataIdAttr = options?.dataIdAttr ?? 'data-id'
+    this._setData = options?.setData
 
     // Initialize ghost manager with classes
     this.ghostManager = new GhostManager(
@@ -340,8 +343,12 @@ export class DragManager implements DragManagerInterface {
     if (e.dataTransfer && ghost) {
       // Hide the ghost since browser will show its own drag image
       ghost.style.display = 'none'
-      // Set drag data
-      e.dataTransfer.setData('text/plain', '')
+      // Set drag data — use custom setData if provided, otherwise default
+      if (this._setData) {
+        this._setData(e.dataTransfer, target)
+      } else {
+        e.dataTransfer.setData('text/plain', '')
+      }
       e.dataTransfer.effectAllowed = 'move'
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())

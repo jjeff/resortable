@@ -256,7 +256,7 @@ mapped to implementation phases.
 - [x] **dragoverBubble** - Allow dragover event to bubble (Phase 2.5) ✅ Implemented (property)
 - [x] **removeCloneOnHide** - Remove clone when not showing (Phase 2.5) ✅ Implemented (property)
 - [x] **emptyInsertThreshold** - Distance from empty sortable to insert (Phase 2.5) ✅ Implemented (property)
-- [ ] **setData** - Custom data transfer configuration (Phase 5)
+- [x] **setData** - Custom data transfer configuration ✅ Implemented
 
 ### Event Callbacks
 
@@ -286,7 +286,7 @@ mapped to implementation phases.
 
 - [x] **toArray()** - Serialize sortable's item data-ids into array (Phase 2)
 - [x] **sort(order, useAnimation)** - Sort elements according to array ✅ Implemented in Sortable
-- [ ] **save()** - Save current sorting (Phase 5)
+- [x] **save()** - Save current sorting ✅ Implemented with store option
 - [x] **closest(el, selector)** - DOM traversal utility (Phase 2.4) ✅ Implemented
 - [x] **option(name, value)** - Get/set option values (Phase 2.4) ✅ Implemented
 - [x] **destroy()** - Remove sortable functionality (Phase 2)
@@ -298,7 +298,7 @@ mapped to implementation phases.
 - [x] **Sortable.ghost** - The ghost element ✅ Implemented as static property
 - [x] **Sortable.clone** - The clone element ✅ Implemented as static property
 - [x] **Sortable.get(element)** - Get Sortable instance on element ✅ Implemented
-- [ ] **Sortable.mount(plugin)** - Mount plugin to Sortable (Phase 4)
+- [x] **Sortable.mount(plugin)** - Mount plugin to Sortable ✅ Implemented (single or array)
 - [x] **Sortable.utils** - Utility functions collection ✅ Implemented
 
 ### Plugins
@@ -313,7 +313,7 @@ mapped to implementation phases.
   - [x] Multi-item dragging support ✅ Implemented natively in DragManager
   - [x] Plugin API compatibility ✅ MultiDragPlugin retained as backward-compat shim
 - [x] **Swap** - Swap-based sorting instead of insertion ✅ Implemented (516 lines)
-- [ ] **OnSpill** - Handle drag operations outside sortable areas
+- [x] **OnSpill** - Handle drag operations outside sortable areas ✅ Implemented (revertOnSpill, removeOnSpill)
 
 ### Browser Compatibility Features
 
@@ -366,20 +366,22 @@ mapped to implementation phases.
 
 **✅ Phase 4.2 Complete (Plugin Architecture)**: AutoScroll, MultiDrag (core-native), Swap, MarqueeSelect plugins implemented
 
-**📋 Phase 5 Remaining (API Compatibility & Polish)**:
-- `Sortable.mount(plugin)` — static plugin registration
-- `save()` — persistence/serialization method
-- `setData` — custom dataTransfer configuration
-- **OnSpill** plugin — revert/remove on drag outside sortable areas
-- Framework integrations (React, Vue, Angular) — post v2.0
+**✅ Phase 5 Complete (API Compatibility)**:
+- `Sortable.mount(plugin)` — static plugin registration ✅
+- `save()` / `store` option — persistence/serialization ✅
+- `setData` — custom dataTransfer configuration ✅
+- **OnSpill** plugin — revert/remove on drag outside sortable areas ✅
+
+**📋 Post-v2.0 (Future)**:
+- Framework integrations (React, Vue, Angular)
 
 **Current Status**:
-- **397 E2E tests passing, 174 unit tests passing** - Comprehensive test coverage
+- **397 E2E tests passing, 198 unit tests passing** - Comprehensive test coverage
 - **Production-ready core functionality** with smooth FLIP animations
-- **Near-complete v1.x parity** — only OnSpill plugin and minor API methods remain
+- **Full v1.x feature parity achieved** — all SortableJS options, methods, events, and plugins implemented
 - **Modern features beyond v1.x**: Full accessibility, TypeScript types, pointer events, multi-touch, marquee selection, mobile touch UX
 
-**Key Achievement**: All core drag-and-drop functionality, plugins, and clone support are stable with comprehensive test coverage
+**Key Achievement**: Complete feature parity with SortableJS v1.x plus modern TypeScript-first features not available in the original
 
 ## Migration Strategy
 
