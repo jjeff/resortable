@@ -111,36 +111,9 @@ Sortable (Main Class)
 - Group memberships
 - Pull/put permissions
 
-## The Empty Container Problem
+## Empty Container Drop Targets
 
-### Current Issue
-When a container is empty:
-1. No draggable children exist
-2. `event.target.closest(draggable)` returns null
-3. Container isn't recognized as a valid drop zone
-4. Items can't be dropped
-
-### Current (Broken) Solution Attempt
-```typescript
-// In DragManager.onDragOver
-const draggableChildren = Array.from(this.zone.element.children).filter(
-  child => child.matches(this.draggable)
-)
-if (draggableChildren.length === 0) {
-  // Handle empty container
-  this.zone.element.appendChild(placeholder)
-}
-```
-
-### Why It's Not Working
-1. The check happens but the placeholder isn't persisting
-2. The drop event might not be firing correctly
-3. The container itself isn't being recognized as a drop target
-
-### Proposed Solution
-1. **Explicit Drop Zones**: Mark containers with a data attribute or class
-2. **Container-Level Events**: Attach dragover/drop handlers to containers, not just items
-3. **Empty State Handling**: Special logic when `children.length === 0`
+Resolved in #32. When the pointer-based drag handler's `elementFromPoint(...).closest(draggable)` returns null, `DragManager.onPointerMove` falls back to `findSortableContainerUnder(elementUnderMouse)`, which walks up the ancestor chain looking for an element registered in `dragManagerRegistry`. If found and group-compatible, the dragged item is appended via `targetZoneElement.insertBefore(item, null)`. Regression coverage lives in `tests/e2e/empty-container.spec.ts`.
 
 ## Configuration
 
