@@ -870,12 +870,20 @@ export class DragManager implements DragManagerInterface {
 
     // Find the element under the mouse cursor
     const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY)
-    const over = elementUnderMouse?.closest(this.draggable) as HTMLElement
+    const over = elementUnderMouse?.closest(
+      this.draggable
+    ) as HTMLElement | null
 
-    if (!over) return
-
-    // Find which zone the element we're hovering over belongs to
-    const targetZoneElement = over.parentElement
+    // Resolve the target sortable container. When `over` is non-null this is
+    // simply its parent. When it's null we may still be hovering over an
+    // empty sortable container — walk up `elementUnderMouse` ancestors and
+    // look for one registered with the drag-manager registry (#32).
+    let targetZoneElement: HTMLElement | null
+    if (over) {
+      targetZoneElement = over.parentElement
+    } else {
+      targetZoneElement = this.findSortableContainerUnder(elementUnderMouse)
+    }
     if (!targetZoneElement) return
 
     // Find all Sortable instances and see which one manages this zone
@@ -938,7 +946,10 @@ export class DragManager implements DragManagerInterface {
           ? currentActiveDrag.clones[0]
           : this.dragElement
 
-      if (over !== movingElement) {
+      // Same-zone movement only meaningful when hovering over a draggable
+      // sibling. With an empty container or padding hit, `over` is null —
+      // there's no reorder to do, skip.
+      if (over && over !== movingElement) {
         // Find the target DragManager's zone for proper index tracking
         const targetDragManager = this.findDragManagerForZone(targetZoneElement)
         const targetZone = targetDragManager?.zone ?? this.zone
@@ -1107,6 +1118,22 @@ export class DragManager implements DragManagerInterface {
   /** Find the DragManager instance that manages a specific zone */
   private findDragManagerForZone(targetZone: HTMLElement): DragManager | null {
     return dragManagerRegistry.get(targetZone) || null
+  }
+
+  /**
+   * Walk up the ancestor chain of `el` and return the first element that's
+   * registered as a sortable container. Used by pointer-based drag detection
+   * to recognise empty containers as valid drop targets (#32).
+   */
+  private findSortableContainerUnder(el: Element | null): HTMLElement | null {
+    let cur: Element | null = el
+    while (cur) {
+      if (cur instanceof HTMLElement && dragManagerRegistry.has(cur)) {
+        return cur
+      }
+      cur = cur.parentElement
+    }
+    return null
   }
 
   /** Get the selection manager for this drag manager */
