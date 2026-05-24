@@ -25,11 +25,15 @@ export class GhostManager {
    * Creates a ghost element from the dragged element
    * @param draggedElement - The element being dragged
    * @param event - The drag event containing position information
+   * @param fallbackClass - Optional class added when running in fallback mode.
+   *   Applied alongside the configured `ghostClass` so styles intended for the
+   *   fallback ghost can target a stable, fallback-only hook.
    * @returns The created ghost element
    */
   createGhost(
     draggedElement: HTMLElement,
-    event: MouseEvent | DragEvent | PointerEvent
+    event: MouseEvent | DragEvent | PointerEvent,
+    fallbackClass?: string
   ): HTMLElement {
     // Clean up any existing ghost
     this.destroyGhost()
@@ -92,6 +96,9 @@ export class GhostManager {
 
     // Apply ghost-specific styling (these override the copied styles)
     this.ghostElement.classList.add(this.ghostClass)
+    if (fallbackClass) {
+      this.ghostElement.classList.add(fallbackClass)
+    }
     this.ghostElement.style.position = 'fixed'
     this.ghostElement.style.pointerEvents = 'none'
     this.ghostElement.style.zIndex = '100000'
@@ -126,10 +133,11 @@ export class GhostManager {
   createStackedGhost(
     anchorElement: HTMLElement,
     itemCount: number,
-    event: MouseEvent | DragEvent | PointerEvent
+    event: MouseEvent | DragEvent | PointerEvent,
+    fallbackClass?: string
   ): HTMLElement {
     // Create the base ghost from anchor
-    const ghost = this.createGhost(anchorElement, event)
+    const ghost = this.createGhost(anchorElement, event, fallbackClass)
 
     // Add stacked class
     ghost.classList.add('sortable-ghost-stacked')

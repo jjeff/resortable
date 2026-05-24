@@ -878,6 +878,20 @@
             </div>
           </div>
         </div>
+
+        <!-- Fallback Mode (forceFallback + fallbackClass) — #29 PR1 -->
+        <div class="test-container">
+          <h3>Fallback Mode</h3>
+          <div class="test-grid">
+            <div class="sortable-list" id="fallback-list">
+              <h3>forceFallback: true</h3>
+              <div class="test-item sortable-item" data-id="fb-1">FB1</div>
+              <div class="test-item sortable-item" data-id="fb-2">FB2</div>
+              <div class="test-item sortable-item" data-id="fb-3">FB3</div>
+              <div class="test-item sortable-item" data-id="fb-4">FB4</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1189,7 +1203,21 @@
       const list2 = document.getElementById('list2');
       if (list1) window.sortables.push(new Sortable(list1, e2eOpts));
       if (list2) window.sortables.push(new Sortable(list2, e2eOpts));
-      
+
+      // Fallback mode list (#29 PR1) — pointer-only drag pipeline, no HTML5 DnD.
+      const fallbackList = document.getElementById('fallback-list');
+      if (fallbackList) {
+        window.sortables.push(new Sortable(fallbackList, {
+          group: 'fallback-test',
+          animation: 150,
+          forceFallback: true,
+          fallbackClass: 'sortable-fallback',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onEnd: log('Fallback end'),
+        }));
+      }
+
       // Update status
       document.getElementById('library-status').textContent = `Resortable loaded - ${window.sortables.length} instances active`;
       
