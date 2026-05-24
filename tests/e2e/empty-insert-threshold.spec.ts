@@ -71,15 +71,12 @@ test.describe('emptyInsertThreshold (#31)', () => {
   }, testInfo) => {
     test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
 
-    // Aim 100 px past the right edge — well outside the 5 px default
-    // threshold. Item should stay in its source list.
-    await page.locator('#shared-a-1').scrollIntoViewIfNeeded()
-    const box = await page.locator('#shared-a-1').boundingBox()
-    if (!box) throw new Error('no box')
-    const farOutsideX = box.x + box.width + 100
-    const insideY = box.y + box.height / 2
-
-    await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', farOutsideX, insideY)
+    // Aim at the very top-left of the viewport, well outside any sortable
+    // container regardless of layout (desktop side-by-side, mobile stacked,
+    // narrow viewport, etc.). The threshold is a few px — (5, 5) is
+    // guaranteed not to be inside or "close to" any of our test sortables.
+    await page.locator('#shared-a-2 [data-id="a-5"]').scrollIntoViewIfNeeded()
+    await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', 5, 5)
 
     // a-1 stays empty; a-2 unchanged.
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(0)
