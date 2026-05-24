@@ -87,6 +87,46 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  e2e-tests-hosted:
+    # GitHub-hosted macOS + Windows running the full 5-project Playwright
+    # matrix. Added to compare against the self-hosted macOS runner, which
+    # has been showing browserContext.newPage 30s timeouts on WebKit/Mobile.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact-name: playwright-report-hosted-macos
+          - os: windows-latest
+            artifact-name: playwright-report-hosted-windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: playwright-report/
+          retention-days: 30
+
   e2e-tests-self-hosted:
     strategy:
       matrix:
