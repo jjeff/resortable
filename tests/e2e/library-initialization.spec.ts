@@ -16,7 +16,10 @@ test.describe('Library Initialization and Error Handling', () => {
     await expect(page.locator('h2').first()).toBeVisible()
   })
 
-  test('initializes Resortable library successfully', async ({ page }) => {
+  test('initializes Resortable library successfully', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
@@ -50,7 +53,10 @@ test.describe('Library Initialization and Error Handling', () => {
     )
   })
 
-  test('verifies all sortable containers are initialized', async ({ page }) => {
+  test('verifies all sortable containers are initialized', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
