@@ -375,13 +375,28 @@ export interface SortableOptions {
   fallbackOffsetY?: number
 
   /**
-   * Allow dragover event to bubble
+   * Allow dragover event to bubble. When false (default), the library
+   * calls `e.stopPropagation()` after handling so that ancestor sortables
+   * don't double-process the event. Set true to support nested sortables.
    * @defaultValue false
    */
   dragoverBubble?: boolean
 
   /**
-   * Remove clone element when it's not showing
+   * Allow drop event to bubble. When false (default), the library calls
+   * `e.stopPropagation()` after handling. Set true to let ancestor
+   * sortables observe drop completions (e.g. for nested-sortable layouts).
+   * @defaultValue false
+   */
+  dropBubble?: boolean
+
+  /**
+   * Remove clone element when it's not showing.
+   *
+   * Currently a no-op: Resortable does not yet implement clone hide/show
+   * cycles — clones are always created on drag start and removed on drag
+   * end. Tracked in the v1.x parity work under #44.
+   *
    * @defaultValue true
    */
   removeCloneOnHide?: boolean

@@ -293,6 +293,7 @@ export class Sortable {
         fallbackOffsetX: this.options.fallbackOffsetX,
         fallbackOffsetY: this.options.fallbackOffsetY,
         dragoverBubble: this.options.dragoverBubble,
+        dropBubble: this.options.dropBubble,
         removeCloneOnHide: this.options.removeCloneOnHide,
         emptyInsertThreshold: this.options.emptyInsertThreshold,
         preventOnFilter: this.options.preventOnFilter,

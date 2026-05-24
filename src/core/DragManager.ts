@@ -63,14 +63,14 @@ export class DragManager implements DragManagerInterface {
   // @ts-expect-error - Will be implemented in fallback system
 
   private _fallbackClone: HTMLElement | null = null
-  // @ts-expect-error - Will be implemented in visual customization
-
   private _dragoverBubble: boolean
-  // @ts-expect-error - Will be implemented in visual customization
-
+  private _dropBubble: boolean
+  // _removeCloneOnHide is accepted on the public API but is currently a
+  // no-op — Resortable has no clone hide/show cycle yet (clones are
+  // created on drag start and removed on drag end). Wired here so future
+  // implementations of hide/show have an obvious place to read it.
+  // @ts-expect-error - kept on the instance so hide/show flow can read it later
   private _removeCloneOnHide: boolean
-  // @ts-expect-error - Will be implemented in visual customization
-
   private _emptyInsertThreshold: number
   private preventOnFilter: boolean
   // @ts-expect-error - Will be implemented in data management
@@ -118,6 +118,7 @@ export class DragManager implements DragManagerInterface {
       fallbackOffsetX?: number
       fallbackOffsetY?: number
       dragoverBubble?: boolean
+      dropBubble?: boolean
       removeCloneOnHide?: boolean
       emptyInsertThreshold?: number
       preventOnFilter?: boolean
@@ -168,6 +169,7 @@ export class DragManager implements DragManagerInterface {
 
     // Initialize visual customization options
     this._dragoverBubble = options?.dragoverBubble ?? false
+    this._dropBubble = options?.dropBubble ?? false
     this._removeCloneOnHide = options?.removeCloneOnHide ?? true
     this._emptyInsertThreshold = options?.emptyInsertThreshold ?? 5
 
@@ -399,6 +401,9 @@ export class DragManager implements DragManagerInterface {
 
   private onDragOver = (e: DragEvent): void => {
     e.preventDefault()
+    // Stop the event from bubbling to ancestor sortables unless the user
+    // opted into nested-sortable propagation via `dragoverBubble: true`.
+    if (!this._dragoverBubble) e.stopPropagation()
 
     // Check if we can accept the current drag (HTML5 drag events don't have pointer IDs)
     const dragId = 'html5-drag'
@@ -575,6 +580,9 @@ export class DragManager implements DragManagerInterface {
 
   private onDrop = (e: DragEvent): void => {
     e.preventDefault()
+    // Stop the event from bubbling to ancestor sortables unless the user
+    // opted into nested-sortable propagation via `dropBubble: true`.
+    if (!this._dropBubble) e.stopPropagation()
 
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
@@ -877,12 +885,18 @@ export class DragManager implements DragManagerInterface {
     // Resolve the target sortable container. When `over` is non-null this is
     // simply its parent. When it's null we may still be hovering over an
     // empty sortable container — walk up `elementUnderMouse` ancestors and
-    // look for one registered with the drag-manager registry (#32).
+    // look for one registered with the drag-manager registry (#32). The
+    // helper also widens its search to empty containers within their
+    // `emptyInsertThreshold` of the cursor (#31).
     let targetZoneElement: HTMLElement | null
     if (over) {
       targetZoneElement = over.parentElement
     } else {
-      targetZoneElement = this.findSortableContainerUnder(elementUnderMouse)
+      targetZoneElement = this.findSortableContainerUnder(
+        elementUnderMouse,
+        e.clientX,
+        e.clientY
+      )
     }
     if (!targetZoneElement) return
 
@@ -1121,17 +1135,46 @@ export class DragManager implements DragManagerInterface {
   }
 
   /**
-   * Walk up the ancestor chain of `el` and return the first element that's
-   * registered as a sortable container. Used by pointer-based drag detection
-   * to recognise empty containers as valid drop targets (#32).
+   * Resolve the sortable container the pointer is currently targeting.
+   *
+   * 1. Walk up `el`'s ancestor chain looking for a registered sortable
+   *    container (#32 — covers both populated containers and empties the
+   *    cursor is directly inside).
+   * 2. If no ancestor matches and cursor coordinates were supplied, scan
+   *    registered *empty* sortables and pick the first one whose bounding
+   *    rect — expanded by its `emptyInsertThreshold` — contains the
+   *    cursor (#31 — covers \"close enough to count\" UX).
    */
-  private findSortableContainerUnder(el: Element | null): HTMLElement | null {
+  private findSortableContainerUnder(
+    el: Element | null,
+    x?: number,
+    y?: number
+  ): HTMLElement | null {
     let cur: Element | null = el
     while (cur) {
       if (cur instanceof HTMLElement && dragManagerRegistry.has(cur)) {
         return cur
       }
       cur = cur.parentElement
+    }
+
+    if (x === undefined || y === undefined) return null
+
+    for (const [zoneEl, manager] of dragManagerRegistry) {
+      // Only widen for empty containers — non-empty ones would have been
+      // caught by the elementFromPoint ancestor walk above.
+      if (zoneEl.querySelector(manager.draggable)) continue
+      const threshold = manager._emptyInsertThreshold
+      if (!threshold) continue
+      const rect = zoneEl.getBoundingClientRect()
+      if (
+        x >= rect.left - threshold &&
+        x <= rect.right + threshold &&
+        y >= rect.top - threshold &&
+        y <= rect.bottom + threshold
+      ) {
+        return zoneEl
+      }
     }
     return null
   }

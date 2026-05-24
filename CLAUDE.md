@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL: Pre-Commit Checklist
 
-**ALWAYS run these commands BEFORE EVERY commit/push:**
-1. `npm run lint` - Check for linting errors
-2. `npm run type-check` - Check for TypeScript errors
-3. Fix any issues found
-4. Only then commit and push
+**ALWAYS run `npm run check` BEFORE EVERY commit/push.** It runs `npm run lint && npm run type-check` — the exact same commands CI runs in the `lint-and-typecheck` job.
 
-**NO EXCEPTIONS - The user has emphasized this multiple times.**
+```
+npm run check
+```
 
-If you forget to do this, the CI will fail and the user will be frustrated.
+If it reports any errors, fix them before committing. **NO EXCEPTIONS.**
+
+### Worktree gotcha
+
+`npm` walks up the directory tree to find `node_modules`, so a fresh worktree can lint against the parent repo's stale dependencies and falsely pass while CI fails on the same code. **In a new worktree, run `npm ci` once before the first `npm run check`** to guarantee dependencies match `package-lock.json`.
 
 ## Project Overview
 
