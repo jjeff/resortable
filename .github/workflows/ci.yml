@@ -155,6 +155,29 @@ jobs:
           path: dist/
           retention-days: 7
 
+  bundle-size:
+    # Enforces a gzipped bundle budget so refactors can't silently bloat
+    # the library. Budgets live in package.json under "size-limit".
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
+      - name: Check bundle size against budget
+        run: npm run size
+
   cross-platform-test:
     strategy:
       matrix:
