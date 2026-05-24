@@ -79,12 +79,7 @@ test.describe('emptyInsertThreshold (#31)', () => {
     const farOutsideX = box.x + box.width + 100
     const insideY = box.y + box.height / 2
 
-    await pointerDrag(
-      page,
-      '#shared-a-2 [data-id="a-5"]',
-      farOutsideX,
-      insideY
-    )
+    await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', farOutsideX, insideY)
 
     // a-1 stays empty; a-2 unchanged.
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(0)
