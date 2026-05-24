@@ -44,8 +44,33 @@
     "semantic-release": "semantic-release",
     "docs:build": "typedoc",
     "docs:serve": "npx http-server docs -p 8080",
-    "docs:clean": "rimraf docs"
+    "docs:clean": "rimraf docs",
+    "size": "size-limit",
+    "size:build": "npm run build && npm run size"
   },
+  "size-limit": [
+    {
+      "name": "ESM (gzip)",
+      "path": "dist/sortable.es.js",
+      "limit": "20 kB",
+      "gzip": true,
+      "brotli": false
+    },
+    {
+      "name": "CJS (gzip)",
+      "path": "dist/sortable.cjs.js",
+      "limit": "12 kB",
+      "gzip": true,
+      "brotli": false
+    },
+    {
+      "name": "UMD (gzip)",
+      "path": "dist/sortable.umd.js",
+      "limit": "12 kB",
+      "gzip": true,
+      "brotli": false
+    }
+  ],
   "keywords": [
     "sortable",
     "drag-and-drop",
@@ -85,6 +110,7 @@
     "@semantic-release/github": "^11.0.5",
     "@semantic-release/npm": "^12.0.2",
     "@semantic-release/release-notes-generator": "^14.0.3",
+    "@size-limit/file": "^12.1.0",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
@@ -101,6 +127,7 @@
     "rimraf": "^6.0.1",
     "rollup-plugin-dts": "^6.2.3",
     "semantic-release": "^24.2.7",
+    "size-limit": "^12.1.0",
     "typedoc": "^0.28.12",
     "typedoc-plugin-markdown": "^4.8.1",
     "typescript": "^5.9.2",
