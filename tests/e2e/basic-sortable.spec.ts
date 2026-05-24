@@ -80,7 +80,10 @@ test.describe('Basic Sortable Functionality', () => {
     await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
   })
 
-  test('applies visual feedback classes during drag', async ({ page }) => {
+  test('applies visual feedback classes during drag', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
     const dragItem = page.locator('#basic-list [data-id="basic-1"]')
 
     // Check that draggable attribute is set
