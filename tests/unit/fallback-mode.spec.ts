@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { DragManager } from '../../src/core/DragManager'
 import { DropZone } from '../../src/core/DropZone'
 import { EventSystem } from '../../src/core/EventSystem'
@@ -240,5 +240,181 @@ describe('fallback options (#29 PR2)', () => {
       expect(ghost.style.top).toBe('35px')
       gm.destroy(target)
     })
+  })
+})
+
+/**
+ * Unit coverage for #29 PR3 — `fallbackTolerance`. Verifies the
+ * capture-phase / commit-phase state-machine boundary:
+ *
+ *   pointerdown → (delay timer) → CAPTURE PHASE
+ *      ├─ pointermove < tolerance → stay in capture (no events, no ghost)
+ *      ├─ pointermove ≥ tolerance → COMMIT (choose, start, ghost, ...)
+ *      └─ pointerup before threshold → click; tear down, no events.
+ *
+ * With tolerance `0` (default) the capture phase is skipped entirely and
+ * pointerdown commits immediately — observable from `DragManager.isDragging`.
+ */
+describe('fallbackTolerance state machine (#29 PR3)', () => {
+  function makeContainer(): HTMLElement {
+    document.body.innerHTML = ''
+    const container = document.createElement('div')
+    for (let i = 1; i <= 3; i++) {
+      const el = document.createElement('div')
+      el.className = 'sortable-item'
+      el.dataset.id = `${i}`
+      // Lay items out so getBoundingClientRect returns non-zero rects in jsdom.
+      el.style.width = '100px'
+      el.style.height = '40px'
+      container.appendChild(el)
+    }
+    document.body.appendChild(container)
+    return container
+  }
+
+  function makePointer(
+    type: 'pointerdown' | 'pointermove' | 'pointerup',
+    x: number,
+    y: number,
+    pointerId = 1
+  ): PointerEvent {
+    try {
+      return new PointerEvent(type, {
+        clientX: x,
+        clientY: y,
+        pointerId,
+        button: 0,
+        isPrimary: true,
+        bubbles: true,
+        cancelable: true,
+      })
+    } catch {
+      const ev = new MouseEvent(type, {
+        clientX: x,
+        clientY: y,
+        button: 0,
+        bubbles: true,
+        cancelable: true,
+      }) as unknown as PointerEvent & { pointerId: number; isPrimary: boolean }
+      ;(ev as unknown as { pointerId: number }).pointerId = pointerId
+      ;(ev as unknown as { isPrimary: boolean }).isPrimary = true
+      return ev
+    }
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('tolerance 0: drag commits immediately on pointerdown', () => {
+    const container = makeContainer()
+    const target = container.firstElementChild as HTMLElement
+    const zone = new DropZone(container)
+    const events = new EventSystem<SortableEvents>()
+    const dm = new DragManager(zone, events, undefined, {
+      delayOnTouchOnly: 0,
+      fallbackTolerance: 0,
+    })
+    dm.attach()
+
+    const chooseSpy = vi.fn()
+    events.on('choose', chooseSpy)
+
+    target.dispatchEvent(makePointer('pointerdown', 50, 20))
+
+    expect(dm.isDragging).toBe(true)
+    expect(chooseSpy).toHaveBeenCalledTimes(1)
+
+    // Release so dm.detach() doesn't dangle global listeners across tests.
+    document.dispatchEvent(makePointer('pointerup', 50, 20))
+    dm.detach()
+  })
+
+  it('tolerance > 0: pointermove below threshold does not commit', () => {
+    const container = makeContainer()
+    const target = container.firstElementChild as HTMLElement
+    const zone = new DropZone(container)
+    const events = new EventSystem<SortableEvents>()
+    const dm = new DragManager(zone, events, undefined, {
+      delayOnTouchOnly: 0,
+      fallbackTolerance: 10,
+    })
+    dm.attach()
+
+    const chooseSpy = vi.fn()
+    const startSpy = vi.fn()
+    events.on('choose', chooseSpy)
+    events.on('start', startSpy)
+
+    target.dispatchEvent(makePointer('pointerdown', 50, 20))
+    // 4px move — below 10px Chebyshev threshold.
+    document.dispatchEvent(makePointer('pointermove', 54, 20))
+    document.dispatchEvent(makePointer('pointermove', 50, 24))
+
+    expect(dm.isDragging).toBe(false)
+    expect(chooseSpy).not.toHaveBeenCalled()
+    expect(startSpy).not.toHaveBeenCalled()
+
+    document.dispatchEvent(makePointer('pointerup', 50, 24))
+    dm.detach()
+  })
+
+  it('tolerance > 0: pointermove crossing threshold commits drag', () => {
+    const container = makeContainer()
+    const target = container.firstElementChild as HTMLElement
+    const zone = new DropZone(container)
+    const events = new EventSystem<SortableEvents>()
+    const dm = new DragManager(zone, events, undefined, {
+      delayOnTouchOnly: 0,
+      fallbackTolerance: 10,
+    })
+    dm.attach()
+
+    const chooseSpy = vi.fn()
+    const startSpy = vi.fn()
+    events.on('choose', chooseSpy)
+    events.on('start', startSpy)
+
+    target.dispatchEvent(makePointer('pointerdown', 50, 20))
+    // Still below threshold — no commit yet.
+    document.dispatchEvent(makePointer('pointermove', 55, 20))
+    expect(dm.isDragging).toBe(false)
+    // Crosses 10px — commits.
+    document.dispatchEvent(makePointer('pointermove', 62, 20))
+    expect(dm.isDragging).toBe(true)
+    expect(chooseSpy).toHaveBeenCalledTimes(1)
+    expect(startSpy).toHaveBeenCalledTimes(1)
+
+    document.dispatchEvent(makePointer('pointerup', 62, 20))
+    dm.detach()
+  })
+
+  it('tolerance > 0: pointerup before threshold fires no drag events', () => {
+    const container = makeContainer()
+    const target = container.firstElementChild as HTMLElement
+    const zone = new DropZone(container)
+    const events = new EventSystem<SortableEvents>()
+    const dm = new DragManager(zone, events, undefined, {
+      delayOnTouchOnly: 0,
+      fallbackTolerance: 10,
+    })
+    dm.attach()
+
+    const chooseSpy = vi.fn()
+    const startSpy = vi.fn()
+    const endSpy = vi.fn()
+    events.on('choose', chooseSpy)
+    events.on('start', startSpy)
+    events.on('end', endSpy)
+
+    target.dispatchEvent(makePointer('pointerdown', 50, 20))
+    document.dispatchEvent(makePointer('pointermove', 53, 21))
+    document.dispatchEvent(makePointer('pointerup', 53, 21))
+
+    expect(dm.isDragging).toBe(false)
+    expect(chooseSpy).not.toHaveBeenCalled()
+    expect(startSpy).not.toHaveBeenCalled()
+    expect(endSpy).not.toHaveBeenCalled()
+    dm.detach()
   })
 })

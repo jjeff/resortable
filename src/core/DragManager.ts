@@ -23,6 +23,10 @@ export class DragManager implements DragManagerInterface {
   private startIndex = -1
   private isPointerDragging = false
   private activePointerId: number | null = null
+  // Pre-commit capture phase target — non-null while pointer is captured but
+  // the drag has NOT yet committed (gated by `fallbackTolerance`). Distinct
+  // from `dragElement`, which only becomes non-null at commit. PR3 #29.
+  private pointerCaptureTarget: HTMLElement | null = null
   private dragElement: HTMLElement | null = null
   private draggedItems: HTMLElement[] = []
   private _selectionManager: SelectionManager
@@ -58,8 +62,16 @@ export class DragManager implements DragManagerInterface {
   // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
   // (default) → the sortable zone's root element. See PR2 #29.
   private _fallbackOnBody: boolean
-  // @ts-expect-error - Will be implemented in fallback system
-
+  // `_fallbackTolerance` is the minimum Chebyshev pixel distance the pointer
+  // must move from pointerdown before the drag actually *commits* — a ghost
+  // is created, `choose` / `start` events fire, and `globalDragState`
+  // registers an active drag. Below the threshold the pointer is *captured*
+  // but no drag side-effects occur (cf. legacy `Sortable.js:826-831`).
+  // Default `0` — drag commits immediately, identical to pre-PR3 behaviour.
+  // Distinct from `touchStartThreshold`, which *cancels* a delayed-drag if
+  // the pointer moves before the hold timer fires (drag-prevention guard).
+  // Ordering with `delay`: pointerdown → delay timer → capture phase →
+  // (distance reached) → commit phase. See PR3 #29.
   private _fallbackTolerance: number
   // `_fallbackOffsetX` / `_fallbackOffsetY` shift the ghost by a fixed pixel
   // offset relative to the cursor. Positive values move it right / down;
@@ -271,6 +283,8 @@ export class DragManager implements DragManagerInterface {
     // Cancel any pending drag delay
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
+    // Tear down any in-flight fallback-tolerance capture phase (PR3 #29)
+    if (this.pointerCaptureTarget) this.teardownCapturePhase()
 
     // Detach accessibility features
     if (this.enableAccessibility) {
@@ -790,11 +804,85 @@ export class DragManager implements DragManagerInterface {
     }
   }
 
+  /**
+   * Entry point after pointerdown (and after any `delay` timer). When
+   * `fallbackTolerance > 0` the drag enters a *capture* phase first: the
+   * pointer is captured, but no ghost / events / global state — the drag
+   * only *commits* once the pointer travels at least `fallbackTolerance`
+   * pixels (Chebyshev) from the pointerdown position (legacy
+   * `Sortable.js:826-831`). With tolerance `0` (default) commit is
+   * immediate — behaviour unchanged from pre-PR3.
+   */
   private startPointerDrag(e: PointerEvent, target: HTMLElement): void {
-    // Clear any delay timer
+    // Clear any delay timer / pre-drag listener — we're past that window.
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
 
+    if (this._fallbackTolerance <= 0) {
+      this.commitPointerDrag(e, target)
+      return
+    }
+    // Capture phase: pointer held, drag NOT yet committed. setPointerCapture
+    // pins subsequent events to `target` and suppresses default touch panning
+    // on iOS during the tolerance gap. Firefox throws on synthetic events.
+    this.pointerCaptureTarget = target
+    this.activePointerId = e.pointerId
+    this.dragStartPosition = { x: e.clientX, y: e.clientY }
+    try {
+      target.setPointerCapture(e.pointerId)
+    } catch {
+      /* synthetic events in Firefox */
+    }
+    document.addEventListener('pointermove', this.onPointerMoveCapture)
+    document.addEventListener('pointerup', this.onPointerUpCapture)
+    document.addEventListener('pointercancel', this.onPointerUpCapture)
+  }
+
+  private onPointerMoveCapture = (e: PointerEvent): void => {
+    const origin = this.dragStartPosition
+    const target = this.pointerCaptureTarget
+    if (!origin || !target || e.pointerId !== this.activePointerId) return
+    // Chebyshev distance — matches legacy `Math.max(|dx|, |dy|) < tolerance`
+    // at Sortable.js:827.
+    if (
+      Math.max(Math.abs(e.clientX - origin.x), Math.abs(e.clientY - origin.y)) <
+      this._fallbackTolerance
+    )
+      return
+    this.teardownCapturePhase()
+    this.commitPointerDrag(e, target)
+  }
+
+  // Pointer released (or cancelled) BEFORE the tolerance threshold — treat
+  // as a click, not a drag. No `choose` / `start` / `end` events fired;
+  // no DOM changes; just tear the capture state down.
+  private onPointerUpCapture = (e: PointerEvent): void => {
+    if (e.pointerId === this.activePointerId) this.teardownCapturePhase()
+  }
+
+  private teardownCapturePhase(): void {
+    const t = this.pointerCaptureTarget
+    if (t && this.activePointerId !== null) {
+      try {
+        t.releasePointerCapture(this.activePointerId)
+      } catch {
+        /* already released */
+      }
+    }
+    document.removeEventListener('pointermove', this.onPointerMoveCapture)
+    document.removeEventListener('pointerup', this.onPointerUpCapture)
+    document.removeEventListener('pointercancel', this.onPointerUpCapture)
+    this.pointerCaptureTarget = null
+    this.activePointerId = null
+    this.dragStartPosition = undefined
+  }
+
+  /**
+   * Commit phase — the actual drag start. Creates the ghost, fires events,
+   * registers with `globalDragState`. Reachable directly (tolerance 0) or
+   * via {@link onPointerMoveCapture} after the tolerance threshold is met.
+   */
+  private commitPointerDrag(e: PointerEvent, target: HTMLElement): void {
     // Prevent text selection during drag (especially needed on iOS Safari)
     window.getSelection()?.removeAllRanges()
     this.savedBodyUserSelect = document.body.style.userSelect
