@@ -54,17 +54,18 @@ export class DragManager implements DragManagerInterface {
   // truth for the fallback ghost.
   private _forceFallback: boolean
   private _fallbackClass?: string
-  // @ts-expect-error - Will be implemented in fallback system
-
+  // `_fallbackOnBody` chooses where the pointer-driven ghost is appended:
+  // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
+  // (default) → the sortable zone's root element. See PR2 #29.
   private _fallbackOnBody: boolean
   // @ts-expect-error - Will be implemented in fallback system
 
   private _fallbackTolerance: number
-  // @ts-expect-error - Will be implemented in fallback system
-
+  // `_fallbackOffsetX` / `_fallbackOffsetY` shift the ghost by a fixed pixel
+  // offset relative to the cursor. Positive values move it right / down;
+  // negative values move it left / up. Matches legacy `fallbackOffset.x` /
+  // `fallbackOffset.y` direction. See PR2 #29.
   private _fallbackOffsetX: number
-  // @ts-expect-error - Will be implemented in fallback system
-
   private _fallbackOffsetY: number
   private _dragoverBubble: boolean
   private _dropBubble: boolean
@@ -76,8 +77,11 @@ export class DragManager implements DragManagerInterface {
   private _removeCloneOnHide: boolean
   private _emptyInsertThreshold: number
   private preventOnFilter: boolean
-  // @ts-expect-error - Will be implemented in data management
-
+  // `_dataIdAttr` is the configured `data-*` attribute name used as the
+  // identity column by toArray() / sort(). It is also forwarded to
+  // GhostManager so the ghost clone can strip the original's identity
+  // attribute and avoid duplicate matches in DOM queries when the ghost
+  // lives inside the zone (PR2 #29 — `fallbackOnBody: false` default).
   private _dataIdAttr: string
   private _setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
   private ghostManager: GhostManager
@@ -855,17 +859,28 @@ export class DragManager implements DragManagerInterface {
     this.events.emit('choose', evt)
 
     // Create ghost element for visual feedback. `fallbackClass` is applied
-    // alongside `ghostClass` so fallback-mode styles can target a stable
-    // hook (legacy parity for `forceFallback` UX).
+    // alongside `ghostClass` so fallback-mode styles can target a stable hook
+    // (legacy parity for `forceFallback` UX). `fallbackOnBody` selects the
+    // ghost's parent — `document.body` when true, the sortable zone's root
+    // element when false (legacy default). `fallbackOffsetX` /
+    // `fallbackOffsetY` shift the ghost relative to the cursor (additive,
+    // matching legacy `fallbackOffset.x` / `.y`).
+    const ghostOptions = {
+      fallbackClass: this._fallbackClass,
+      appendTo: this._fallbackOnBody ? document.body : this.zone.element,
+      offsetX: this._fallbackOffsetX,
+      offsetY: this._fallbackOffsetY,
+      dataIdAttr: this._dataIdAttr,
+    }
     if (this.draggedItems.length > 1) {
       this.ghostManager.createStackedGhost(
         target,
         this.draggedItems.length,
         e,
-        this._fallbackClass
+        ghostOptions
       )
     } else {
-      this.ghostManager.createGhost(target, e, this._fallbackClass)
+      this.ghostManager.createGhost(target, e, ghostOptions)
     }
     this.ghostManager.createPlaceholder(target)
 

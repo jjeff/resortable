@@ -611,9 +611,13 @@ test.describe('Plugin Functionality E2E', () => {
       // Wait for any animations or visual feedback
       await page.waitForTimeout(100)
 
-      // Check that items are in the DOM (swap should maintain all items)
+      // Check that items are in the DOM (swap should maintain all items).
+      // PR2 #29 changed the default `fallbackOnBody` to false, so the
+      // pointer-driven ghost lives inside the zone during the drag and may
+      // linger briefly through its fade-out transition. Exclude ghost clones
+      // from the count.
       const finalCount = await page
-        .locator('#swap-container .sortable-item')
+        .locator('#swap-container .sortable-item:not(.sortable-ghost)')
         .count()
       expect(finalCount).toBe(4)
 
