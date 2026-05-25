@@ -657,6 +657,7 @@ export class Sortable {
       case 'forceFallback':
       case 'fallbackClass':
       case 'fallbackOnBody':
+      case 'fallbackTolerance':
       case 'fallbackOffsetX':
       case 'fallbackOffsetY': {
         // Re-create drag manager with new options. `forceFallback` changes
@@ -689,6 +690,7 @@ export class Sortable {
             forceFallback: this.options.forceFallback,
             fallbackClass: this.options.fallbackClass,
             fallbackOnBody: this.options.fallbackOnBody,
+            fallbackTolerance: this.options.fallbackTolerance,
             fallbackOffsetX: this.options.fallbackOffsetX,
             fallbackOffsetY: this.options.fallbackOffsetY,
             ghostClass: this.options.ghostClass,
@@ -727,6 +729,7 @@ export class Sortable {
             forceFallback: this.options.forceFallback,
             fallbackClass: this.options.fallbackClass,
             fallbackOnBody: this.options.fallbackOnBody,
+            fallbackTolerance: this.options.fallbackTolerance,
             fallbackOffsetX: this.options.fallbackOffsetX,
             fallbackOffsetY: this.options.fallbackOffsetY,
             ghostClass: this.options.ghostClass,

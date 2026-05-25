@@ -318,3 +318,167 @@ test.describe('fallback positioning (#29 PR2)', () => {
     await page.mouse.up()
   })
 })
+
+/**
+ * Coverage for #29 (PR3) — `fallbackTolerance`. The pointer must travel at
+ * least N pixels (Chebyshev distance, matching legacy semantics) from
+ * pointerdown before the drag commits. Below the threshold no ghost is
+ * created, no `choose`/`start` event fires, no DOM order changes. Above the
+ * threshold the drag commits and behaves identically to the no-tolerance
+ * path.
+ *
+ * As with PR2, fixtures are built on the fly via `page.evaluate` so this
+ * file stays self-contained and the demo `index.html` is not perturbed.
+ */
+test.describe('fallbackTolerance (#29 PR3)', () => {
+  const PR3_LIST = '#pr3-fallback-list'
+  const PR3_ITEM = (id: string): string => `${PR3_LIST} [data-id="${id}"]`
+  const PR3_ITEMS = `${PR3_LIST} .sortable-item:not(.sortable-ghost)`
+
+  async function buildList(
+    page: Page,
+    opts: { fallbackTolerance?: number } = {}
+  ): Promise<void> {
+    await page.evaluate((opts) => {
+      document.getElementById('pr3-fallback-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'pr3-fallback-list'
+      container.style.position = 'absolute'
+      container.style.top = '50px'
+      container.style.left = '50px'
+      container.style.width = '300px'
+      container.style.background = '#efe'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="pr3-1"
+             style="width:200px;height:40px;background:#cdc;">Item 1</div>
+        <div class="sortable-item" data-id="pr3-2"
+             style="width:200px;height:40px;background:#dcd;">Item 2</div>
+        <div class="sortable-item" data-id="pr3-3"
+             style="width:200px;height:40px;background:#cdc;">Item 3</div>
+        <div class="sortable-item" data-id="pr3-4"
+             style="width:200px;height:40px;background:#dcd;">Item 4</div>
+      `
+      document.body.appendChild(container)
+
+      // Instrument: capture any drag-lifecycle event so tests can assert
+      // that no commit-phase side-effects occurred during a sub-tolerance
+      // press-and-release.
+      interface WindowWithEvents extends Window {
+        __pr3Events?: string[]
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithEvents
+      win.__pr3Events = []
+      const push = (name: string) => (): void => {
+        win.__pr3Events?.push(name)
+      }
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        animation: 0,
+        forceFallback: true,
+        fallbackClass: 'sortable-fallback',
+        fallbackTolerance: opts.fallbackTolerance,
+        onChoose: push('choose'),
+        onStart: push('start'),
+        onEnd: push('end'),
+      })
+    }, opts)
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+  })
+
+  test('small pointer move does not start drag', async ({ page }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    await buildList(page, { fallbackTolerance: 10 })
+
+    const initial = await page
+      .locator(PR3_ITEMS)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')))
+
+    const from = await center(page, PR3_ITEM('pr3-1'))
+    // Move 3px — well below 10px tolerance. The drag must NOT commit.
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x + 3, from.y, { steps: 3 })
+
+    // No ghost, no class, no order change while still under threshold.
+    await expect(page.locator('.sortable-ghost')).toHaveCount(0)
+    await expect(page.locator('.sortable-fallback')).toHaveCount(0)
+    const stillOrder = await page
+      .locator(PR3_ITEMS)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')))
+    expect(stillOrder).toEqual(initial)
+
+    await page.mouse.up()
+  })
+
+  test('movement past threshold starts drag normally', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    await buildList(page, { fallbackTolerance: 10 })
+
+    const from = await center(page, PR3_ITEM('pr3-1'))
+    const to = await center(page, PR3_ITEM('pr3-4'))
+
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    // First an intermediate move that crosses the 10px threshold (15px).
+    await page.mouse.move(from.x + 15, from.y, { steps: 4 })
+
+    // Drag committed: ghost present, fallback class on it.
+    const ghost = page.locator('.sortable-ghost.sortable-fallback')
+    await expect(ghost).toHaveCount(1)
+
+    // Complete the drag — reorder should succeed normally.
+    await page.mouse.move(to.x, to.y, { steps: 10 })
+    await page.mouse.up()
+
+    const finalOrder = await page
+      .locator(PR3_ITEMS)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')))
+    expect(finalOrder[0]).not.toBe('pr3-1')
+    expect(finalOrder).toContain('pr3-1')
+    expect(finalOrder).toHaveLength(4)
+  })
+
+  test('pointerup during capture phase fires no drag events', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    await buildList(page, { fallbackTolerance: 10 })
+
+    const from = await center(page, PR3_ITEM('pr3-1'))
+
+    // Press, nudge 2px (below threshold), release — a click, not a drag.
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x + 2, from.y, { steps: 2 })
+    await page.mouse.up()
+
+    // No drag-lifecycle event should have fired.
+    const events = await page.evaluate(() =>
+      (window as unknown as { __pr3Events: string[] }).__pr3Events.slice()
+    )
+    expect(events).toEqual([])
+
+    // And no ghost lingers.
+    await expect(page.locator('.sortable-ghost')).toHaveCount(0)
+  })
+})
