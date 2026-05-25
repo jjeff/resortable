@@ -68,6 +68,7 @@ export default [
       'docs/**',
       'node_modules/**',
       'legacy-sortable/**',
+      '.remember/**',
       '*.config.js',
       '*.config.ts',
     ],

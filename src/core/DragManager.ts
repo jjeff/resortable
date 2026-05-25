@@ -41,12 +41,18 @@ export class DragManager implements DragManagerInterface {
   private invertSwap: boolean
   private invertedSwapThreshold?: number
   private direction: 'vertical' | 'horizontal'
-  // Fallback system properties - to be fully implemented in future phase
-  // @ts-expect-error - Will be implemented in fallback system
-
+  // Fallback system properties.
+  //
+  // `_forceFallback` / `_fallbackClass` are wired into the pointer drag
+  // pipeline (see `attach()` and `startPointerDrag()`). Resortable's
+  // pointer-driven path already implements what legacy Sortable calls
+  // "fallback mode" — a ghost element following the cursor, no HTML5 DnD.
+  // Setting `forceFallback: true` therefore just suppresses the native
+  // `dragstart`/`dragover`/etc. listeners so the pointer path is the only
+  // active code path. The legacy `_fallbackClone` field is intentionally
+  // omitted: `this.ghostManager.getGhostElement()` is the single source of
+  // truth for the fallback ghost.
   private _forceFallback: boolean
-  // @ts-expect-error - Will be implemented in fallback system
-
   private _fallbackClass?: string
   // @ts-expect-error - Will be implemented in fallback system
 
@@ -60,9 +66,6 @@ export class DragManager implements DragManagerInterface {
   // @ts-expect-error - Will be implemented in fallback system
 
   private _fallbackOffsetY: number
-  // @ts-expect-error - Will be implemented in fallback system
-
-  private _fallbackClone: HTMLElement | null = null
   private _dragoverBubble: boolean
   private _dropBubble: boolean
   // _removeCloneOnHide is accepted on the public API but is currently a
@@ -213,13 +216,17 @@ export class DragManager implements DragManagerInterface {
   /** Attach event listeners */
   public attach(): void {
     const el = this.zone.element
-    // HTML5 drag events
-    el.addEventListener('dragstart', this.onDragStart)
-    el.addEventListener('dragover', this.onDragOver)
-    el.addEventListener('drop', this.onDrop)
-    el.addEventListener('dragend', this.onDragEnd)
-    el.addEventListener('dragenter', this.onDragEnter)
-    el.addEventListener('dragleave', this.onDragLeave)
+    // HTML5 drag events — skipped entirely when `forceFallback: true`. In
+    // fallback mode the pointer pipeline below is the only drag code path,
+    // mirroring legacy Sortable's `forceFallback` semantics.
+    if (!this._forceFallback) {
+      el.addEventListener('dragstart', this.onDragStart)
+      el.addEventListener('dragover', this.onDragOver)
+      el.addEventListener('drop', this.onDrop)
+      el.addEventListener('dragend', this.onDragEnd)
+      el.addEventListener('dragenter', this.onDragEnter)
+      el.addEventListener('dragleave', this.onDragLeave)
+    }
 
     // Pointer events for modern touch/pen/mouse support
     el.addEventListener('pointerdown', this.onPointerDown)
@@ -243,12 +250,15 @@ export class DragManager implements DragManagerInterface {
     this.originalTouchActions.clear()
 
     const el = this.zone.element
-    el.removeEventListener('dragstart', this.onDragStart)
-    el.removeEventListener('dragover', this.onDragOver)
-    el.removeEventListener('drop', this.onDrop)
-    el.removeEventListener('dragend', this.onDragEnd)
-    el.removeEventListener('dragenter', this.onDragEnter)
-    el.removeEventListener('dragleave', this.onDragLeave)
+    // Mirror `attach()` — only remove HTML5 listeners we actually registered.
+    if (!this._forceFallback) {
+      el.removeEventListener('dragstart', this.onDragStart)
+      el.removeEventListener('dragover', this.onDragOver)
+      el.removeEventListener('drop', this.onDrop)
+      el.removeEventListener('dragend', this.onDragEnd)
+      el.removeEventListener('dragenter', this.onDragEnter)
+      el.removeEventListener('dragleave', this.onDragLeave)
+    }
 
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
@@ -844,11 +854,18 @@ export class DragManager implements DragManagerInterface {
     // Emit choose event first
     this.events.emit('choose', evt)
 
-    // Create ghost element for visual feedback
+    // Create ghost element for visual feedback. `fallbackClass` is applied
+    // alongside `ghostClass` so fallback-mode styles can target a stable
+    // hook (legacy parity for `forceFallback` UX).
     if (this.draggedItems.length > 1) {
-      this.ghostManager.createStackedGhost(target, this.draggedItems.length, e)
+      this.ghostManager.createStackedGhost(
+        target,
+        this.draggedItems.length,
+        e,
+        this._fallbackClass
+      )
     } else {
-      this.ghostManager.createGhost(target, e)
+      this.ghostManager.createGhost(target, e, this._fallbackClass)
     }
     this.ghostManager.createPlaceholder(target)
 
