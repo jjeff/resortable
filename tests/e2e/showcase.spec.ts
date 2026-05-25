@@ -17,7 +17,13 @@ test.describe('Showcase Page Functionality', () => {
     const smoothList = page.locator('#smooth-list')
     await expect(smoothList).toBeVisible()
 
-    const smoothItems = smoothList.locator('.sortable-item')
+    // Exclude the pointer-driven ghost clone from item enumeration. PR2 #29
+    // changed the default `fallbackOnBody` from implicit-true to false, so
+    // mid-drag the ghost lives inside the zone and would otherwise satisfy
+    // `.sortable-item` queries (it is a deep clone of a sortable item).
+    const smoothItems = smoothList.locator(
+      '.sortable-item:not(.sortable-ghost)'
+    )
     await expect(smoothItems).toHaveCount(4)
 
     // Verify items can be dragged
@@ -70,7 +76,9 @@ test.describe('Showcase Page Functionality', () => {
     const basicList = page.locator('#basic-list')
     await expect(basicList).toBeVisible()
 
-    const items = basicList.locator('.sortable-item')
+    // Filter out the in-zone ghost clone — see note in 'visual effects demos
+    // should be draggable' above for the PR2 #29 rationale.
+    const items = basicList.locator('.sortable-item:not(.sortable-ghost)')
     await expect(items).toHaveCount(4)
 
     // Test dragging

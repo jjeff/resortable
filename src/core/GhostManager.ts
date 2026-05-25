@@ -1,12 +1,70 @@
 /**
+ * Options accepted by {@link GhostManager.createGhost} and
+ * {@link GhostManager.createStackedGhost}.
+ *
+ * Promoted from a positional `fallbackClass?: string` parameter (PR1 #29)
+ * to an options bag when `fallbackOnBody` and `fallbackOffset{X,Y}` joined
+ * the fallback option family in PR2 #29. Future additions (e.g.
+ * `fallbackTolerance` pre-commit motion in PR3) should slot in here.
+ */
+export interface CreateGhostOptions {
+  /**
+   * Class added to the ghost element alongside `ghostClass` so fallback-mode
+   * styles can target a stable hook (legacy parity for `forceFallback`).
+   */
+  fallbackClass?: string
+  /**
+   * Parent element the ghost is appended to. Defaults to `document.body`,
+   * matching the legacy `fallbackOnBody: true` behaviour. Callers wanting the
+   * legacy `fallbackOnBody: false` semantics should pass the sortable zone's
+   * root element instead.
+   *
+   * Note: when the chosen parent has `overflow: hidden`, the ghost will be
+   * clipped at the zone boundary. This is the legacy behaviour, not a bug.
+   */
+  appendTo?: HTMLElement
+  /**
+   * Horizontal pixel offset applied to the ghost relative to the cursor.
+   * Positive values shift the ghost to the right of where it would otherwise
+   * sit; negative values shift it to the left. Matches legacy
+   * `fallbackOffset.x` direction (see `legacy-sortable/src/Sortable.js`
+   * `_onTouchMove`).
+   */
+  offsetX?: number
+  /**
+   * Vertical pixel offset applied to the ghost relative to the cursor.
+   * Positive values shift the ghost down; negative values shift it up.
+   * Matches legacy `fallbackOffset.y` direction.
+   */
+  offsetY?: number
+  /**
+   * The data-attribute name configured by `dataIdAttr` on the parent
+   * Sortable. When the ghost lives inside the sortable zone (legacy
+   * `fallbackOnBody: false`, the new PR2 default), it would otherwise share
+   * this attribute with the original element — yielding duplicate matches in
+   * DOM queries like `[data-id="foo"]`. The attribute is stripped from the
+   * ghost clone so identity queries continue to address only the real item.
+   */
+  dataIdAttr?: string
+}
+
+/**
  * GhostManager handles the creation and management of ghost elements during drag operations.
  * The ghost element is a visual clone that follows the cursor during dragging.
  */
 export class GhostManager {
   private ghostElement: HTMLElement | null = null
   private placeholderElement: HTMLElement | null = null
-  private offsetX: number = 0
-  private offsetY: number = 0
+  // Distance from the cursor at drag start to the dragged element's top-left.
+  // Captured once in createGhost and reused on every updateGhostPosition call
+  // so the ghost tracks the cursor without snapping.
+  private cursorOffsetX: number = 0
+  private cursorOffsetY: number = 0
+  // Configured `fallbackOffsetX` / `fallbackOffsetY` — additive shift applied
+  // on top of the cursor-tracking position. Mirrors legacy `fallbackOffset`
+  // (positive x = ghost moves right of cursor; positive y = down).
+  private fallbackOffsetX: number = 0
+  private fallbackOffsetY: number = 0
   private ghostClass: string
   private chosenClass: string
   private dragClass: string
@@ -22,24 +80,50 @@ export class GhostManager {
   }
 
   /**
-   * Creates a ghost element from the dragged element
+   * Creates a ghost element from the dragged element.
+   *
    * @param draggedElement - The element being dragged
    * @param event - The drag event containing position information
-   * @param fallbackClass - Optional class added when running in fallback mode.
-   *   Applied alongside the configured `ghostClass` so styles intended for the
-   *   fallback ghost can target a stable, fallback-only hook.
+   * @param options - Optional configuration. See {@link CreateGhostOptions}.
+   *   When omitted, the ghost is appended to `document.body` with no
+   *   fallback class and zero offset (the pre-PR2 default).
    * @returns The created ghost element
    */
   createGhost(
     draggedElement: HTMLElement,
     event: MouseEvent | DragEvent | PointerEvent,
-    fallbackClass?: string
+    options?: CreateGhostOptions
   ): HTMLElement {
+    const fallbackClass = options?.fallbackClass
+    const appendTo = options?.appendTo ?? document.body
+    this.fallbackOffsetX = options?.offsetX ?? 0
+    this.fallbackOffsetY = options?.offsetY ?? 0
+    const dataIdAttr = options?.dataIdAttr ?? 'data-id'
     // Clean up any existing ghost
     this.destroyGhost()
 
     // Clone the dragged element
     this.ghostElement = draggedElement.cloneNode(true) as HTMLElement
+
+    // Strip identity attributes from the clone. With `fallbackOnBody: false`
+    // (PR2 default — legacy parity), the ghost lives inside the sortable
+    // zone, so any attribute that uniquely identifies the original would
+    // otherwise produce duplicate matches in DOM queries (notably
+    // `[data-id="..."]` lookups in tests and consumer code). Duplicate `id`
+    // is invalid HTML in any case; the ARIA / tabindex state describes the
+    // *real* element's user-facing semantics and has no meaning on a
+    // visual-only ghost clone (which is also `pointer-events: none`).
+    this.ghostElement.removeAttribute('id')
+    this.ghostElement.removeAttribute(dataIdAttr)
+    this.ghostElement.removeAttribute('aria-grabbed')
+    this.ghostElement.removeAttribute('aria-selected')
+    this.ghostElement.removeAttribute('aria-posinset')
+    this.ghostElement.removeAttribute('aria-setsize')
+    this.ghostElement.removeAttribute('tabindex')
+    // Descendant `id`s would also be duplicated; clear them too.
+    this.ghostElement
+      .querySelectorAll<HTMLElement>('[id]')
+      .forEach((el) => el.removeAttribute('id'))
 
     // Get computed styles from the original element
     const computedStyle = window.getComputedStyle(draggedElement)
@@ -108,14 +192,21 @@ export class GhostManager {
     this.ghostElement.style.transition = 'none' // Disable transitions during drag
 
     // Calculate offset from cursor to element top-left
-    this.offsetX = event.clientX - rect.left
-    this.offsetY = event.clientY - rect.top
+    this.cursorOffsetX = event.clientX - rect.left
+    this.cursorOffsetY = event.clientY - rect.top
 
     // Set initial position
     this.updateGhostPosition(event.clientX, event.clientY)
 
-    // Add to document body
-    document.body.appendChild(this.ghostElement)
+    // Append to the configured parent (defaults to document.body — matches
+    // legacy `fallbackOnBody: true`). When `fallbackOnBody` is false, callers
+    // pass the sortable zone's root element instead. The ghost uses
+    // `position: fixed` so layout positioning is unaffected by the parent;
+    // however, an ancestor with `overflow: hidden` (or a `transform` /
+    // `filter` / `will-change: transform` style that establishes a containing
+    // block for fixed-position descendants) will clip the ghost. That is the
+    // legacy behaviour as well — documented in PR2 #29.
+    appendTo.appendChild(this.ghostElement)
 
     // Apply chosen class to the original element
     draggedElement.classList.add(this.chosenClass)
@@ -134,10 +225,10 @@ export class GhostManager {
     anchorElement: HTMLElement,
     itemCount: number,
     event: MouseEvent | DragEvent | PointerEvent,
-    fallbackClass?: string
+    options?: CreateGhostOptions
   ): HTMLElement {
     // Create the base ghost from anchor
-    const ghost = this.createGhost(anchorElement, event, fallbackClass)
+    const ghost = this.createGhost(anchorElement, event, options)
 
     // Add stacked class
     ghost.classList.add('sortable-ghost-stacked')
@@ -205,8 +296,13 @@ export class GhostManager {
   updateGhostPosition(clientX: number, clientY: number): void {
     if (!this.ghostElement) return
 
-    this.ghostElement.style.left = `${clientX - this.offsetX}px`
-    this.ghostElement.style.top = `${clientY - this.offsetY}px`
+    // Position = cursor minus the grab offset (so the ghost tracks the cursor
+    // relative to where it was grabbed) plus the configured fallback offset.
+    // Legacy adds fallbackOffset.x / .y to the resulting position
+    // (see `_onTouchMove` in `legacy-sortable/src/Sortable.js`), so positive
+    // offsets shift the ghost right / down of the cursor.
+    this.ghostElement.style.left = `${clientX - this.cursorOffsetX + this.fallbackOffsetX}px`
+    this.ghostElement.style.top = `${clientY - this.cursorOffsetY + this.fallbackOffsetY}px`
   }
 
   /**

@@ -655,10 +655,16 @@ export class Sortable {
       case 'invertedSwapThreshold':
       case 'direction':
       case 'forceFallback':
-      case 'fallbackClass': {
+      case 'fallbackClass':
+      case 'fallbackOnBody':
+      case 'fallbackOffsetX':
+      case 'fallbackOffsetY': {
         // Re-create drag manager with new options. `forceFallback` changes
         // which DOM listeners get registered, so a setter at runtime must
         // tear down and rebuild — there is no in-place reconfigure path.
+        // The remaining fallback options are baked into the ghost on drag
+        // start, so a rebuild is the simplest way to apply them on the next
+        // drag without introducing setters for every field.
         this.dragManager.detach()
         this.dragManager = new DragManager(
           this.dropZone,
@@ -682,6 +688,9 @@ export class Sortable {
             direction: this.options.direction,
             forceFallback: this.options.forceFallback,
             fallbackClass: this.options.fallbackClass,
+            fallbackOnBody: this.options.fallbackOnBody,
+            fallbackOffsetX: this.options.fallbackOffsetX,
+            fallbackOffsetY: this.options.fallbackOffsetY,
             ghostClass: this.options.ghostClass,
             chosenClass: this.options.chosenClass,
             dragClass: this.options.dragClass,
@@ -717,6 +726,9 @@ export class Sortable {
             direction: this.options.direction,
             forceFallback: this.options.forceFallback,
             fallbackClass: this.options.fallbackClass,
+            fallbackOnBody: this.options.fallbackOnBody,
+            fallbackOffsetX: this.options.fallbackOffsetX,
+            fallbackOffsetY: this.options.fallbackOffsetY,
             ghostClass: this.options.ghostClass,
             chosenClass: this.options.chosenClass,
             dragClass: this.options.dragClass,
