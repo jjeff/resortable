@@ -441,9 +441,14 @@ export interface SortableOptions {
    * Callback fired during move operations
    * @param event - The move event with related element
    * @param originalEvent - The original drag event
-   * @returns false to cancel move
+   * @returns
+   * - `false` to cancel the move (no placeholder shift; no `sort` / `update` /
+   *   `change` emission for that tick)
+   * - `-1` to force inserting BEFORE the related item
+   * - `1` to force inserting AFTER the related item
+   * - `true` / `void` to proceed with the natural heuristic
    */
-  onMove?: (event: MoveEvent, originalEvent: Event) => boolean | void
+  onMove?: (event: MoveEvent, originalEvent: Event) => boolean | -1 | 1 | void
 
   /**
    * Callback fired when an element is cloned

@@ -3,6 +3,7 @@ import {
   SortableGroup,
   SelectionManagerInterface,
   DragManagerInterface,
+  MoveEvent,
 } from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
@@ -96,6 +97,19 @@ export class DragManager implements DragManagerInterface {
   // lives inside the zone (PR2 #29 — `fallbackOnBody: false` default).
   private _dataIdAttr: string
   private _setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
+  // `onMove` is invoked synchronously inside the dragover-driven reorder
+  // path with `(MoveEvent, originalEvent)`. Its return value controls the
+  // move:
+  //   `false`            — cancel (no placeholder shift, no sort/update/change)
+  //   `-1`               — force insert BEFORE related (override heuristic)
+  //   `1`                — force insert AFTER related (override heuristic)
+  //   `void` / `true`    — proceed with the natural heuristic
+  // The event-system `'move'` channel is still emitted for internal /
+  // plugin subscribers (notification only — cannot cancel). See #33.
+  private _onMove?: (
+    event: MoveEvent,
+    originalEvent: Event
+  ) => boolean | -1 | 1 | void
   private ghostManager: GhostManager
 
   private groupManager: GroupManager
@@ -147,6 +161,10 @@ export class DragManager implements DragManagerInterface {
       dragClass?: string
       deselectOnClickOutside?: boolean
       setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
+      onMove?: (
+        event: MoveEvent,
+        originalEvent: Event
+      ) => boolean | -1 | 1 | void
     }
   ) {
     // Initialize group manager
@@ -196,6 +214,7 @@ export class DragManager implements DragManagerInterface {
     this.preventOnFilter = options?.preventOnFilter ?? true
     this._dataIdAttr = options?.dataIdAttr ?? 'data-id'
     this._setData = options?.setData
+    this._onMove = options?.onMove
 
     // Initialize ghost manager with classes
     this.ghostManager = new GhostManager(
@@ -427,6 +446,23 @@ export class DragManager implements DragManagerInterface {
     return overlap >= threshold
   }
 
+  /**
+   * Notify all `move` subscribers (event-system channel, notification only)
+   * and invoke the `onMove` option (cancellation / override channel).
+   * Returns the option's return value verbatim so the caller can branch on
+   * it: `false` (cancel), `-1` (force before related), `1` (force after
+   * related), or `true` / `void` (proceed). See #33.
+   */
+  private dispatchMove(
+    moveEvent: MoveEvent,
+    originalEvent: Event
+  ): boolean | -1 | 1 | void {
+    // Side-channel notification — never cancels, never overrides.
+    this.events.emit('move', moveEvent)
+    // Option callback — the cancellation / override contract lives here.
+    return this._onMove?.(moveEvent, originalEvent)
+  }
+
   private onDragOver = (e: DragEvent): void => {
     e.preventDefault()
     // Stop the event from bubbling to ancestor sortables unless the user
@@ -483,23 +519,6 @@ export class DragManager implements DragManagerInterface {
       }
     }
 
-    // Update placeholder position
-    if (over instanceof HTMLElement && over !== dragItem) {
-      const placeholder = this.ghostManager.getPlaceholderElement()
-      if (placeholder) {
-        // Insert placeholder at the potential drop position
-        const overIndex = this.zone.getIndex(over)
-        const dragIndex = this.zone.getIndex(dragItem)
-        if (dragIndex < overIndex) {
-          // Dragging down - insert after
-          over.parentElement?.insertBefore(placeholder, over.nextSibling)
-        } else {
-          // Dragging up - insert before
-          over.parentElement?.insertBefore(placeholder, over)
-        }
-      }
-    }
-
     if (
       !(over instanceof HTMLElement) ||
       over === dragItem ||
@@ -521,8 +540,12 @@ export class DragManager implements DragManagerInterface {
       return // Don't swap if threshold not met
     }
 
+    // Natural insertion direction — dragging downwards inserts after the
+    // related item; dragging upwards inserts before.
+    const naturalAfter = dragIndex < overIndex
+
     // Create MoveEvent for onMove callback (always use original item for events)
-    const moveEvent: import('../types/index.js').MoveEvent = {
+    const moveEvent: MoveEvent = {
       item: originalItem,
       items: [originalItem],
       from: this.zone.element,
@@ -530,43 +553,34 @@ export class DragManager implements DragManagerInterface {
       oldIndex: dragIndex,
       newIndex: overIndex,
       related: over,
-      willInsertAfter: dragIndex < overIndex,
+      willInsertAfter: naturalAfter,
       draggedRect: dragRect,
       targetRect,
     }
 
-    // Fire onMove event
-    this.events.emit('move', moveEvent)
-
-    // Determine the correct insertion index based on drag direction
-    // We want to insert the dragged item before the item we're hovering over
-    let targetIndex = overIndex
-    if (dragIndex < overIndex) {
-      // Dragging downwards: insert at the position that will be before the target
-      // After removing the dragged item, target shifts down by 1, so we insert at overIndex - 1
-      targetIndex = overIndex - 1
-    } else {
-      // Dragging upwards: insert before the target (overIndex stays the same)
-      targetIndex = overIndex
+    // Dispatch move — emits the `'move'` channel (notification) AND invokes
+    // the `onMove` option (cancellation / override). Performed BEFORE any
+    // placeholder mutation so `false` is a true no-op for this tick. See #33.
+    const moveResult = this.dispatchMove(moveEvent, e)
+    if (moveResult === false) {
+      // Cancelled — skip placeholder move + sort/update/change emissions.
+      return
     }
 
-    // During drag, just move the placeholder, not the actual item
-    // The actual move will happen on drop
+    // Honor `-1` / `1` override — force the insertion side relative to the
+    // related item, regardless of the natural drag direction.
+    const insertAfter =
+      moveResult === 1 ? true : moveResult === -1 ? false : naturalAfter
+
+    // Update placeholder position to reflect the (possibly overridden)
+    // insertion point. Hoisted to AFTER dispatchMove so cancellation is
+    // observable (no DOM mutation when onMove returns false).
     const placeholder = this.ghostManager.getPlaceholderElement()
-    if (placeholder && placeholder.parentElement) {
-      // Move the placeholder to show where the item will drop
-      const targetElement = this.zone.getItems()[targetIndex]
-      if (targetElement && targetElement !== placeholder) {
-        if (dragIndex < overIndex) {
-          // Moving down - insert after target
-          targetElement.parentElement?.insertBefore(
-            placeholder,
-            targetElement.nextSibling
-          )
-        } else {
-          // Moving up - insert before target
-          targetElement.parentElement?.insertBefore(placeholder, targetElement)
-        }
+    if (placeholder) {
+      if (insertAfter) {
+        over.parentElement?.insertBefore(placeholder, over.nextSibling)
+      } else {
+        over.parentElement?.insertBefore(placeholder, over)
       }
     }
 
@@ -1094,13 +1108,45 @@ export class DragManager implements DragManagerInterface {
 
         const currentItems = targetZone.getItems()
         const currentIndex = currentItems.indexOf(movingElement)
-        const targetIndex = currentItems.indexOf(over)
+        const overIndex = currentItems.indexOf(over)
 
         if (
           currentIndex !== -1 &&
-          targetIndex !== -1 &&
-          currentIndex !== targetIndex
+          overIndex !== -1 &&
+          currentIndex !== overIndex
         ) {
+          // Dispatch move BEFORE mutating the DOM so cancellation is a true
+          // no-op for this tick (#33). Pointer pipeline uses the live
+          // `PointerEvent` as `originalEvent`.
+          const naturalAfter = currentIndex < overIndex
+          const moveEvent: MoveEvent = {
+            item: this.dragElement,
+            items:
+              this.draggedItems.length > 0
+                ? this.draggedItems
+                : [this.dragElement],
+            from: targetZoneElement,
+            to: targetZoneElement,
+            oldIndex: currentIndex,
+            newIndex: overIndex,
+            related: over,
+            willInsertAfter: naturalAfter,
+            draggedRect: movingElement.getBoundingClientRect(),
+            targetRect: over.getBoundingClientRect(),
+          }
+          const moveResult = this.dispatchMove(moveEvent, e)
+          if (moveResult === false) {
+            // Cancelled — skip DOM move + downstream emissions for this tick.
+            return
+          }
+
+          // Apply `-1` / `1` override by adjusting the target index relative
+          // to the natural insertion point. See #33.
+          let targetIndex = overIndex
+          if (moveResult === 1 && !naturalAfter) targetIndex = overIndex + 1
+          else if (moveResult === -1 && naturalAfter)
+            targetIndex = overIndex - 1
+
           // Use the DropZone's move method to get animations
           if (this.draggedItems.length > 1) {
             targetZone.moveMultiple(this.draggedItems, targetIndex)
