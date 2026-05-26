@@ -20,9 +20,34 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
 ## Installation
 
+### npm (recommended)
+
 ```bash
 npm install resortable
 ```
+
+> Resortable is not yet published to npm (`2.0.0-alpha.1` is the current in-repo version). Until first publish, install from a Git ref: `npm install jjeff/resortable`.
+
+### CDN (UMD)
+
+Once published, the UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking changes:
+
+```html
+<!-- unpkg -->
+<script src="https://unpkg.com/resortable@2.0.0-alpha.1/dist/sortable.umd.js"></script>
+
+<!-- or jsDelivr -->
+<script src="https://cdn.jsdelivr.net/npm/resortable@2.0.0-alpha.1/dist/sortable.umd.js"></script>
+
+<script>
+  // The UMD build attaches the library as `window.Sortable`
+  new Sortable(document.getElementById('my-list'), {
+    animation: 150,
+  });
+</script>
+```
+
+The ESM build via `npm install resortable` is the recommended path for app code — it tree-shakes, ships TypeScript types, and integrates with modern bundlers.
 
 ## Quick Start
 
@@ -135,9 +160,21 @@ sortable.usePlugin('AutoScroll');
 sortable.usePlugin('Swap');
 ```
 
-**Built-in plugins:** AutoScroll, Swap
+**Built-in plugins:** `AutoScroll`, `MarqueeSelect`, `OnSpill`, `Swap`. (A `MultiDrag` plugin name is also exported, but it's a deprecated no-op shim — see note below.)
 
-> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options.
+> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options. The exported `MultiDragPlugin` is preserved as a no-op for v1 back-compat only; see the [migration guide](./docs/migration-from-sortable-v1.md#multidrag-is-built-into-the-core--do-not-mount-the-plugin).
+
+### Authoring custom plugins
+
+See the [Plugin Development Guide](./src/plugins/PluginDevelopmentGuide.md) for the plugin lifecycle, hook reference, and authoring patterns.
+
+## API Reference
+
+Full TypeDoc-generated API reference: [jjeff.github.io/resortable/api/](https://jjeff.github.io/resortable/api/) *(coming soon — TypeDoc-generated, deployed via GitHub Pages)*.
+
+## Framework wrappers
+
+First-class wrappers for React, Vue, and Svelte are on the roadmap but not yet shipped. Resortable works today with any framework via the imperative `new Sortable(element, options)` API on a ref/`useEffect`-mounted element. See [#44](https://github.com/jjeff/resortable/issues/44) for the v2.0 master roadmap, where framework-wrapper packages are tracked.
 
 ## Examples
 
