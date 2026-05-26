@@ -482,3 +482,238 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
     await expect(page.locator('.sortable-ghost')).toHaveCount(0)
   })
 })
+
+/**
+ * Coverage for #29 (PR4) — gap-closing sweep across all fallback options.
+ *
+ * The earlier PR1/PR2/PR3 describe blocks each exercise one option family in
+ * isolation. PR4 fills in two cross-option holes:
+ *
+ *   1. `fallbackOnBody: false` + non-zero `fallbackOffsetX/Y`. The PR2
+ *      offset tests both used `fallbackOnBody: true` for predictable
+ *      positioning. Because GhostManager applies `position: fixed` to the
+ *      ghost, swapping the append target should not change the offset
+ *      math — this test verifies that invariant.
+ *   2. Full happy-path with every fallback option set at once: pointerdown,
+ *      sub-tolerance capture (no commit), past-tolerance commit, continued
+ *      movement, reorder, pointerup.
+ *
+ * Mobile projects continue to skip — fallback mode is a desktop-precision
+ * drag concern and touch emulation has different timing/geometry semantics
+ * (Mobile Chrome tracked in #48). This mirrors the skip pattern used by every
+ * preceding describe block in this file.
+ */
+test.describe('fallback cross-option sweep (#29 PR4)', () => {
+  const PR4_LIST = '#pr4-fallback-list'
+  const PR4_ITEM = (id: string): string => `${PR4_LIST} [data-id="${id}"]`
+  const PR4_ITEMS = `${PR4_LIST} .sortable-item:not(.sortable-ghost)`
+
+  type FullFallbackInit = {
+    fallbackOnBody?: boolean
+    fallbackOffsetX?: number
+    fallbackOffsetY?: number
+    fallbackTolerance?: number
+  }
+
+  async function buildList(page: Page, opts: FullFallbackInit): Promise<void> {
+    await page.evaluate((opts) => {
+      document.getElementById('pr4-fallback-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'pr4-fallback-list'
+      container.style.position = 'absolute'
+      container.style.top = '50px'
+      container.style.left = '50px'
+      container.style.width = '300px'
+      container.style.background = '#fee'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="pr4-1"
+             style="width:200px;height:40px;background:#dcc;">Item 1</div>
+        <div class="sortable-item" data-id="pr4-2"
+             style="width:200px;height:40px;background:#ddc;">Item 2</div>
+        <div class="sortable-item" data-id="pr4-3"
+             style="width:200px;height:40px;background:#dcc;">Item 3</div>
+        <div class="sortable-item" data-id="pr4-4"
+             style="width:200px;height:40px;background:#ddc;">Item 4</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithEvents extends Window {
+        __pr4Events?: string[]
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithEvents
+      win.__pr4Events = []
+      const push = (name: string) => (): void => {
+        win.__pr4Events?.push(name)
+      }
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        animation: 0,
+        forceFallback: true,
+        fallbackClass: 'sortable-fallback',
+        fallbackOnBody: opts.fallbackOnBody,
+        fallbackOffsetX: opts.fallbackOffsetX,
+        fallbackOffsetY: opts.fallbackOffsetY,
+        fallbackTolerance: opts.fallbackTolerance,
+        onChoose: push('choose'),
+        onStart: push('start'),
+        onEnd: push('end'),
+        onSort: push('sort'),
+      })
+    }, opts)
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+  })
+
+  test('fallbackOnBody:false combined with fallbackOffsetX/Y still shifts ghost', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const OFFSET_X = 30
+    const OFFSET_Y = -15
+    await buildList(page, {
+      fallbackOnBody: false,
+      fallbackOffsetX: OFFSET_X,
+      fallbackOffsetY: OFFSET_Y,
+    })
+
+    const from = await center(page, PR4_ITEM('pr4-1'))
+
+    // Capture the original element's rect BEFORE the drag (mirrors PR2
+    // tests). After commit, the dragged element gets `dragClass` applied
+    // and may shift, so an after-the-fact measurement would skew.
+    const origRect = await page
+      .locator(PR4_ITEM('pr4-1'))
+      .evaluate((el) => el.getBoundingClientRect())
+
+    // Small horizontal nudge — enough motion to commit a drag but not enough
+    // to reorder past the next item (and thereby move which element matches
+    // pr4-1 in the locator chain).
+    const target = { x: from.x + 25, y: from.y + 5 }
+
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x, from.y, { steps: 3 })
+    await page.mouse.move(target.x, target.y, { steps: 6 })
+
+    // Ghost lives inside the zone (default), not on body.
+    const ghost = page.locator(
+      `${PR4_LIST} > .sortable-ghost.sortable-fallback`
+    )
+    await expect(ghost).toHaveCount(1)
+    await expect(page.locator('body > .sortable-fallback')).toHaveCount(0)
+
+    // Read inline left/top + parent tag. GhostManager pins ghost with
+    // `position: fixed`, so `style.left`/`top` are viewport pixels even when
+    // the ghost is a child of the zone — the parent only governs DOM
+    // ownership, not layout positioning.
+    const {
+      left: ghostLeft,
+      top: ghostTop,
+      parentTag,
+    } = await ghost.evaluate((el) => ({
+      left: parseFloat((el as HTMLElement).style.left),
+      top: parseFloat((el as HTMLElement).style.top),
+      parentTag: el.parentElement?.tagName.toLowerCase() ?? '',
+    }))
+    // Sanity — the DOM parent really is the zone (a div), not body.
+    expect(parentTag).toBe('div')
+
+    // Same formula as PR2 — fixed positioning means style values are in
+    // viewport coords regardless of fallbackOnBody. The point of this test
+    // is to assert that swapping the append target does NOT change the
+    // positioning math.
+    //   ghost.left = cursor.x - (startCursor.x - origRect.left) + offsetX
+    //              = target.x - from.x + origRect.left + offsetX
+    const expectedLeft = target.x - from.x + origRect.left + OFFSET_X
+    const expectedTop = target.y - from.y + origRect.top + OFFSET_Y
+
+    // 2px slack matches the PR2 tolerance (sub-pixel rounding in the
+    // mouse-step pipeline).
+    expect(Math.abs(ghostLeft - expectedLeft)).toBeLessThanOrEqual(2)
+    expect(Math.abs(ghostTop - expectedTop)).toBeLessThanOrEqual(2)
+
+    await page.mouse.up()
+  })
+
+  test('end-to-end happy path with all fallback options set', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    await buildList(page, {
+      fallbackOnBody: false,
+      fallbackOffsetX: 8,
+      fallbackOffsetY: 4,
+      fallbackTolerance: 8,
+    })
+
+    const initial = await page
+      .locator(PR4_ITEMS)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')))
+    expect(initial).toEqual(['pr4-1', 'pr4-2', 'pr4-3', 'pr4-4'])
+
+    const from = await center(page, PR4_ITEM('pr4-1'))
+    const to = await center(page, PR4_ITEM('pr4-4'))
+
+    // 1) pointerdown
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+
+    // 2) capture phase — 3px move is under the 8px tolerance, no commit.
+    await page.mouse.move(from.x + 3, from.y, { steps: 2 })
+    await expect(page.locator('.sortable-ghost')).toHaveCount(0)
+    const capturedEvents = await page.evaluate(() =>
+      (window as unknown as { __pr4Events: string[] }).__pr4Events.slice()
+    )
+    expect(capturedEvents).toEqual([])
+
+    // 3) commit phase — cross the tolerance, ghost should appear inside the
+    //    zone (fallbackOnBody:false) with the fallback class.
+    await page.mouse.move(from.x + 20, from.y, { steps: 4 })
+    const ghost = page.locator(
+      `${PR4_LIST} > .sortable-ghost.sortable-fallback`
+    )
+    await expect(ghost).toHaveCount(1)
+
+    // 4) continue moving toward the bottom of the list
+    await page.mouse.move(to.x, to.y, { steps: 10 })
+
+    // 5) end — release and confirm reorder happened
+    await page.mouse.up()
+
+    const finalOrder = await page
+      .locator(PR4_ITEMS)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')))
+    expect(finalOrder[0]).not.toBe('pr4-1')
+    expect(finalOrder).toContain('pr4-1')
+    expect(finalOrder).toHaveLength(4)
+
+    // Lifecycle events fired in order. We don't lock down the exact set —
+    // animation timing and pointer pipeline both vary across runs — but at
+    // minimum `choose` + `start` must precede `end`.
+    const finalEvents = await page.evaluate(() =>
+      (window as unknown as { __pr4Events: string[] }).__pr4Events.slice()
+    )
+    expect(finalEvents).toContain('choose')
+    expect(finalEvents).toContain('start')
+    expect(finalEvents).toContain('end')
+    expect(finalEvents.indexOf('choose')).toBeLessThan(
+      finalEvents.indexOf('end')
+    )
+    expect(finalEvents.indexOf('start')).toBeLessThan(
+      finalEvents.indexOf('end')
+    )
+  })
+})

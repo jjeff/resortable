@@ -249,10 +249,11 @@ mapped to implementation phases.
 - [x] **invertSwap** - Always use inverted swap zone (Phase 2.5) ✅ Implemented
 - [x] **invertedSwapThreshold** - Threshold of inverted swap zone (Phase 2.5) ✅ Implemented
 - [x] **direction** - Direction of Sortable (auto-detect or manual) (Phase 2.5) ✅ Implemented
-- [x] **forceFallback** - Force fallback behavior ✅ Implemented in DragManager
-- [x] **fallbackClass** - Class for cloned DOM element in fallback ✅ Implemented in DragManager
-- [x] **fallbackOnBody** - Append cloned element to document body ✅ Implemented in DragManager
-- [x] **fallbackTolerance** - Pixels mouse should move before drag ✅ Implemented in DragManager
+- [x] **forceFallback** - Force fallback behavior ✅ Wired in DragManager (#29 PR1, #53)
+- [x] **fallbackClass** - Class for cloned DOM element in fallback ✅ Wired in DragManager (#29 PR1, #53)
+- [x] **fallbackOnBody** - Append cloned element to document body ✅ Wired in DragManager (#29 PR2, #54)
+- [x] **fallbackOffsetX / fallbackOffsetY** - Pixel offset for ghost relative to cursor ✅ Wired in DragManager (#29 PR2, #54)
+- [x] **fallbackTolerance** - Pixels mouse should move before drag ✅ Wired in DragManager (#29 PR3, #55)
 - [x] **dragoverBubble** - Allow dragover event to bubble (Phase 2.5) ✅ Implemented (property)
 - [x] **removeCloneOnHide** - Remove clone when not showing (Phase 2.5) ✅ Implemented (property)
 - [x] **emptyInsertThreshold** - Distance from empty sortable to insert (Phase 2.5) ✅ Implemented (property)
@@ -319,7 +320,7 @@ mapped to implementation phases.
 
 - [x] **Modern Pointer Events** - Mouse, touch, and pen input support (Phase 2.2) ✅ Implemented
 - [x] **Multi-touch Support** - Multiple simultaneous touch gestures (Phase 2.2) ✅ Implemented
-- [ ] **HTML5 Drag and Drop Fallback** - Legacy browser support (Phase 2.5)
+- [x] **HTML5 Drag and Drop Fallback** - Pointer-driven fallback drag system ✅ Implemented (#29: PRs #53, #54, #55, PR4)
 - [ ] **Touch Device Optimization** - Enhanced touch device experience (Phase 2.5)
 
 ### Accessibility Features ✅ NEW IN V2.0
@@ -597,12 +598,12 @@ behavior.
   - [x] Add manual direction override option
   - [x] Optimize sorting algorithms based on direction
 
-- [ ] **Fallback System**
-  - [ ] Implement `forceFallback` for non-HTML5 drag behavior
-  - [ ] Add `fallbackClass` for fallback element styling
-  - [ ] Implement `fallbackOnBody` option
-  - [ ] Add `fallbackTolerance` for drag threshold
-  - [ ] Create `fallbackOffset` for positioning
+- [x] **Fallback System** ✅ COMPLETED (#29: PRs #53, #54, #55, PR4)
+  - [x] Implement `forceFallback` for non-HTML5 drag behavior (PR1 / #53)
+  - [x] Add `fallbackClass` for fallback element styling (PR1 / #53)
+  - [x] Implement `fallbackOnBody` option (PR2 / #54)
+  - [x] Add `fallbackTolerance` for drag threshold (PR3 / #55)
+  - [x] Create `fallbackOffsetX` / `fallbackOffsetY` for positioning (PR2 / #54)
 
 - [x] **Additional Event Callbacks** ✅ COMPLETED
   - [x] Implement `onChoose` callback
@@ -627,7 +628,7 @@ behavior.
 
 - ✅ Complete swap behavior system with thresholds
 - ✅ Automatic and manual direction detection
-- ⏳ Full fallback system for legacy browser support
+- ✅ Full fallback system for pointer-driven drag (issue #29 — closed by PR4)
 - ✅ Core v1.x event callbacks (onChoose, onSort, onChange, onMove)
 - ⏳ Data management and persistence features
 - ⏳ Visual customization options
