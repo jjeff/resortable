@@ -2,7 +2,7 @@
   "$schema": "https://typedoc.org/schema.json",
   "name": "Resortable",
   "entryPoints": ["src/index.ts"],
-  "out": "docs",
+  "out": "docs/api",
   "theme": "default",
   "plugin": ["typedoc-plugin-markdown"],
   "gitRevision": "main",
