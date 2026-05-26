@@ -175,8 +175,13 @@ export class KeyboardManager {
                 this.selectionManager.selectRange(lastSelected, focused)
               }
             } else {
-              // Toggle selection (add/remove from selection)
-              this.selectionManager.toggle(focused)
+              // Toggle selection. In multi-select mode (multiDrag), the
+              // toggle is additive so prior selections stay. In single-
+              // select mode (default), pass additive=false so selecting a
+              // new item replaces the prior selection — both
+              // `aria-selected` and the selected class are cleared on the
+              // previously-selected items.
+              this.selectionManager.toggle(focused, this.multiDrag)
             }
           }
         }
@@ -259,12 +264,14 @@ export class KeyboardManager {
         this.selectionManager.selectRange(lastSelected, target)
       }
     } else if (e.ctrlKey || e.metaKey) {
-      // Toggle selection (modifier key always toggles)
+      // Ctrl/Cmd+Click is the canonical "extend selection" modifier;
+      // toggle additively so existing selections stay.
       e.preventDefault()
-      this.selectionManager.toggle(target)
+      this.selectionManager.toggle(target, true)
     } else if (this.multiDrag) {
       // When multiDrag is enabled, plain click toggles selection
-      this.selectionManager.toggle(target)
+      // additively.
+      this.selectionManager.toggle(target, true)
     } else {
       // Single selection (unless clicking on already selected item)
       if (!this.selectionManager.isSelected(target)) {
