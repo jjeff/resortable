@@ -303,6 +303,13 @@ export class Sortable {
         dragClass: this.options.dragClass,
         deselectOnClickOutside: this.options.deselectOnClickOutside,
         setData: this.options.setData,
+        // `onMove` is threaded directly into DragManager — unlike the other
+        // option callbacks which subscribe to the `EventSystem`, `onMove`
+        // controls cancellation / insert-side override via its return value
+        // (`false` / `-1` / `1`). The event-system can only propagate, not
+        // collect a return, so we wire it through the option bag instead.
+        // See #33.
+        onMove: this.options.onMove,
       }
     )
     this.dragManager.attach()
@@ -353,8 +360,11 @@ export class Sortable {
     if (this.options.onSelect) {
       this.eventSystem.on('select', this.options.onSelect)
     }
-    // Note: onMove is handled specially in DragManager as it needs the original event too
-    // TODO: Implement proper onMove handling with original event parameter
+    // `onMove` is wired directly through the DragManager constructor (above)
+    // because its return value controls cancellation / insert-side override,
+    // and the `EventSystem` channel cannot collect a return. The `'move'`
+    // event still fires on the event system as a notification side-channel.
+    // See #33.
     if (this.options.onClone) {
       this.eventSystem.on('clone', this.options.onClone)
     }
