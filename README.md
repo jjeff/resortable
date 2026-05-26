@@ -4,7 +4,7 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
 > **Alpha — Not ready for production use.** This library is under active development and has not been published to npm. APIs will change. If you need a drag-and-drop library today, use [SortableJS](https://github.com/SortableJS/Sortable).
 
-> **Migrating from Sortable.js?** See the [migration guide](https://github.com/jjeff/resortable/blob/main/docs/migration-from-sortable-v1.md) for the option/plugin/breaking-change delta.
+> **Migrating from Sortable.js?** See the [migration guide](./docs/migration-from-sortable-v1.md) for the option/plugin/breaking-change delta.
 
 ## Features
 
