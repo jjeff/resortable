@@ -61,6 +61,34 @@ describe('SelectionManager', () => {
       expect(selectionManager.getSelected()).toHaveLength(0)
       expect(items[0].getAttribute('aria-selected')).toBe('false')
     })
+
+    it('should deselect prior item when toggling a new item in single-select mode', () => {
+      // Simulates the keyboard Space-key flow: toggle item 0, then toggle item 1.
+      // In single-select mode (default), only the most recent should remain selected.
+      selectionManager.toggle(items[0])
+      expect(selectionManager.isSelected(items[0])).toBe(true)
+      expect(items[0].getAttribute('aria-selected')).toBe('true')
+      expect(items[0].classList.contains('sortable-selected')).toBe(true)
+
+      selectionManager.toggle(items[1])
+
+      expect(selectionManager.getSelected()).toHaveLength(1)
+      expect(selectionManager.isSelected(items[1])).toBe(true)
+      expect(selectionManager.isSelected(items[0])).toBe(false)
+      expect(items[0].getAttribute('aria-selected')).toBe('false')
+      expect(items[0].classList.contains('sortable-selected')).toBe(false)
+      expect(items[1].getAttribute('aria-selected')).toBe('true')
+      expect(items[1].classList.contains('sortable-selected')).toBe(true)
+    })
+
+    it('should deselect currently-selected item when toggled again in single-select mode', () => {
+      selectionManager.toggle(items[0])
+      selectionManager.toggle(items[0])
+
+      expect(selectionManager.getSelected()).toHaveLength(0)
+      expect(items[0].getAttribute('aria-selected')).toBe('false')
+      expect(items[0].classList.contains('sortable-selected')).toBe(false)
+    })
   })
 
   describe('Multi-Selection', () => {
@@ -86,6 +114,17 @@ describe('SelectionManager', () => {
 
       selectionManager.toggle(items[0])
       expect(selectionManager.getSelected()).not.toContain(items[0])
+    })
+
+    it('should keep prior selection when toggling additively in multi-select mode', () => {
+      // Multi-select call sites (Ctrl/Cmd+Click, Space when multiDrag is on)
+      // pass additive=true so prior selections survive.
+      selectionManager.toggle(items[0], true)
+      selectionManager.toggle(items[2], true)
+
+      expect(selectionManager.getSelected()).toContain(items[0])
+      expect(selectionManager.getSelected()).toContain(items[2])
+      expect(selectionManager.getSelected()).toHaveLength(2)
     })
 
     it('should select range of items', () => {

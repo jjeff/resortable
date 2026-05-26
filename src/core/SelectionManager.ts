@@ -19,13 +19,14 @@ export class SelectionManager implements SelectionManagerInterface {
     options?: {
       selectedClass?: string
       focusClass?: string
-      multiSelect?: boolean // TODO: Use in Phase 2.4 for multi-select logic
+      // multiSelect mode is enforced by call sites via the `additive`
+      // argument on select()/toggle(), so SelectionManager does not need
+      // to retain the flag itself.
+      multiSelect?: boolean
     }
   ) {
     this.selectedClass = options?.selectedClass || 'sortable-selected'
     this.focusClass = options?.focusClass || 'sortable-focused'
-    // TODO: Implement multiSelect logic in Phase 2.4
-    // this.multiSelect = options?.multiSelect || false
   }
 
   /**
@@ -55,14 +56,19 @@ export class SelectionManager implements SelectionManagerInterface {
 
   /**
    * Toggle selection of an item
+   *
+   * If the item is selected, it is deselected. Otherwise the item is
+   * selected; pass `additive = true` to keep the existing selection
+   * (multi-select behaviour) or leave it `false` to replace any current
+   * selection with just this item (single-select behaviour).
    */
-  public toggle(item: HTMLElement): void {
+  public toggle(item: HTMLElement, additive = false): void {
     if (!this.isValidItem(item)) return
 
     if (this.selectedItems.has(item)) {
       this.deselect(item)
     } else {
-      this.select(item, true)
+      this.select(item, additive)
     }
   }
 
