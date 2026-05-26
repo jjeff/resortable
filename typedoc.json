@@ -4,7 +4,6 @@
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
   "theme": "default",
-  "plugin": ["typedoc-plugin-markdown"],
   "gitRevision": "main",
   "gitRemote": "origin",
   "readme": "README.md",
@@ -56,7 +55,7 @@
   "searchInComments": true,
   "searchInDocuments": true,
   "cleanOutputDir": true,
-  "treatWarningsAsErrors": false,
+  "treatWarningsAsErrors": true,
   "validation": {
     "notExported": true,
     "invalidLink": true,
@@ -81,7 +80,8 @@
     "@fileoverview",
     "@public",
     "@readonly",
-    "@defaultValue"
+    "@defaultValue",
+    "@typeParam"
   ],
   "inlineTags": [
     "@link",
