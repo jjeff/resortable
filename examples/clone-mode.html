@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clone Mode &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .clone-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 16px;
+      }
+
+      .palette {
+        background: #f0f3f7;
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .palette h3,
+      .canvas h3 {
+        margin: 0 0 8px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+      }
+
+      .palette .sortable-list,
+      .canvas .sortable-list {
+        background: transparent;
+        border: 1px dashed var(--border-strong);
+      }
+
+      .palette .sortable-item {
+        background: #fff;
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      @media (max-width: 640px) {
+        .clone-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Clone mode</h1>
+        <p>
+          The palette uses <code>pull: 'clone'</code> &mdash; dragging from
+          it copies the item into the canvas while leaving the original in
+          place.
+        </p>
+      </header>
+
+      <section class="demo">
+        <div class="clone-layout">
+          <div class="palette">
+            <h3>Components</h3>
+            <ul id="palette" class="sortable-list">
+              <li class="sortable-item">Button</li>
+              <li class="sortable-item">Input</li>
+              <li class="sortable-item">Card</li>
+              <li class="sortable-item">Modal</li>
+            </ul>
+          </div>
+          <div class="canvas">
+            <h3>Canvas (drop here)</h3>
+            <ul id="canvas" class="sortable-list">
+              <li class="sortable-item">Heading</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// The palette pulls clones and refuses puts — it's a source only.
+new Sortable(document.getElementById('palette'), {
+  group: { name: 'components', pull: 'clone', put: false },
+  animation: 150,
+  draggable: '.sortable-item',
+  sort: false, // disable reordering within the palette
+})
+
+// The canvas accepts items and supports normal reordering.
+new Sortable(document.getElementById('canvas'), {
+  group: { name: 'components', pull: false, put: true },
+  animation: 150,
+  draggable: '.sortable-item',
+})</code></pre>
+        <div class="notes">
+          <strong>Note:</strong> <code>group.revertClone</code> is accepted
+          by the type but is not yet implemented in v2 &mdash; clones do not
+          animate back to their source position.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      new Sortable(document.getElementById('palette'), {
+        group: { name: 'components', pull: 'clone', put: false },
+        animation: 150,
+        draggable: '.sortable-item',
+        sort: false,
+      })
+
+      new Sortable(document.getElementById('canvas'), {
+        group: { name: 'components', pull: false, put: true },
+        animation: 150,
+        draggable: '.sortable-item',
+      })
+    </script>
+  </body>
+</html>

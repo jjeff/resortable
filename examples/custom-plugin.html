@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Plugin &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .log {
+        background: var(--code-bg);
+        color: var(--code-fg);
+        border-radius: 8px;
+        padding: 14px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.8125rem;
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 12px;
+      }
+
+      .log .row {
+        padding: 2px 0;
+        border-bottom: 1px solid #1f262d;
+      }
+
+      .log .row:last-child {
+        border-bottom: none;
+      }
+
+      .log .ev {
+        color: #79c0ff;
+      }
+
+      .log .ts {
+        color: #8b949e;
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Custom plugin</h1>
+        <p>
+          The smallest possible plugin: it implements the
+          <code>SortablePlugin</code> interface and subscribes to lifecycle
+          events on each Sortable instance it's installed on. Drag an item
+          to populate the log.
+        </p>
+      </header>
+
+      <section class="demo">
+        <ul id="cp-list" class="sortable-list">
+          <li class="sortable-item">Item one</li>
+          <li class="sortable-item">Item two</li>
+          <li class="sortable-item">Item three</li>
+          <li class="sortable-item">Item four</li>
+        </ul>
+        <div id="log" class="log" aria-label="Plugin event log">
+          <div class="row">
+            <span class="ts">--:--:--</span>
+            <span class="ev">Plugin installed</span> &mdash; waiting for
+            drag events&hellip;
+          </div>
+        </div>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// 1. Define a plugin object that satisfies the SortablePlugin
+//    interface: `name`, `version`, `install`, `uninstall`.
+//    The install hook gets the Sortable instance and can subscribe
+//    to its EventSystem. `eventSystem.on(...)` returns an
+//    unsubscribe function — capture them for clean teardown.
+const HelloPlugin = {
+  name: 'Hello',
+  version: '0.1.0',
+  install(sortable) {
+    const events = ['start', 'choose', 'move', 'sort', 'end']
+    const unsubs = events.map((ev) =&gt;
+      sortable.eventSystem.on(ev, (payload) =&gt; log(ev, payload))
+    )
+    sortable.__helloUnsubs = unsubs
+  },
+  uninstall(sortable) {
+    sortable.__helloUnsubs?.forEach((fn) =&gt; fn())
+    delete sortable.__helloUnsubs
+  },
+}
+
+// 2. Mount it globally so any Sortable can opt in.
+Sortable.mount(HelloPlugin)
+
+// 3. Create an instance and install the plugin on it.
+const sortable = new Sortable(document.getElementById('cp-list'), {
+  animation: 150,
+  draggable: '.sortable-item',
+})
+sortable.usePlugin('Hello')</code></pre>
+        <div class="notes">
+          <strong>API summary:</strong> a plugin is any object with
+          <code>name</code>, <code>version</code>, and
+          <code>install(sortable)</code> / <code>uninstall(sortable)</code>
+          methods. See <code>src/plugins/PluginDevelopmentGuide.md</code>
+          for the full authoring guide.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      const logEl = document.getElementById('log')
+      function log(ev, payload) {
+        const time = new Date().toTimeString().slice(0, 8)
+        const row = document.createElement('div')
+        row.className = 'row'
+        const summary =
+          payload && typeof payload === 'object' && 'item' in payload
+            ? ` item="${payload.item?.textContent?.trim() ?? ''}"`
+            : ''
+        row.innerHTML =
+          `<span class="ts">${time}</span>` +
+          `<span class="ev">${ev}</span>` +
+          summary
+        logEl.appendChild(row)
+        logEl.scrollTop = logEl.scrollHeight
+      }
+
+      const HelloPlugin = {
+        name: 'Hello',
+        version: '0.1.0',
+        install(sortable) {
+          const events = ['start', 'choose', 'move', 'sort', 'end']
+          const unsubs = events.map((ev) =>
+            sortable.eventSystem.on(ev, (payload) => log(ev, payload))
+          )
+          sortable.__helloUnsubs = unsubs
+        },
+        uninstall(sortable) {
+          sortable.__helloUnsubs?.forEach((fn) => fn())
+          delete sortable.__helloUnsubs
+        },
+      }
+
+      Sortable.mount(HelloPlugin)
+
+      const sortable = new Sortable(document.getElementById('cp-list'), {
+        animation: 150,
+        draggable: '.sortable-item',
+      })
+      sortable.usePlugin('Hello')
+    </script>
+  </body>
+</html>

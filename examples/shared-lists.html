@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shared Lists &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .lists {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .lists h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        color: var(--text-muted);
+      }
+
+      @media (max-width: 640px) {
+        .lists {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Shared lists</h1>
+        <p>
+          Two lists with the same <code>group</code> name. Items can be
+          dragged within a list or across to the other list.
+        </p>
+      </header>
+
+      <section class="demo">
+        <div class="lists">
+          <div>
+            <h3>To do</h3>
+            <ul id="list-todo" class="sortable-list">
+              <li class="sortable-item">Draft RFC</li>
+              <li class="sortable-item">Schedule design review</li>
+              <li class="sortable-item">Update changelog</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Done</h3>
+            <ul id="list-done" class="sortable-list">
+              <li class="sortable-item">Read the migration guide</li>
+              <li class="sortable-item">Set up the repo</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// Both lists share the group name 'tasks'. Items can move freely
+// between any sortables that opt into the same group.
+const common = {
+  animation: 150,
+  draggable: '.sortable-item',
+  group: 'tasks',
+}
+
+new Sortable(document.getElementById('list-todo'), {
+  ...common,
+  onAdd: (evt) =&gt; console.log('added to todo', evt.item),
+  onRemove: (evt) =&gt; console.log('removed from todo', evt.item),
+})
+
+new Sortable(document.getElementById('list-done'), {
+  ...common,
+  onAdd: (evt) =&gt; console.log('added to done', evt.item),
+  onRemove: (evt) =&gt; console.log('removed from done', evt.item),
+})</code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      const common = {
+        animation: 150,
+        draggable: '.sortable-item',
+        group: 'tasks',
+      }
+
+      new Sortable(document.getElementById('list-todo'), {
+        ...common,
+        onAdd: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('added to todo', evt.item)
+        },
+        onRemove: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('removed from todo', evt.item)
+        },
+      })
+
+      new Sortable(document.getElementById('list-done'), {
+        ...common,
+        onAdd: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('added to done', evt.item)
+        },
+        onRemove: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('removed from done', evt.item)
+        },
+      })
+    </script>
+  </body>
+</html>

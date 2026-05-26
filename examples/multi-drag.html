@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Drag &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Multi-drag</h1>
+        <p>
+          Hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS) and click items
+          to add them to the selection. Then drag any selected item to move
+          the whole batch.
+        </p>
+      </header>
+
+      <section class="demo">
+        <ul id="multi-list" class="sortable-list">
+          <li class="sortable-item">January</li>
+          <li class="sortable-item">February</li>
+          <li class="sortable-item">March</li>
+          <li class="sortable-item">April</li>
+          <li class="sortable-item">May</li>
+          <li class="sortable-item">June</li>
+          <li class="sortable-item">July</li>
+        </ul>
+        <p style="color: var(--text-muted); margin-top: 12px">
+          Tip: <kbd>Shift</kbd>+click selects a range.
+        </p>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// In v2, multi-drag is built into the core — set `multiDrag: true`
+// on the instance. Do NOT mount MultiDragPlugin: it ships as a
+// deprecated no-op shim for back-compat only.
+new Sortable(document.getElementById('multi-list'), {
+  animation: 150,
+  draggable: '.sortable-item',
+  multiDrag: true,
+  selectedClass: 'sortable-selected',
+  onSelect: (evt) =&gt; {
+    console.log('selection changed', evt.items?.length ?? 0, 'items')
+  },
+})</code></pre>
+        <div class="notes">
+          <strong>Migration note:</strong> if you're porting from v1's
+          <code>MultiDrag</code> plugin, remove the
+          <code>Sortable.mount(new MultiDrag())</code> call. The plugin no
+          longer does anything in v2 &mdash; the
+          <code>multiDrag: true</code> option is enough.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      new Sortable(document.getElementById('multi-list'), {
+        animation: 150,
+        draggable: '.sortable-item',
+        multiDrag: true,
+        selectedClass: 'sortable-selected',
+        onSelect: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('selection changed', evt.items?.length ?? 0, 'items')
+        },
+      })
+    </script>
+  </body>
+</html>

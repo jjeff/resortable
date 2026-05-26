@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basic List &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Basic list</h1>
+        <p>
+          A single sortable list. Drag any item up or down to reorder. This
+          is the smallest useful Resortable setup.
+        </p>
+      </header>
+
+      <section class="demo">
+        <ul id="basic-list" class="sortable-list">
+          <li class="sortable-item">Write the spec</li>
+          <li class="sortable-item">Build the prototype</li>
+          <li class="sortable-item">Test with users</li>
+          <li class="sortable-item">Polish the UI</li>
+          <li class="sortable-item">Ship it</li>
+        </ul>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// Make a list sortable in one call. `draggable: '.sortable-item'`
+// is the v2 default; we set it explicitly to match the migration
+// guide and keep this example self-documenting.
+new Sortable(document.getElementById('basic-list'), {
+  animation: 150,
+  draggable: '.sortable-item',
+  onEnd: (evt) =&gt; {
+    console.log(`moved ${evt.oldIndex} → ${evt.newIndex}`)
+  },
+})</code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      new Sortable(document.getElementById('basic-list'), {
+        animation: 150,
+        draggable: '.sortable-item',
+        onEnd: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log(`moved ${evt.oldIndex} → ${evt.newIndex}`)
+        },
+      })
+    </script>
+  </body>
+</html>
