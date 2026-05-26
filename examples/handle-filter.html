@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Handle + Filter &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .hf-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin: 6px 0;
+        user-select: none;
+      }
+
+      .drag-handle {
+        cursor: grab;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .drag-handle:hover {
+        background: var(--bg);
+      }
+
+      .hf-item .label {
+        flex: 1;
+      }
+
+      .hf-item.no-drag {
+        opacity: 0.65;
+        background: repeating-linear-gradient(
+          45deg,
+          #f7f7f7,
+          #f7f7f7 6px,
+          #f0f0f0 6px,
+          #f0f0f0 12px
+        );
+      }
+
+      .hf-item.no-drag .drag-handle {
+        cursor: not-allowed;
+        opacity: 0.4;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Handle + filter</h1>
+        <p>
+          Drags only initiate from the <code>::</code> handle. Items marked
+          <code>.no-drag</code> can't be moved at all &mdash; their handles
+          are inert.
+        </p>
+      </header>
+
+      <section class="demo">
+        <ul id="hf-list" class="sortable-list">
+          <li class="hf-item">
+            <span class="drag-handle" aria-hidden="true">::</span>
+            <span class="label">Movable row 1</span>
+          </li>
+          <li class="hf-item">
+            <span class="drag-handle" aria-hidden="true">::</span>
+            <span class="label">Movable row 2</span>
+          </li>
+          <li class="hf-item no-drag">
+            <span class="drag-handle" aria-hidden="true">::</span>
+            <span class="label">Locked row (filtered out)</span>
+          </li>
+          <li class="hf-item">
+            <span class="drag-handle" aria-hidden="true">::</span>
+            <span class="label">Movable row 3</span>
+          </li>
+          <li class="hf-item no-drag">
+            <span class="drag-handle" aria-hidden="true">::</span>
+            <span class="label">Another locked row</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+new Sortable(document.getElementById('hf-list'), {
+  animation: 150,
+  draggable: '.hf-item',
+  // `handle` restricts where a drag can START — clicking anywhere
+  // else on the row does nothing.
+  handle: '.drag-handle',
+  // `filter` is a CSS selector for rows that should never be
+  // draggable, even from the handle.
+  filter: '.no-drag',
+  // Block the pointer event on filtered rows so they don't even
+  // begin a "chosen" state.
+  preventOnFilter: true,
+  onFilter: (evt) =&gt; {
+    console.log('blocked', evt.item)
+  },
+})</code></pre>
+        <div class="notes">
+          <strong>v2 reminder:</strong> <code>filter</code> only accepts a
+          CSS selector string in v2. The legacy function form is gone
+          &mdash; do any custom checks inside <code>onFilter</code>.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      new Sortable(document.getElementById('hf-list'), {
+        animation: 150,
+        draggable: '.hf-item',
+        handle: '.drag-handle',
+        filter: '.no-drag',
+        preventOnFilter: true,
+        onFilter: (evt) => {
+          // eslint-disable-next-line no-console
+          console.log('blocked', evt.item)
+        },
+      })
+    </script>
+  </body>
+</html>

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kanban Board &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .column {
+        background: #f0f3f7;
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 280px;
+      }
+
+      .column h3 {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .column h3 .count {
+        background: var(--surface);
+        border-radius: 999px;
+        padding: 1px 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+      }
+
+      .column .sortable-list {
+        background: transparent;
+        border: none;
+        flex: 1;
+        padding: 0;
+      }
+
+      .card-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin: 6px 0;
+        cursor: grab;
+        user-select: none;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+
+      .card-item:active {
+        cursor: grabbing;
+      }
+
+      .card-item .meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+      }
+
+      .col-todo .card-item {
+        border-left-color: #ef6c00;
+      }
+      .col-progress .card-item {
+        border-left-color: #2962ff;
+      }
+      .col-done .card-item {
+        border-left-color: #2e7d32;
+      }
+
+      @media (max-width: 720px) {
+        .board {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Kanban board</h1>
+        <p>
+          A three-column board. Each column is its own Sortable instance,
+          all sharing the <code>board</code> group so cards can move
+          anywhere.
+        </p>
+      </header>
+
+      <section class="demo">
+        <div class="board">
+          <div class="column col-todo">
+            <h3>To do <span class="count" data-count="todo">3</span></h3>
+            <ul id="col-todo" class="sortable-list">
+              <li class="card-item">
+                Design onboarding flow
+                <div class="meta">design &middot; 2d</div>
+              </li>
+              <li class="card-item">
+                Audit accessibility
+                <div class="meta">a11y &middot; 1d</div>
+              </li>
+              <li class="card-item">
+                Write release notes
+                <div class="meta">docs &middot; 30m</div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="column col-progress">
+            <h3>
+              In progress <span class="count" data-count="progress">2</span>
+            </h3>
+            <ul id="col-progress" class="sortable-list">
+              <li class="card-item">
+                Implement search filter
+                <div class="meta">eng &middot; 3d</div>
+              </li>
+              <li class="card-item">
+                Refactor auth module
+                <div class="meta">eng &middot; 5d</div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="column col-done">
+            <h3>Done <span class="count" data-count="done">2</span></h3>
+            <ul id="col-done" class="sortable-list">
+              <li class="card-item">
+                Migrate to v2
+                <div class="meta">eng &middot; done</div>
+              </li>
+              <li class="card-item">
+                Update docs
+                <div class="meta">docs &middot; done</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+const columns = ['col-todo', 'col-progress', 'col-done']
+
+// Every column shares the same group ('board'), so cards can move
+// freely between any two of them. `draggable: '.card-item'` scopes
+// the drag handle to the visible card class (overriding the default
+// '.sortable-item').
+columns.forEach((id) =&gt; {
+  new Sortable(document.getElementById(id), {
+    group: 'board',
+    animation: 150,
+    draggable: '.card-item',
+    ghostClass: 'sortable-ghost',
+    // Both source and target columns need to refresh their counts
+    // on cross-column moves, so subscribe to add/remove too.
+    onSort: refreshCounts,
+    onAdd: refreshCounts,
+    onRemove: refreshCounts,
+  })
+})
+
+function refreshCounts() {
+  for (const col of columns) {
+    const list = document.getElementById(col)
+    const count = list.querySelectorAll('.card-item').length
+    const slot = document.querySelector(
+      `[data-count="${col.replace('col-', '')}"]`
+    )
+    if (slot) slot.textContent = String(count)
+  }
+}</code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      const columns = ['col-todo', 'col-progress', 'col-done']
+
+      function refreshCounts() {
+        for (const col of columns) {
+          const list = document.getElementById(col)
+          if (!list) continue
+          const count = list.querySelectorAll('.card-item').length
+          const slot = document.querySelector(
+            `[data-count="${col.replace('col-', '')}"]`
+          )
+          if (slot) slot.textContent = String(count)
+        }
+      }
+
+      columns.forEach((id) => {
+        new Sortable(document.getElementById(id), {
+          group: 'board',
+          animation: 150,
+          draggable: '.card-item',
+          ghostClass: 'sortable-ghost',
+          onSort: refreshCounts,
+          onAdd: refreshCounts,
+          onRemove: refreshCounts,
+        })
+      })
+    </script>
+  </body>
+</html>

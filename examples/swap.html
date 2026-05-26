@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Swap Plugin &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .swap-highlight {
+        background: #ffecb3 !important;
+        border-color: #f9a825 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Swap plugin</h1>
+        <p>
+          With the Swap plugin enabled, dropping item A on item B exchanges
+          their positions instead of inserting A between siblings.
+        </p>
+      </header>
+
+      <section class="demo">
+        <ul id="swap-list" class="sortable-list">
+          <li class="sortable-item">Alpha</li>
+          <li class="sortable-item">Bravo</li>
+          <li class="sortable-item">Charlie</li>
+          <li class="sortable-item">Delta</li>
+          <li class="sortable-item">Echo</li>
+        </ul>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+import { SwapPlugin } from '../src/plugins/index.ts'
+
+// 1. Mount the plugin globally (registers it with the PluginSystem).
+Sortable.mount(SwapPlugin.create({ swapClass: 'swap-highlight' }))
+
+// 2. Create the instance.
+const sortable = new Sortable(document.getElementById('swap-list'), {
+  animation: 150,
+  draggable: '.sortable-item',
+})
+
+// 3. Install the plugin on this instance.
+sortable.usePlugin('Swap')</code></pre>
+        <div class="notes">
+          <strong>Note:</strong> the <code>swapClass</code> option styles the
+          item under the pointer while you hover, so users see which item
+          will be swapped on drop.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+      import { SwapPlugin } from '../src/plugins/index.ts'
+
+      Sortable.mount(SwapPlugin.create({ swapClass: 'swap-highlight' }))
+
+      const sortable = new Sortable(document.getElementById('swap-list'), {
+        animation: 150,
+        draggable: '.sortable-item',
+      })
+
+      sortable.usePlugin('Swap')
+    </script>
+  </body>
+</html>

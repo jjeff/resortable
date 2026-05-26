@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accessibility &mdash; Resortable</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .instructions {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin-bottom: 16px;
+      }
+
+      .instructions h2 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+
+      .instructions ul {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--text-muted);
+      }
+
+      .instructions kbd {
+        background: #f5f5f5;
+        border: 1px solid var(--border-strong);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.8125rem;
+        color: var(--text);
+      }
+
+      #a11y-list .sortable-item {
+        outline-offset: 2px;
+      }
+
+      #a11y-list .sortable-item:focus,
+      #a11y-list .sortable-item.sortable-focused {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      .live-status {
+        background: #e8f5e9;
+        border-left: 4px solid #2e7d32;
+        padding: 10px 14px;
+        border-radius: 4px;
+        margin-top: 12px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        min-height: 1.5em;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="./index.html">&larr; All examples</a>
+      <header class="example-header">
+        <h1>Accessibility &mdash; keyboard-only sorting</h1>
+        <p>
+          Resortable ships with full keyboard support. Click the list once
+          to focus it, then sort entirely from the keyboard. A screen
+          reader live region (built in) announces each move.
+        </p>
+      </header>
+
+      <section class="instructions" aria-labelledby="hot-keys-heading">
+        <h2 id="hot-keys-heading">Keyboard reference</h2>
+        <ul>
+          <li>
+            <kbd>&uarr;</kbd> / <kbd>&darr;</kbd> &mdash; move focus
+            between items
+          </li>
+          <li><kbd>Space</kbd> &mdash; select / deselect the focused item</li>
+          <li>
+            <kbd>Enter</kbd> &mdash; grab the selected item(s); press again
+            to drop
+          </li>
+          <li>
+            While grabbed, <kbd>&uarr;</kbd> / <kbd>&darr;</kbd> move the
+            grabbed items
+          </li>
+          <li><kbd>Esc</kbd> &mdash; cancel the grab</li>
+          <li><kbd>Home</kbd> / <kbd>End</kbd> &mdash; jump to first / last</li>
+        </ul>
+      </section>
+
+      <section class="demo">
+        <ul id="a11y-list" class="sortable-list" tabindex="0">
+          <li class="sortable-item">Read documentation</li>
+          <li class="sortable-item">Try the keyboard demo</li>
+          <li class="sortable-item">File a bug report</li>
+          <li class="sortable-item">Star the repo</li>
+          <li class="sortable-item">Tell a friend</li>
+        </ul>
+        <p class="live-status" id="status" aria-live="polite">
+          Ready. Tab into the list to begin.
+        </p>
+      </section>
+
+      <section class="code-section">
+        <h2>How it was wired</h2>
+        <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
+
+// `enableAccessibility` is on by default in v2 — keyboard
+// navigation, ARIA attributes, and a screen-reader live region
+// are all wired automatically.
+new Sortable(document.getElementById('a11y-list'), {
+  animation: 150,
+  draggable: '.sortable-item',
+  enableAccessibility: true,
+  focusClass: 'sortable-focused',
+  onStart: (evt) =&gt; {
+    setStatus(`Grabbed: ${evt.item.textContent.trim()}`)
+  },
+  onEnd: (evt) =&gt; {
+    setStatus(`Dropped at position ${evt.newIndex + 1}`)
+  },
+  onSelect: (evt) =&gt; {
+    setStatus(`Selection: ${evt.items?.length ?? 0} item(s)`)
+  },
+})
+
+// The built-in live region (`.sortable-announcer`) announces moves
+// to screen readers automatically. The visible status panel below
+// is just a UI mirror for sighted users.</code></pre>
+        <div class="notes">
+          <strong>Built-in:</strong> a single shared
+          <code>.sortable-announcer</code> element with
+          <code>aria-live="assertive"</code> is appended to the document
+          when the first accessibility-enabled Sortable initialises. You
+          don't need to add one yourself.
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { Sortable } from '../src/index.ts'
+
+      const statusEl = document.getElementById('status')
+      function setStatus(msg) {
+        if (statusEl) statusEl.textContent = msg
+      }
+
+      new Sortable(document.getElementById('a11y-list'), {
+        animation: 150,
+        draggable: '.sortable-item',
+        enableAccessibility: true,
+        focusClass: 'sortable-focused',
+        onStart: (evt) => {
+          setStatus(`Grabbed: ${evt.item.textContent.trim()}`)
+        },
+        onEnd: (evt) => {
+          setStatus(`Dropped at position ${evt.newIndex + 1}`)
+        },
+        onSelect: (evt) => {
+          setStatus(`Selection: ${evt.items?.length ?? 0} item(s)`)
+        },
+      })
+    </script>
+  </body>
+</html>

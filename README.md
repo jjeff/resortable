@@ -139,6 +139,10 @@ sortable.usePlugin('Swap');
 
 > **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options.
 
+## Examples
+
+The repo ships with a curated set of nine standalone examples covering the v2 API surface — basic list, shared lists, kanban board, clone mode, swap, multi-drag, handle + filter, accessibility, and a custom plugin. See [`./examples/index.html`](./examples/index.html) for the landing page (clone the repo and `npm run dev`, then open `http://localhost:5173/examples/index.html`).
+
 ## Development
 
 ```bash

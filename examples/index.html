@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resortable Examples</title>
+    <link rel="stylesheet" href="./_shared.css" />
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .card {
+        display: block;
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition:
+          transform 120ms ease,
+          border-color 120ms ease,
+          box-shadow 120ms ease;
+      }
+
+      .card:hover {
+        border-color: var(--accent);
+        box-shadow: 0 4px 12px rgba(41, 98, 255, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .card .icon {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+        text-align: center;
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 6px;
+      }
+
+      .card h3 {
+        margin: 8px 0 4px;
+        font-size: 1rem;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+      }
+
+      .intro {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+      }
+
+      .intro h2 {
+        margin-top: 0;
+      }
+
+      .intro code {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+      }
+
+      .section-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin: 24px 0 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="example-header">
+        <h1>Resortable Examples</h1>
+        <p>
+          Nine standalone, single-concept examples covering the v2 API surface.
+          Each page shows a live demo and the annotated source that wired it
+          up.
+        </p>
+      </header>
+
+      <section class="intro">
+        <h2>Running locally</h2>
+        <p>
+          These examples import the library directly from
+          <code>../src/index.ts</code>. Run <code>npm run dev</code> from the
+          repo root, then open any example via Vite at
+          <code>http://localhost:5173/examples/&lt;name&gt;.html</code>.
+        </p>
+      </section>
+
+      <div class="section-label">Core concepts</div>
+      <div class="grid">
+        <a class="card" href="./basic.html">
+          <span class="icon" aria-hidden="true">1</span>
+          <h3>Basic list</h3>
+          <p>A single sortable list. The hello world of Resortable.</p>
+        </a>
+
+        <a class="card" href="./shared-lists.html">
+          <span class="icon" aria-hidden="true">2</span>
+          <h3>Shared lists</h3>
+          <p>
+            Two lists sharing a <code>group</code> name &mdash; items move
+            between them.
+          </p>
+        </a>
+
+        <a class="card" href="./kanban.html">
+          <span class="icon" aria-hidden="true">3</span>
+          <h3>Kanban board</h3>
+          <p>
+            A three-column board with a shared group and realistic styling.
+          </p>
+        </a>
+
+        <a class="card" href="./clone-mode.html">
+          <span class="icon" aria-hidden="true">4</span>
+          <h3>Clone mode</h3>
+          <p>
+            <code>pull: 'clone'</code> &mdash; drag a copy and leave the
+            source in place.
+          </p>
+        </a>
+      </div>
+
+      <div class="section-label">Plugins</div>
+      <div class="grid">
+        <a class="card" href="./swap.html">
+          <span class="icon" aria-hidden="true">5</span>
+          <h3>Swap plugin</h3>
+          <p>
+            Items swap positions instead of inserting. Mounted via
+            <code>Sortable.mount(SwapPlugin.create())</code>.
+          </p>
+        </a>
+
+        <a class="card" href="./multi-drag.html">
+          <span class="icon" aria-hidden="true">6</span>
+          <h3>Multi-drag</h3>
+          <p>
+            Ctrl/Cmd + click to select multiple items, then drag them as a
+            batch.
+          </p>
+        </a>
+      </div>
+
+      <div class="section-label">Behaviors</div>
+      <div class="grid">
+        <a class="card" href="./handle-filter.html">
+          <span class="icon" aria-hidden="true">7</span>
+          <h3>Handle + filter</h3>
+          <p>
+            Drag from a handle (<code>.drag-handle</code>) and block items via
+            <code>filter</code>.
+          </p>
+        </a>
+
+        <a class="card" href="./accessibility.html">
+          <span class="icon" aria-hidden="true">8</span>
+          <h3>Accessibility</h3>
+          <p>
+            Keyboard-only sorting with arrow keys, Space, Enter, Escape, and
+            an SR live region.
+          </p>
+        </a>
+
+        <a class="card" href="./custom-plugin.html">
+          <span class="icon" aria-hidden="true">9</span>
+          <h3>Custom plugin</h3>
+          <p>
+            A minimal Hello World plugin that logs lifecycle events on every
+            drag.
+          </p>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>
