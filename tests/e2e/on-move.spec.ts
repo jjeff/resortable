@@ -43,6 +43,9 @@ async function replaceSortable(
             realOptions[k] = (evt: any, originalEvent: Event) => {
               window.eventLog?.push({
                 related: evt.related?.dataset?.id ?? null,
+                relatedId: evt.related?.id ?? null,
+                relatedIsContainer:
+                  evt.related === evt.to || evt.related?.id === evt.to?.id,
                 from: evt.from?.id ?? null,
                 to: evt.to?.id ?? null,
                 originalIsEvent: originalEvent instanceof Event,
@@ -342,5 +345,134 @@ test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners
       'fb-3',
       'fb-4',
     ])
+  })
+})
+
+/**
+ * #60 — Cross-zone enter (pointer pipeline). Extends the #33 contract to the
+ * cross-zone enter sites in `DragManager.onPointerMove`.
+ *
+ * Fixtures: `#shared-a-1` (A1..A4) and `#shared-a-2` (A5..A8) — both in the
+ * `shared-test` group in `index.html`.
+ *
+ * The bootstrap script already constructs both Sortables; we tear them down
+ * and rebuild with our test-specific `onMove` callbacks via the
+ * `replaceSortable` helper.
+ */
+const SHARED_A_1 = '#shared-a-1'
+const SHARED_A_2 = '#shared-a-2'
+
+const sharedItem = (id: string): string => `.sortable-item[data-id="${id}"]`
+
+test.describe('onMove (#60) — cross-zone enter (pointer pipeline)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+    await expect(
+      page.locator(`${SHARED_A_1} .sortable-item:not(.sortable-ghost)`)
+    ).toHaveCount(4)
+    await expect(
+      page.locator(`${SHARED_A_2} .sortable-item:not(.sortable-ghost)`)
+    ).toHaveCount(4)
+  })
+
+  function skipMobile(testInfo: { project: { name: string } }): boolean {
+    return /Mobile/.test(testInfo.project.name)
+  }
+
+  test('returning false leaves item in source list (no cross-zone enter)', async ({
+    page,
+  }, testInfo) => {
+    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
+
+    await replaceSortable(page, 'shared-a-1', {
+      animation: 0,
+      group: 'shared-test',
+      ghostClass: 'sortable-ghost',
+      onMove: { __callback: 'returnFalse' },
+    })
+    await replaceSortable(page, 'shared-a-2', {
+      animation: 0,
+      group: 'shared-test',
+      ghostClass: 'sortable-ghost',
+    })
+
+    const beforeA1 = await idsIn(page, SHARED_A_1)
+    const beforeA2 = await idsIn(page, SHARED_A_2)
+    expect(beforeA1).toContain('a-1')
+    expect(beforeA2).not.toContain('a-1')
+
+    // Drag a-1 from source into the middle of the target list (over a-6).
+    await dragAndDropWithAnimation(page, sharedItem('a-1'), sharedItem('a-6'))
+
+    const afterA1 = await idsIn(page, SHARED_A_1)
+    const afterA2 = await idsIn(page, SHARED_A_2)
+
+    // Cancellation means a-1 should still live in source-a-1 — never enter a-2.
+    expect(afterA1).toEqual(beforeA1)
+    expect(afterA2).toEqual(beforeA2)
+  })
+
+  test('dropping into an empty target zone — related is the container itself', async ({
+    page,
+  }, testInfo) => {
+    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
+
+    // Empty the target list so the cross-zone enter has no sibling under
+    // the pointer — exercises the `related === targetZoneElement` branch
+    // (legacy parity).
+    await page.evaluate(() => {
+      const target = document.getElementById('shared-a-2')
+      if (target) {
+        target.querySelectorAll('.sortable-item').forEach((el) => el.remove())
+      }
+    })
+    await expect(
+      page.locator(`${SHARED_A_2} .sortable-item:not(.sortable-ghost)`)
+    ).toHaveCount(0)
+
+    await replaceSortable(page, 'shared-a-1', {
+      animation: 0,
+      group: 'shared-test',
+      ghostClass: 'sortable-ghost',
+      onMove: { __callback: 'logMove' },
+    })
+    await replaceSortable(page, 'shared-a-2', {
+      animation: 0,
+      group: 'shared-test',
+      ghostClass: 'sortable-ghost',
+    })
+
+    // Drop a-1 onto the empty target container.
+    const from = await center(page, sharedItem('a-1'))
+    const targetBox = await page.locator(SHARED_A_2).boundingBox()
+    if (!targetBox) throw new Error('no bounding box for target')
+    const to = {
+      x: targetBox.x + targetBox.width / 2,
+      y: targetBox.y + targetBox.height / 2,
+    }
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x, from.y, { steps: 3 })
+    await page.mouse.move(to.x, to.y, { steps: 10 })
+    await page.mouse.up()
+
+    // Inspect the captured MoveEvents — at least one should report
+    // `related === target container` (data-id null, since the related
+    // element here is the container `<div id="shared-a-2">`, not a draggable).
+    const log = (await page.evaluate(() => window.eventLog ?? [])) as Array<{
+      related: string | null
+      relatedId: string | null
+      relatedIsContainer: boolean
+      from: string | null
+      to: string | null
+    }>
+    expect(log.length).toBeGreaterThan(0)
+    const containerHit = log.find(
+      (c) => c.to === 'shared-a-2' && c.relatedIsContainer === true
+    )
+    expect(containerHit).toBeTruthy()
+    expect(containerHit?.from).toBe('shared-a-1')
+    expect(containerHit?.relatedId).toBe('shared-a-2')
   })
 })

@@ -188,6 +188,73 @@ describe('onMove (#33)', () => {
     expect(placeholder?.nextElementSibling).toBe(item3)
   })
 
+  it('cross-zone enter: returning false leaves the item in the source zone (#60)', () => {
+    // Build a second container in the same shared group so cross-zone enter
+    // is allowed by the group-compat check.
+    const target = document.createElement('div')
+    target.id = 'target'
+    document.body.appendChild(target)
+    const sortableSource = new Sortable(container, {
+      animation: 0,
+      group: 'shared-60',
+      onMove: () => false,
+    })
+    const sortableTarget = new Sortable(target, {
+      animation: 0,
+      group: 'shared-60',
+    })
+
+    const item1 = container.children[0] as HTMLElement
+    expect(item1.parentElement).toBe(container)
+
+    // Start drag on item1 (source) then dispatch dragover on the empty
+    // target container — this exercises the HTML5 cross-zone enter site.
+    item1.dispatchEvent(makeDragEvent('dragstart'))
+    target.dispatchEvent(makeDragEvent('dragover'))
+
+    // Cancellation should keep item1 in the source container.
+    expect(item1.parentElement).toBe(container)
+    expect(target.contains(item1)).toBe(false)
+
+    sortableSource.destroy()
+    sortableTarget.destroy()
+  })
+
+  it('cross-zone enter: MoveEvent.related === target container when empty (#60)', () => {
+    const target = document.createElement('div')
+    target.id = 'target'
+    document.body.appendChild(target)
+
+    const onMove = vi.fn<(evt: MoveEvent, original: Event) => void>()
+    const sortableSource = new Sortable(container, {
+      animation: 0,
+      group: 'shared-60-empty',
+      onMove,
+    })
+    const sortableTarget = new Sortable(target, {
+      animation: 0,
+      group: 'shared-60-empty',
+    })
+
+    const item1 = container.children[0] as HTMLElement
+    item1.dispatchEvent(makeDragEvent('dragstart'))
+    // Target has no draggable children — `over` resolves to null, so legacy
+    // parity sets `related` to the target container itself (not null).
+    target.dispatchEvent(makeDragEvent('dragover'))
+
+    expect(onMove).toHaveBeenCalled()
+    const [moveEvt] = onMove.mock.calls[0]
+    expect(moveEvt.from).toBe(container)
+    expect(moveEvt.to).toBe(target)
+    expect(moveEvt.related).toBe(target)
+    expect(moveEvt.items).toEqual([item1])
+    // appendChild semantics → willInsertAfter is false for the container fallback.
+    expect(moveEvt.willInsertAfter).toBe(false)
+
+    sortableSource.destroy()
+    sortableTarget.destroy()
+  })
+
   it('returning 1 forces insert-AFTER related (overrides natural drag-up direction)', () => {
     sortable = new Sortable(container, { animation: 0, onMove: () => 1 })
 

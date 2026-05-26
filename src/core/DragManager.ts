@@ -501,7 +501,9 @@ export class DragManager implements DragManagerInterface {
       dragItem = activeDrag.clones[0]
     }
 
-    const over = (e.target as HTMLElement).closest(this.draggable)
+    const overEl = (e.target as HTMLElement).closest(this.draggable)
+    const over: HTMLElement | null =
+      overEl instanceof HTMLElement ? overEl : null
 
     // Handle cross-zone dragging
     if (originalItem.parentElement !== this.zone.element) {
@@ -513,9 +515,93 @@ export class DragManager implements DragManagerInterface {
         dragItem = itemToInsert // Update reference for subsequent operations
       }
 
-      // Move item (or clone) to this zone if not already here
+      // Move item (or clone) to this zone if not already here. Gate the
+      // `onMove` dispatch on the SAME condition that triggers the actual
+      // DOM mutation — otherwise clone mode (where `originalItem.parentElement`
+      // stays != target indefinitely) would re-fire `onMove` on every
+      // dragover even when no insertion happens. See #60.
       if (itemToInsert.parentElement !== this.zone.element) {
-        this.zone.element.appendChild(itemToInsert)
+        const sourceParent = originalItem.parentElement
+        if (!sourceParent) {
+          // Architectural invariant violated — the item has been detached
+          // from any source container before cross-zone dispatch. Don't
+          // synthesize a fake `from`; bail loudly so the bug is visible.
+          // See #60 (HTML5 cross-zone enter).
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[resortable] cross-zone onMove skipped: source parent is null'
+          )
+          return
+        }
+
+        // Mirror legacy parity (`Sortable.js:1789`): when there's no sibling
+        // under the pointer the related field falls back to the target
+        // container itself — NOT null. The `MoveEvent.related: HTMLElement`
+        // type narrows correctly because `this.zone.element` is HTMLElement.
+        const related: HTMLElement = over ?? this.zone.element
+        const hasSibling = over !== null
+
+        // `newIndex` mirrors where the item would land in the target. With
+        // a sibling under the pointer that's the sibling's index; without
+        // one we appendChild → end of the draggables list.
+        const targetDraggables = this.zone.getItems()
+        const newIndex = hasSibling
+          ? targetDraggables.indexOf(over)
+          : targetDraggables.length
+        const oldIndex = activeDrag.fromZone
+          ? Array.from(activeDrag.fromZone.children).indexOf(originalItem)
+          : -1
+
+        const draggedRect = dragItem.getBoundingClientRect()
+        const targetRect = hasSibling
+          ? over.getBoundingClientRect()
+          : this.zone.element.getBoundingClientRect()
+
+        // Cross-zone enter is "insert at end" without a sibling (appendChild)
+        // — legacy sets `willInsertAfter: false` when related === container.
+        const willInsertAfter = false
+
+        // Multi-item batching: dispatch ONCE with all items (#60). Either
+        // insert them all (proceed) or skip the entire batch (false).
+        const moveEvent: MoveEvent = {
+          item: originalItem,
+          items: activeDrag.items,
+          from: sourceParent,
+          to: this.zone.element,
+          oldIndex,
+          newIndex,
+          related,
+          willInsertAfter,
+          draggedRect,
+          targetRect,
+        }
+
+        // Legacy parity (`Sortable.js:1772`): cross-zone `onMove` is invoked
+        // on the SOURCE Sortable's options, NOT the target's. Each zone has
+        // its own dragover listener, so `this` here is the TARGET — re-route
+        // through `activeDrag.fromDragManager` to match legacy semantics
+        // (and to surface the `'move'` side-channel on the source's event
+        // system). The pointer pipeline doesn't need this fix because its
+        // pointermove listener lives on `document` attached by the source.
+        // TS private-modifier access across instances of the same class is
+        // permitted by design — no visibility widening required.
+        const sourceManager = activeDrag.fromDragManager as DragManager
+        const moveResult = sourceManager.dispatchMove(moveEvent, e)
+        if (moveResult === false) {
+          // Cancelled — leave the item in the source zone for this tick.
+          return
+        }
+
+        // `-1` / `1` override: place itemToInsert before / after the sibling
+        // when there is one. With no sibling (related === container) the
+        // override has no meaningful side, so we fall through to appendChild.
+        if (hasSibling && moveResult === -1) {
+          this.zone.element.insertBefore(itemToInsert, over)
+        } else if (hasSibling && moveResult === 1) {
+          this.zone.element.insertBefore(itemToInsert, over.nextSibling)
+        } else {
+          this.zone.element.appendChild(itemToInsert)
+        }
       }
     }
 
@@ -1068,20 +1154,91 @@ export class DragManager implements DragManagerInterface {
 
         // Determine which element to insert: clone or original
         const currentActiveDrag = globalDragState.getActiveDrag(dragId)
-        if (
-          currentActiveDrag?.pullMode === 'clone' &&
-          currentActiveDrag.clones
-        ) {
-          // Clone operation: insert all clones into the target zone
-          currentActiveDrag.clones.forEach((clone) => {
-            if (clone.parentElement !== targetZoneElement) {
-              targetZoneElement.insertBefore(clone, over)
+        const itemsToInsert: HTMLElement[] =
+          currentActiveDrag?.pullMode === 'clone' && currentActiveDrag.clones
+            ? currentActiveDrag.clones
+            : this.draggedItems
+
+        // Gate the `onMove` dispatch on the same condition that triggers a
+        // real insertion — at least one item is not already in the target.
+        // Otherwise we'd re-fire `onMove` on every pointermove while the
+        // pointer dwells in an already-entered target. See #60.
+        const needsInsert = itemsToInsert.some(
+          (el) => el.parentElement !== targetZoneElement
+        )
+        if (needsInsert) {
+          const sourceParent = this.dragElement.parentElement
+          if (!sourceParent) {
+            // Architectural invariant violated — bail loudly. See #60.
+            // eslint-disable-next-line no-console
+            console.warn(
+              '[resortable] cross-zone onMove skipped: source parent is null'
+            )
+            return
+          }
+
+          // Legacy parity (`Sortable.js:1789`): `related` falls back to the
+          // target container when there is no sibling under the pointer.
+          const related: HTMLElement = over ?? targetZoneElement
+          const hasSibling = over !== null
+
+          const targetZone = targetDragManager?.zone ?? this.zone
+          const targetDraggables = targetZone.getItems()
+          const newIndex = hasSibling
+            ? targetDraggables.indexOf(over)
+            : targetDraggables.length
+          const oldIndex = Array.from(sourceParent.children).indexOf(
+            this.dragElement
+          )
+
+          const draggedRect = this.dragElement.getBoundingClientRect()
+          const targetRect = hasSibling
+            ? over.getBoundingClientRect()
+            : targetZoneElement.getBoundingClientRect()
+
+          // Pointer cross-zone enter uses `insertBefore(item, over)`, so the
+          // natural placement is BEFORE the related sibling when one exists;
+          // legacy sets `willInsertAfter: false` for the container fallback.
+          const willInsertAfter = false
+
+          // Multi-item batching: dispatch ONCE; insert all or skip all (#60).
+          const moveEvent: MoveEvent = {
+            item: this.dragElement,
+            items:
+              this.draggedItems.length > 0
+                ? this.draggedItems
+                : [this.dragElement],
+            from: sourceParent,
+            to: targetZoneElement,
+            oldIndex,
+            newIndex,
+            related,
+            willInsertAfter,
+            draggedRect,
+            targetRect,
+          }
+
+          const moveResult = this.dispatchMove(moveEvent, e)
+          if (moveResult === false) {
+            // Cancelled — leave items in the source zone for this tick.
+            return
+          }
+
+          // `-1` / `1` override: place items before / after the sibling when
+          // one exists. With no sibling (related === container) the override
+          // has no meaningful side, so we fall through to the natural
+          // `insertBefore(item, null)` (≡ appendChild).
+          let insertReference: Node | null = over
+          if (hasSibling && moveResult === 1) {
+            insertReference = over.nextSibling
+          } else if (hasSibling && moveResult === -1) {
+            insertReference = over
+          }
+
+          itemsToInsert.forEach((el) => {
+            if (el.parentElement !== targetZoneElement) {
+              targetZoneElement.insertBefore(el, insertReference)
             }
-          })
-        } else {
-          // Move operation: move all dragged items to the target zone
-          this.draggedItems.forEach((item) => {
-            targetZoneElement.insertBefore(item, over)
           })
         }
       }
