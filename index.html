@@ -902,33 +902,33 @@
     
     try {
       // Import Resortable
-      const { Sortable, PluginSystem } = await import('/src/index.ts');
+      const { Sortable, PluginSystem } = await import('./src/index.ts');
 
       // Import plugins
       let AutoScrollPlugin, MarqueeSelectPlugin, MultiDragPlugin, SwapPlugin;
       try {
-        const autoModule = await import('/src/plugins/AutoScrollPlugin.ts');
+        const autoModule = await import('./src/plugins/AutoScrollPlugin.ts');
         AutoScrollPlugin = autoModule.AutoScrollPlugin;
       } catch (e) {
         console.warn('Could not import AutoScrollPlugin:', e);
       }
 
       try {
-        const marqueeModule = await import('/src/plugins/MarqueeSelectPlugin.ts');
+        const marqueeModule = await import('./src/plugins/MarqueeSelectPlugin.ts');
         MarqueeSelectPlugin = marqueeModule.MarqueeSelectPlugin;
       } catch (e) {
         console.warn('Could not import MarqueeSelectPlugin:', e);
       }
 
       try {
-        const multiModule = await import('/src/plugins/MultiDragPlugin.ts');
+        const multiModule = await import('./src/plugins/MultiDragPlugin.ts');
         MultiDragPlugin = multiModule.MultiDragPlugin;
       } catch (e) {
         console.warn('Could not import MultiDragPlugin:', e);
       }
 
       try {
-        const swapModule = await import('/src/plugins/SwapPlugin.ts');
+        const swapModule = await import('./src/plugins/SwapPlugin.ts');
         SwapPlugin = swapModule.SwapPlugin;
       } catch (e) {
         console.warn('Could not import SwapPlugin:', e);
