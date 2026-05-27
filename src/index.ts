@@ -48,6 +48,26 @@ import { toArray as domToArray, on, getIndex, insertAt } from './utils/dom.js'
 // Export PluginSystem
 export { PluginSystem }
 
+// Re-export core classes that are part of the public plugin-author surface.
+// `Sortable` exposes these as properties (`sortable.eventSystem`,
+// `sortable.dragManager`, `sortable.dropZone`) and the Plugin Development
+// Guide documents using them — so they need to be in the public type surface
+// (and in the generated API docs). Their transitive dependencies
+// (SelectionManager, KeyboardManager, GroupManager, AnimationManager) are
+// re-exported for the same reason — they appear on the typed public surface
+// returned by getters like `dragManager.selectionManager`.
+export { DragManager } from './core/DragManager.js'
+export { DropZone } from './core/DropZone.js'
+export {
+  EventSystem,
+  type Listener,
+  type SortableEventSystem,
+} from './core/EventSystem.js'
+export { SelectionManager } from './core/SelectionManager.js'
+export { KeyboardManager } from './core/KeyboardManager.js'
+export { GroupManager } from './core/GroupManager.js'
+export { AnimationManager } from './animation/AnimationManager.js'
+
 // WeakMap to track Sortable instances by their elements
 const sortableInstances = new WeakMap<HTMLElement, Sortable>()
 
@@ -604,6 +624,11 @@ export class Sortable {
     this.options.store?.set?.(this)
   }
 
+  public option<K extends keyof SortableOptions>(name: K): SortableOptions[K]
+  public option<K extends keyof SortableOptions>(
+    name: K,
+    value: SortableOptions[K]
+  ): void
   /**
    * Gets or sets a configuration option at runtime
    *
@@ -625,11 +650,6 @@ export class Sortable {
    *
    * @public
    */
-  public option<K extends keyof SortableOptions>(name: K): SortableOptions[K]
-  public option<K extends keyof SortableOptions>(
-    name: K,
-    value: SortableOptions[K]
-  ): void
   public option<K extends keyof SortableOptions>(
     name: K,
     value?: SortableOptions[K]

@@ -1,10 +1,24 @@
 import type { SortableEvents } from '../types/index.js'
 
-type Listener<T> = (event: T) => void
+/**
+ * A callback that receives a typed event payload.
+ *
+ * @typeParam T - The event payload type.
+ *
+ * @public
+ */
+export type Listener<T> = (event: T) => void
 
 /**
- * Basic event emitter system used by Sortable
- * @internal
+ * Basic event emitter system used by Sortable.
+ *
+ * Exposed via `sortable.eventSystem` so plugin authors can subscribe to and
+ * emit drag-and-drop lifecycle events. See the Plugin Development Guide
+ * (`docs/plugin-development.md`) for usage patterns.
+ *
+ * @typeParam E - A record mapping event names to their payload types.
+ *
+ * @public
  */
 export class EventSystem<E extends Record<string, unknown>> {
   private listeners: Map<keyof E, Listener<unknown>[]> = new Map()

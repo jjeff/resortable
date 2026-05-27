@@ -45,7 +45,7 @@
     "semantic-release": "semantic-release",
     "docs:build": "typedoc",
     "docs:serve": "npx http-server docs -p 8080",
-    "docs:clean": "rimraf docs",
+    "docs:clean": "rimraf docs/api",
     "size": "size-limit",
     "size:build": "npm run build && npm run size"
   },
@@ -130,7 +130,6 @@
     "semantic-release": "^24.2.7",
     "size-limit": "^12.1.0",
     "typedoc": "^0.28.12",
-    "typedoc-plugin-markdown": "^4.8.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.4",
     "vite-plugin-dts": "^4.5.4",

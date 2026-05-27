@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resortable — modern TypeScript drag-and-drop</title>
+    <meta
+      name="description"
+      content="Resortable — a modern TypeScript rewrite of Sortable.js. Reorderable drag-and-drop lists with FLIP animations, multi-drag, plugins, and full accessibility."
+    />
+    <link rel="canonical" href="https://jjeff.github.io/resortable/" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1f2328;
+        --fg-muted: #59636e;
+        --bg: #ffffff;
+        --bg-elev: #f6f8fa;
+        --border: #d1d9e0;
+        --accent: #0969da;
+        --warn-bg: #fff8c5;
+        --warn-border: #d4a72c;
+        --warn-fg: #59470c;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6edf3;
+          --fg-muted: #9198a1;
+          --bg: #0d1117;
+          --bg-elev: #151b23;
+          --border: #3d444d;
+          --accent: #4493f8;
+          --warn-bg: #341a00;
+          --warn-border: #9e6a03;
+          --warn-fg: #f8e3a1;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 5rem;
+      }
+      header {
+        margin-bottom: 2rem;
+      }
+      h1 {
+        font-family: var(--mono);
+        font-size: 2.25rem;
+        margin: 0 0 0.25rem;
+        letter-spacing: -0.02em;
+      }
+      .tag {
+        color: var(--fg-muted);
+        margin: 0 0 1rem;
+      }
+      .version {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        padding: 0.15rem 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--fg-muted);
+        margin-left: 0.5rem;
+      }
+      .alpha {
+        background: var(--warn-bg);
+        border: 1px solid var(--warn-border);
+        color: var(--warn-fg);
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        margin: 1.5rem 0 2rem;
+        font-size: 0.95rem;
+      }
+      .alpha strong {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .grid {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      }
+      .card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        padding: 1rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-elev);
+        transition:
+          border-color 0.12s ease,
+          transform 0.12s ease;
+      }
+      .card:hover,
+      .card:focus-visible {
+        border-color: var(--accent);
+        outline: none;
+        transform: translateY(-1px);
+      }
+      .card h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+        color: var(--accent);
+        font-family: var(--mono);
+      }
+      .card p {
+        margin: 0;
+        color: var(--fg-muted);
+        font-size: 0.9rem;
+      }
+      ul.plain {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ul.plain li {
+        padding: 0.35rem 0;
+      }
+      ul.plain a {
+        color: var(--accent);
+        text-decoration: none;
+        font-family: var(--mono);
+      }
+      ul.plain a:hover {
+        text-decoration: underline;
+      }
+      footer {
+        margin-top: 4rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--fg-muted);
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.9em;
+        background: var(--bg-elev);
+        border: 1px solid var(--border);
+        padding: 0.05em 0.35em;
+        border-radius: 4px;
+      }
+      .note {
+        font-size: 0.85rem;
+        color: var(--fg-muted);
+        margin-top: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>resortable<span class="version">v2.0.0-alpha.1</span></h1>
+        <p class="tag">
+          Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop
+          lists with FLIP animations, multi-drag, plugins, and full
+          accessibility.
+        </p>
+        <div class="alpha" role="note">
+          <strong>Alpha — not ready for production use.</strong>
+          APIs are still in flux and the library has not been published to npm.
+          If you need a drag-and-drop library today, use
+          <a
+            href="https://github.com/SortableJS/Sortable"
+            rel="noopener noreferrer"
+            >SortableJS</a
+          >.
+        </div>
+      </header>
+
+      <h2>Documentation</h2>
+      <div class="grid">
+        <a class="card" href="./api/">
+          <h3>API Reference</h3>
+          <p>
+            TypeDoc-generated reference for every exported class, interface,
+            and option.
+          </p>
+        </a>
+        <a
+          class="card"
+          href="https://github.com/jjeff/resortable/blob/main/docs/migration-from-sortable-v1.md"
+        >
+          <h3>Migration Guide</h3>
+          <p>
+            Moving from Sortable.js v1? Option delta, plugin differences, and
+            breaking changes.
+          </p>
+        </a>
+        <a
+          class="card"
+          href="https://github.com/jjeff/resortable/blob/main/docs/plugin-development.md"
+        >
+          <h3>Plugin Development Guide</h3>
+          <p>
+            Plugin lifecycle, hook reference, and authoring patterns for
+            building custom plugins.
+          </p>
+        </a>
+        <a
+          class="card"
+          href="https://github.com/jjeff/resortable/tree/main/examples"
+        >
+          <h3>Examples</h3>
+          <p>
+            Curated example pages — basic lists, shared groups, multi-drag,
+            custom plugins, and more.
+          </p>
+        </a>
+        <a class="card" href="https://github.com/jjeff/resortable">
+          <h3>GitHub</h3>
+          <p>Source code, issues, and release notes.</p>
+        </a>
+        <a
+          class="card"
+          href="https://github.com/jjeff/resortable/blob/main/README.md"
+        >
+          <h3>README</h3>
+          <p>
+            Quick start, installation, basic usage, and CDN snippets.
+          </p>
+        </a>
+      </div>
+
+      <p class="note">
+        Note: the Migration and Plugin Development guides are Markdown files
+        that GitHub renders nicely but a static gh-pages site does not, so
+        these cards link to the GitHub-rendered versions.
+      </p>
+
+      <h2>Quick install</h2>
+      <p>
+        <code>npm install resortable</code>
+        <span class="note">(not yet published — install from GitHub during alpha)</span>
+      </p>
+
+      <footer>
+        Resortable is licensed under the MIT License. See
+        <a
+          href="https://github.com/jjeff/resortable/blob/main/LICENSE"
+          >LICENSE</a
+        >
+        for details.
+      </footer>
+    </div>
+  </body>
+</html>

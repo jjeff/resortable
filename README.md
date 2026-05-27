@@ -166,7 +166,7 @@ sortable.usePlugin('Swap');
 
 ### Authoring custom plugins
 
-See the [Plugin Development Guide](./src/plugins/PluginDevelopmentGuide.md) for the plugin lifecycle, hook reference, and authoring patterns.
+See the [Plugin Development Guide](./docs/plugin-development.md) for the plugin lifecycle, hook reference, and authoring patterns.
 
 ## API Reference
 
