@@ -54,7 +54,7 @@ test.describe('Event Callbacks and Logging', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     // Perform drag operation
     await dragAndDropWithAnimation(
@@ -83,7 +83,7 @@ test.describe('Event Callbacks and Logging', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     const consoleMessages: string[] = []
     page.on('console', (msg) => {
@@ -222,7 +222,7 @@ test.describe('Event Callbacks and Logging', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     // This test verifies that drag operations work and events are triggered
     // Since we can't reliably capture console logs in this environment,

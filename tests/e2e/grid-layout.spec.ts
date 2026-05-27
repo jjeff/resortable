@@ -22,7 +22,7 @@ test.describe('Grid Layout Functionality', () => {
     await expect(grid2Items.nth(3)).toHaveAttribute('data-id', 'g2-4')
   })
 
-  test.fixme('maintains grid layout CSS properties', async ({ page }) => {
+  test('maintains grid layout CSS properties', async ({ page }) => {
     const grid1 = page.locator('#grid-1')
     const grid2 = page.locator('#grid-2')
 
@@ -43,15 +43,7 @@ test.describe('Grid Layout Functionality', () => {
     expect(grid2Columns).toMatch(/1fr 1fr|50% 50%|\d+px \d+px/)
   })
 
-  test('allows reordering within the same grid', async ({
-    page,
-    browserName,
-  }) => {
-    // Skip on Chromium due to timeout issues with animation waiting
-    if (browserName === 'chromium') {
-      test.skip(true, 'Skipping on Chromium due to animation timing issues')
-    }
-
+  test('allows reordering within the same grid', async ({ page }) => {
     // Move item within first grid
     await dragAndDropWithAnimation(
       page,

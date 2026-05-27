@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { test, expect } from '@playwright/test'
 
+// FIXME: Suite needs CSS-positioned fixtures — tracked in #77.
 test.describe.skip(
   'Swap Behavior Options - TODO: Requires CSS positioning for accurate overlap calculation',
   () => {

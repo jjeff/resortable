@@ -27,6 +27,8 @@ test.describe('Ghost Element Functionality', () => {
     await page.mouse.up()
   })
 
+  // FIXME: Atomic dragAndDrop prevents observing intermediate drag class state.
+  // Tracked in #73.
   test.skip('applies drag class during drag operation - TODO: Flaky due to atomic drag operations', async ({
     page,
   }) => {
@@ -80,15 +82,7 @@ test.describe('Ghost Element Functionality', () => {
     await expect(firstItem).not.toHaveClass(/sortable-drag/)
   })
 
-  test('shows placeholder element during drag', async ({
-    page,
-    browserName,
-  }) => {
-    // Skip on Chromium due to timeout issues with dragAndDropWithAnimation
-    if (browserName === 'chromium') {
-      test.skip(true, 'Skipping on Chromium due to animation timing issues')
-    }
-
+  test('shows placeholder element during drag', async ({ page }) => {
     // This test would check for the placeholder element, but since it's created
     // dynamically and may be difficult to test reliably with HTML5 drag API,
     // we'll focus on the visual classes
@@ -157,7 +151,7 @@ test.describe('Ghost Element Functionality', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     // Test dragging between lists with proper ghost handling
 

@@ -90,6 +90,8 @@ test.describe('Basic Sortable Functionality', () => {
     await expect(dragItem).toHaveAttribute('draggable', 'true')
   })
 
+  // FIXME: Hover state does not apply the expected transform on .sortable-item
+  // in chromium (un-skip attempt failed). Tracked in #74.
   test.skip('shows hover effects on sortable items', async ({ page }) => {
     const item = page.locator('#basic-list [data-id="basic-1"]')
 
@@ -104,6 +106,7 @@ test.describe('Basic Sortable Functionality', () => {
     expect(transform).not.toBe('none')
   })
 
+  // FIXME: Pointer-event touch simulation is non-deterministic — tracked in #74.
   test.skip('handles touch input for drag and drop', async ({ page }) => {
     // Simulate touch drag by using dispatchEvent with pointer events
     const sourceItem = page.locator('#basic-list [data-id="basic-1"]')

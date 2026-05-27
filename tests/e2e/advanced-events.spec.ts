@@ -61,7 +61,7 @@ test.describe('Advanced Event Callbacks', () => {
   // onSort, onChange, and onMove fire during intermediate dragover events.
   // Playwright's HTML5 dragAndDrop() doesn't reliably trigger these intermediate
   // events because the drag is too atomic. These events work in manual testing
-  // and via the pointer events path.
+  // and via the pointer events path. Tracked in #73.
   test.skip('should fire onSort event when sorting changes', async ({
     page,
   }) => {
@@ -97,6 +97,7 @@ test.describe('Advanced Event Callbacks', () => {
     expect(eventLog.some((e: any) => e.type === 'sort')).toBeTruthy()
   })
 
+  // Tracked in #73 — atomic dragAndDrop swallows intermediate events.
   test.skip('should fire onChange event when order changes within same list', async ({
     page,
   }) => {
@@ -131,6 +132,8 @@ test.describe('Advanced Event Callbacks', () => {
     expect(eventLog.some((e: any) => e.type === 'change')).toBeTruthy()
   })
 
+  // Tracked in #73 — atomic dragAndDrop swallows intermediate events.
+  // onMove is covered via the pointer pipeline in tests/e2e/on-move.spec.ts.
   test.skip('should fire onMove event during drag operations', async ({
     page,
   }) => {

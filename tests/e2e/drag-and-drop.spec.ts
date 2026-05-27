@@ -39,7 +39,7 @@ test.describe('Legacy E2E Drag and Drop', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     await page.dragAndDrop(
       '#list1 [data-id="item-2"]',
@@ -64,7 +64,7 @@ test.describe('Legacy E2E Drag and Drop', () => {
   }) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
-      'Skipping on Mobile Chrome due to dragAndDrop timeout'
+      'Mobile Chrome dragAndDrop timeout — tracked in #48'
     )
     // Move from list2 to list1
     await page.dragAndDrop(
