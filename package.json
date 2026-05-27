@@ -23,6 +23,7 @@
     "build": "tsc && vite build",
     "build:debug": "NODE_OPTIONS='--inspect-brk' npm run build",
     "build:rollup": "rollup -c",
+    "build:examples": "vite build --config vite.config.examples.ts",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",

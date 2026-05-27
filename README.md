@@ -178,7 +178,11 @@ First-class wrappers for React, Vue, and Svelte are on the roadmap but not yet s
 
 ## Examples
 
-The repo ships with a curated set of nine standalone examples covering the v2 API surface — basic list, shared lists, kanban board, clone mode, swap, multi-drag, handle + filter, accessibility, and a custom plugin. See [`./examples/index.html`](./examples/index.html) for the landing page (clone the repo and `npm run dev`, then open `http://localhost:5173/examples/index.html`).
+The repo ships with a curated set of nine standalone examples covering the v2 API surface — basic list, shared lists, kanban board, clone mode, swap, multi-drag, handle + filter, accessibility, and a custom plugin.
+
+**Live examples:** <https://jjeff.github.io/resortable/demo/examples/>
+
+To run them against the source locally, see [`./examples/index.html`](./examples/index.html) (clone the repo and `npm run dev`, then open `http://localhost:5173/examples/index.html`).
 
 ## Development
 

@@ -71,6 +71,7 @@ export default [
       '.remember/**',
       '*.config.js',
       '*.config.ts',
+      '*.config.*.ts',
     ],
   },
 ];

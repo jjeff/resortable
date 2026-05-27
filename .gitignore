@@ -1,6 +1,7 @@
 node_modules
 dist/
 /docs/api/
+/docs/demo/
 build/
 test-results/
 playwright-report/
