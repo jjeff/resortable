@@ -96,6 +96,7 @@ test.describe('Multi-Select Functionality', () => {
     await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
   })
 
+  // Tracked in #34 — multi-drag reconciliation between core + plugin.
   test.skip('drags multiple selected items together (pointer-based multi-drag not yet implemented)', async ({
     page,
   }) => {
@@ -137,6 +138,7 @@ test.describe('Multi-Select Functionality', () => {
     await expect(secondItem).toHaveAttribute('aria-selected', 'false')
   })
 
+  // Tracked in #34 — multi-drag reconciliation between core + plugin.
   test.skip('maintains selection state after drag operation (pointer-based multi-drag not yet implemented)', async ({
     page,
   }) => {

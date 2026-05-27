@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// TODO: These tests require full drag-and-drop implementation to work properly
-// They are currently skipped until the drag system is complete
+// FIXME: Suite needs rework against current drag pipeline — tracked in #79.
 test.describe.skip('Animation System - Full Integration (TODO)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/examples/simple-list.html')

@@ -147,9 +147,7 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Nested Lists', () => {
-    // @TODO: This test has hover intercept issues in CI - element is blocked by container
-    // The test verifies nested folder reordering by dragging headers as handles
-    // but pointer events are intercepted by parent containers
+    // FIXME: Hover intercept by parent container — tracked in #75.
     test.skip('can reorder folders using headers as handles', async ({
       page,
     }) => {
@@ -224,7 +222,7 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Delay Functionality', () => {
-    // @TODO: Delay functionality is inconsistent across browsers/platforms
+    // FIXME: Delay timing simulation is unreliable — tracked in #76.
     test.skip('requires holding for delay period before drag starts', async ({
       page,
     }) => {
@@ -264,6 +262,7 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Shared Lists (Clone Mode)', () => {
+    // FIXME: Clone-mode E2E needs rework — tracked in #75.
     test.skip('clones items from source to target list (HTML5 drag integration issue)', async ({
       page,
     }) => {
@@ -309,7 +308,7 @@ test.describe('Feature Demos', () => {
       expect(sourceItems).toContain(sourceItemText)
     })
 
-    // @TODO: Bidirectional drag functionality needs cloning to work properly
+    // FIXME: Clone-mode bidirectional drag — tracked in #75.
     test.skip('can drag items between lists bidirectionally', async ({
       page,
     }) => {
@@ -338,7 +337,7 @@ test.describe('Feature Demos', () => {
       expect(finalSourceCount).toBe(initialSourceCount + 1)
     })
 
-    // @TODO: Sort: false option isn't working correctly - items are still reordering
+    // FIXME: `sort: false` regression suspected — tracked in #75.
     test.skip('source list items cannot be reordered', async ({ page }) => {
       const initialOrder = await page
         .locator('#clone-source .clone-item')
@@ -360,6 +359,7 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Multi-Drag Selection (Visual Demo Only)', () => {
+    // FIXME: Multi-drag demo flow — tracked in #34 (multi-drag reconciliation).
     test.skip('can select items by clicking with Shift key', async ({
       page,
     }) => {
@@ -404,6 +404,7 @@ test.describe('Feature Demos', () => {
       expect(selectedCount).toBe(2)
     })
 
+    // FIXME: Multi-drag demo flow — tracked in #34.
     test.skip('selection is cleared after drag', async ({ page }) => {
       // Skip this test as multi-drag is not yet fully implemented
       const firstItem = page.locator('#multidrag-list .filter-item').first()

@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Delay Options', () => {
-  // @TODO: These tests are failing due to complexities with simulating delays in automated tests
-  // The delay feature works correctly when tested manually
+  // FIXME: Timing simulation unreliable — tracked in #76.
   test.skip('should delay drag start with delay option', async ({ page }) => {
     await page.goto('/tests/e2e/fixtures/delay-test.html')
 
@@ -39,7 +38,7 @@ test.describe('Delay Options', () => {
     expect(await itemsAfter[1].getAttribute('data-id')).toBe('item-1')
   })
 
-  // @TODO: Touch-specific delays are hard to test in automated browser tests
+  // FIXME: Touch-delay testing — tracked in #76.
   test.skip('should only delay on touch with delayOnTouchOnly', async ({
     page,
   }) => {
@@ -86,7 +85,7 @@ test.describe('Delay Options', () => {
     expect(await itemsAfterTouch[1].getAttribute('data-id')).toBe('item-2')
   })
 
-  // @TODO: Threshold-based cancellation is difficult to test reliably in automated tests
+  // FIXME: Threshold cancellation simulation — tracked in #76.
   test.skip('should cancel delayed drag if moved beyond threshold', async ({
     page,
   }) => {

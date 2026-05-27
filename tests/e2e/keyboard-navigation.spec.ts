@@ -171,6 +171,7 @@ test.describe('Keyboard Navigation', () => {
     await expect(secondItem).toHaveClass(/sortable-focused/)
   })
 
+  // FIXME: Cross-list keyboard drag-and-drop not implemented — tracked in #78.
   test.skip('supports keyboard navigation across different sortable groups', async ({
     page,
   }) => {
