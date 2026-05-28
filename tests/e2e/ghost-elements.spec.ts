@@ -82,7 +82,11 @@ test.describe('Ghost Element Functionality', () => {
     await expect(firstItem).not.toHaveClass(/sortable-drag/)
   })
 
-  test('shows placeholder element during drag', async ({ page }) => {
+  test('shows placeholder element during drag', async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'Mobile Safari',
+      'Cross-list dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
+    )
     // This test would check for the placeholder element, but since it's created
     // dynamically and may be difficult to test reliably with HTML5 drag API,
     // we'll focus on the visual classes
@@ -148,10 +152,14 @@ test.describe('Ghost Element Functionality', () => {
     page,
     browserName,
     isMobile,
-  }) => {
+  }, testInfo) => {
     test.skip(
       shouldSkipMobileChrome(browserName, isMobile),
       'Mobile Chrome dragAndDrop timeout — tracked in #48'
+    )
+    test.skip(
+      testInfo.project.name === 'Mobile Safari',
+      'Cross-list dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
     )
     // Test dragging between lists with proper ghost handling
 

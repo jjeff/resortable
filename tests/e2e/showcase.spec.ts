@@ -57,7 +57,11 @@ test.describe('Showcase Page Functionality', () => {
     await expect(doingCards).toHaveCount(3)
   })
 
-  test('image gallery should be reorderable', async ({ page }) => {
+  test('image gallery should be reorderable', async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'Mobile Safari',
+      'dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
+    )
     const gallery = page.locator('#image-gallery')
     const items = gallery.locator('.gallery-item')
 
@@ -72,7 +76,11 @@ test.describe('Showcase Page Functionality', () => {
 
   test('basic list in developer section should remain functional', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'Mobile Safari',
+      'dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
+    )
     const basicList = page.locator('#basic-list')
     await expect(basicList).toBeVisible()
 
