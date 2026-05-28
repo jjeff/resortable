@@ -298,6 +298,7 @@ export class Sortable {
         handle: this.options.handle,
         filter: this.options.filter,
         onFilter: this.options.onFilter,
+        ignore: this.options.ignore,
         draggable: this.options.draggable,
         delay: this.options.delay,
         delayOnTouchOnly: this.options.delayOnTouchOnly,
@@ -676,6 +677,7 @@ export class Sortable {
       case 'handle':
       case 'filter':
       case 'onFilter':
+      case 'ignore':
       case 'draggable':
       case 'delay':
       case 'delayOnTouchOnly':
@@ -709,6 +711,7 @@ export class Sortable {
             handle: this.options.handle,
             filter: this.options.filter,
             onFilter: this.options.onFilter,
+            ignore: this.options.ignore,
             draggable: this.options.draggable,
             delay: this.options.delay,
             delayOnTouchOnly: this.options.delayOnTouchOnly,
@@ -748,6 +751,7 @@ export class Sortable {
             handle: this.options.handle,
             filter: this.options.filter,
             onFilter: this.options.onFilter,
+            ignore: this.options.ignore,
             draggable: this.options.draggable,
             delay: this.options.delay,
             delayOnTouchOnly: this.options.delayOnTouchOnly,

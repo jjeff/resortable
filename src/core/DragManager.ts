@@ -36,6 +36,10 @@ export class DragManager implements DragManagerInterface {
   private handle?: string
   private filter?: string
   private onFilter?: (event: Event) => void
+  // CSS selector for descendants that should NOT initiate a drag — used
+  // for click-through on `<a>` / `<img>` etc. Legacy parity: default
+  // `'a, img'`; an empty string disables the default. See issue #30.
+  private ignore: string
   private draggable: string
   private delay: number
   private delayOnTouchOnly: number
@@ -136,6 +140,7 @@ export class DragManager implements DragManagerInterface {
       handle?: string
       filter?: string
       onFilter?: (event: Event) => void
+      ignore?: string
       draggable?: string
       delay?: number
       delayOnTouchOnly?: number
@@ -180,6 +185,10 @@ export class DragManager implements DragManagerInterface {
     this.handle = options?.handle
     this.filter = options?.filter
     this.onFilter = options?.onFilter
+    // `ignore` defaults to `'a, img'` (legacy parity). Use `??` so an
+    // explicit empty string disables the default while `undefined`
+    // (option omitted entirely) still falls back to the legacy default.
+    this.ignore = options?.ignore ?? 'a, img'
 
     // Initialize draggable selector and delay options
     this.draggable = options?.draggable || '.sortable-item'
@@ -1554,6 +1563,40 @@ export class DragManager implements DragManagerInterface {
   }
 
   /**
+   * Check if the pointer/drag target falls under the `ignore` selector
+   * (descendants of draggable items that should NOT initiate a drag —
+   * legacy default `'a, img'`).
+   *
+   * Target-only match (no ancestor walk) — matches legacy
+   * `Sortable.js:620` semantics where each comma-separated criterion is
+   * trimmed and tested individually. We split on `,` rather than passing
+   * the whole selector to `Element.matches()` so a malformed criterion
+   * cannot throw a `SyntaxError` and abort all subsequent checks.
+   *
+   * @param target - The original event target (typically `event.target`).
+   * @returns `true` if the target matches any criterion in `ignore`.
+   */
+  private shouldIgnoreTarget(target: EventTarget | null): boolean {
+    if (!this.ignore || !(target instanceof Element)) {
+      return false
+    }
+    const criteria = this.ignore.split(',')
+    for (const criterion of criteria) {
+      const selector = criterion.trim()
+      if (!selector) continue
+      try {
+        if (target.matches(selector)) {
+          return true
+        }
+      } catch {
+        // Invalid selector — skip silently so a single bad criterion
+        // does not break ignore-matching for the rest.
+      }
+    }
+    return false
+  }
+
+  /**
    * Check if drag should be allowed based on handle and filter options
    * @param event - The triggering event (drag or pointer)
    * @param dragTarget - The element that would be dragged
@@ -1561,6 +1604,15 @@ export class DragManager implements DragManagerInterface {
    */
   private shouldAllowDrag(event: Event, dragTarget: HTMLElement): boolean {
     const eventTarget = event.target as HTMLElement
+
+    // Check ignore option — if the event target matches any selector in
+    // `ignore`, abort drag-initiation so the browser's native handling of
+    // links/images/etc. proceeds. Legacy parity: target-only match, no
+    // `preventDefault` (so `<a>` navigation and `<img>` native drag still
+    // work). See legacy-sortable/src/Sortable.js:620 and issue #30.
+    if (this.shouldIgnoreTarget(eventTarget)) {
+      return false
+    }
 
     // Check filter option - if event target matches filter, prevent drag
     if (this.filter && eventTarget.matches(this.filter)) {

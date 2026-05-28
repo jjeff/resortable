@@ -74,6 +74,7 @@ new Sortable(element, {
   draggable: '.sortable-item',       // CSS selector for draggable items
   handle: '.drag-handle',            // Restrict drag to handle elements
   filter: 'input, button',           // Prevent drag on these elements
+  ignore: 'a, img',                  // Descendants that should NOT initiate drag (default 'a, img')
   delay: 0,                          // Delay in ms before drag starts
   delayOnTouchOnly: 0,              // Touch-specific delay
   touchStartThreshold: 5,            // Pixels of movement before cancelling delay

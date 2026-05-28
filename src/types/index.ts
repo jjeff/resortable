@@ -237,6 +237,32 @@ export interface SortableOptions {
   onFilter?: (event: Event) => void
 
   /**
+   * CSS selector for descendants of draggable items that should NOT initiate a drag.
+   * Used to allow click-through on interactive elements like links and images so
+   * users can follow an `<a>` or drag an `<img>` natively without a sortable drag
+   * starting underneath them. Matches the legacy Sortable.js v1 behaviour and
+   * default value.
+   *
+   * Pass an empty string (`''`) to disable the default and allow drags to start
+   * from any descendant.
+   *
+   * @defaultValue `'a, img'`
+   *
+   * @example
+   * ```typescript
+   * // Default — links and images do not start a drag
+   * new Sortable(el, {})
+   *
+   * // Extend the default
+   * new Sortable(el, { ignore: 'a, img, input, button' })
+   *
+   * // Disable the default entirely
+   * new Sortable(el, { ignore: '' })
+   * ```
+   */
+  ignore?: string
+
+  /**
    * CSS selector for draggable items
    * @defaultValue '.sortable-item'
    *
