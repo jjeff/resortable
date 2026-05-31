@@ -21,7 +21,7 @@ Jump to:
 
 ## At a glance
 
-Resortable v2 is a TypeScript-first ESM rewrite of Sortable.js. Most v1 option shapes (`group`, `animation`, `handle`, `filter`, `ghostClass`, `chosenClass`, callback names, event payload shape) carry over unchanged, so simple integrations move with little more than an import change. What changed: package is ESM-first with no `window.Sortable` global; types ship in-package (no `@types/sortablejs`); plugins must be explicitly imported and mounted; a few options were renamed (`fallbackOffset.x` → `fallbackOffsetX`); a few v1 options were dropped (`ignore`, `supportPointer`); function-form `filter` and `direction` are not supported; the `Sortable.utils` helper surface shrank from ~13 helpers to 3; and three option defaults silently changed (`animation`, `easing`, `draggable`).
+Resortable v2 is a TypeScript-first ESM rewrite of Sortable.js. Most v1 option shapes (`group`, `animation`, `handle`, `filter`, `ghostClass`, `chosenClass`, callback names, event payload shape) carry over unchanged, so simple integrations move with little more than an import change. What changed: package is ESM-first with no `window.Sortable` global; types ship in-package (no `@types/sortablejs`); plugins must be explicitly imported and mounted; a few options were renamed (`fallbackOffset.x` → `fallbackOffsetX`); one v1 option was dropped (`supportPointer`); function-form `filter` and `direction` are not supported; the `Sortable.utils` helper surface shrank from ~13 helpers to 3; and three option defaults silently changed (`animation`, `easing`, `draggable`).
 
 ## Install
 
@@ -123,7 +123,7 @@ Only the **delta** is shown. Every option not listed here works the same as v1.
 | `fallbackOffset: { x, y }` | `fallbackOffsetX: number` + `fallbackOffsetY: number` | Two scalar options instead of an object. See `src/types/index.ts:369-375`. |
 | `direction: 'vertical' \| 'horizontal' \| Function` | `direction: 'vertical' \| 'horizontal'` | Function form is not supported. See `src/types/index.ts:333`. |
 | `filter: string \| Function` | `filter: string` | Function form is not supported; v2 calls `eventTarget.matches(filter)` directly. See `src/core/DragManager.ts:1566`. |
-| `ignore: 'a, img'` | _(removed)_ | The legacy `ignore` selector (default `'a, img'`) is not implemented. Fold any selectors you used here into your `filter` option. |
+| `ignore: 'a, img'` | `ignore: string` | Implemented in v2 with the same default `'a, img'` for legacy parity (issue #30). Pass `ignore: ''` to disable the default. Target-only match: a comma-separated CSS selector is checked against the pointer-down `event.target` and aborts drag-initiation when matched, so links and images keep their native click / drag behaviour. |
 | `supportPointer: boolean` | _(removed)_ | Pointer events are feature-detected; no user-facing opt-out. |
 | `animation` default `0` | `animation` default `150` | If your v1 code omitted `animation` and you want the legacy no-animation behavior, set `animation: 0` explicitly. |
 | `easing` default `null` | `easing` default `'cubic-bezier(0.4, 0.0, 0.2, 1)'` | Set `easing: ''` (or any falsy value) to opt out if you relied on `null`. |
@@ -164,7 +164,7 @@ There is one v2-only callback with no v1 equivalent:
 - **MultiDrag plugin is now a deprecated no-op.** Use `{ multiDrag: true }` on the instance instead.
 - **`filter` no longer accepts a function.** String selector only.
 - **`direction` no longer accepts a function.** `'vertical' \| 'horizontal'` only.
-- **`ignore` option removed.** Fold its selectors into `filter`.
+- **`ignore` option supported with legacy default `'a, img'`.** Restored in v2 (issue #30). Pass `ignore: ''` to disable.
 - **Default value changes** for `animation`, `easing`, `draggable`, and `touchStartThreshold` — see the rename table above. The `draggable` change is the most likely to bite: v1 defaulted to `>li`/`>*` based on container tag; v2 defaults to `.sortable-item` regardless. Always set `draggable` explicitly to be safe.
 
 ## CSS class compatibility
@@ -323,7 +323,6 @@ The following deviations are deliberate design choices, not gaps:
 - **No `window.Sortable` global as a documented entry point.** v2 is ESM-first. The UMD bundle exists for `<script>` users, but the documented contract is `import { Sortable } from 'resortable'`. See `sortable-rewrite-implementation-plan.md`.
 - **No `Sortable.create()` factory.** A single `new Sortable()` form is simpler to type and document; the factory was redundant.
 - **No `supportPointer` option.** Pointer event support is feature-detected — the v1 UA-sniffing fallback (Safari quirks, iOS exceptions) was replaced with capability gates per the implementation plan. Users do not need (and should not have) an opt-out.
-- **No `ignore` option.** v1 maintained both `filter` and `ignore` (default `'a, img'`). Having two overlapping non-drag selectors created confusion; v2 keeps only `filter`. Migration: union your selectors into `filter`.
 - **No function form for `filter` / `direction`.** Strings cover the overwhelming majority of use cases and keep the type surface tight. If you need dynamic per-event logic, handle it in `onMove` (return `false` to cancel) or in `onFilter`.
 - **Smaller `Sortable.utils`.** Modern browsers ship `Element.matches`, `Element.closest`, `getComputedStyle`, `classList.toggle`, etc. Re-exporting wrappers around them added bytes without adding value.
 - **MultiDrag is core, not a plugin.** Per the implementation plan: "take a MultiDrag-first approach to selection and dragging. Single-item drag can be simply treated as a multi-item drag with one item." Pushing this into core eliminated a class of plugin/core coupling bugs.
