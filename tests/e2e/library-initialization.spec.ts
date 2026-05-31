@@ -19,7 +19,6 @@ test.describe('Library Initialization and Error Handling', () => {
   test('initializes Resortable library successfully', async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
@@ -29,9 +28,17 @@ test.describe('Library Initialization and Error Handling', () => {
       'Resortable loaded'
     )
 
-    // Verify sortable items are properly configured
+    // On touch-emulated projects (Mobile Chrome / Mobile Safari) the library
+    // intentionally sets draggable=false to route input through the pointer
+    // pipeline instead of HTML5 DnD. #48
+    const isTouchProject = ['Mobile Chrome', 'Mobile Safari'].includes(
+      testInfo.project.name
+    )
     const sortableItems = page.locator('.sortable-item')
-    await expect(sortableItems.first()).toHaveAttribute('draggable', 'true')
+    await expect(sortableItems.first()).toHaveAttribute(
+      'draggable',
+      isTouchProject ? 'false' : 'true'
+    )
   })
 
   test('handles library loading errors gracefully', async ({ page }) => {
@@ -56,13 +63,20 @@ test.describe('Library Initialization and Error Handling', () => {
   test('verifies all sortable containers are initialized', async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
       'Resortable loaded'
     )
+
+    // On touch-emulated projects (Mobile Chrome / Mobile Safari) the library
+    // intentionally sets draggable=false to route input through the pointer
+    // pipeline instead of HTML5 DnD. #48
+    const isTouchProject = ['Mobile Chrome', 'Mobile Safari'].includes(
+      testInfo.project.name
+    )
+    const expectedDraggable = isTouchProject ? 'false' : 'true'
 
     // Check that all containers have draggable items
     const containers = [
@@ -79,7 +93,10 @@ test.describe('Library Initialization and Error Handling', () => {
 
     for (const container of containers) {
       const items = page.locator(`${container} .sortable-item`)
-      await expect(items.first()).toHaveAttribute('draggable', 'true')
+      await expect(items.first()).toHaveAttribute(
+        'draggable',
+        expectedDraggable
+      )
     }
   })
 
