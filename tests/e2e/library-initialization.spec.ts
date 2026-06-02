@@ -16,9 +16,7 @@ test.describe('Library Initialization and Error Handling', () => {
     await expect(page.locator('h2').first()).toBeVisible()
   })
 
-  test('initializes Resortable library successfully', async ({
-    page,
-  }, testInfo) => {
+  test('initializes Resortable library successfully', async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
@@ -28,16 +26,18 @@ test.describe('Library Initialization and Error Handling', () => {
       'Resortable loaded'
     )
 
-    // On touch-emulated projects (Mobile Chrome / Mobile Safari) the library
-    // intentionally sets draggable=false to route input through the pointer
-    // pipeline instead of HTML5 DnD. #48
-    const isTouchProject = ['Mobile Chrome', 'Mobile Safari'].includes(
-      testInfo.project.name
+    // The library sets draggable=false when navigator.maxTouchPoints > 0
+    // (touch devices use the pointer pipeline, not HTML5 DnD). Asserting the
+    // device-correct setup. Note Playwright's "Mobile Safari" project is
+    // Desktop WebKit + mobile viewport — NOT touch emulation; only "Mobile
+    // Chrome" reports touchpoints > 0.
+    const isTouchDevice = await page.evaluate(
+      () => navigator.maxTouchPoints > 0
     )
     const sortableItems = page.locator('.sortable-item')
     await expect(sortableItems.first()).toHaveAttribute(
       'draggable',
-      isTouchProject ? 'false' : 'true'
+      isTouchDevice ? 'false' : 'true'
     )
   })
 
@@ -60,9 +60,7 @@ test.describe('Library Initialization and Error Handling', () => {
     )
   })
 
-  test('verifies all sortable containers are initialized', async ({
-    page,
-  }, testInfo) => {
+  test('verifies all sortable containers are initialized', async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
@@ -70,13 +68,15 @@ test.describe('Library Initialization and Error Handling', () => {
       'Resortable loaded'
     )
 
-    // On touch-emulated projects (Mobile Chrome / Mobile Safari) the library
-    // intentionally sets draggable=false to route input through the pointer
-    // pipeline instead of HTML5 DnD. #48
-    const isTouchProject = ['Mobile Chrome', 'Mobile Safari'].includes(
-      testInfo.project.name
+    // The library sets draggable=false when navigator.maxTouchPoints > 0
+    // (touch devices use the pointer pipeline, not HTML5 DnD). Asserting the
+    // device-correct setup. Note Playwright's "Mobile Safari" project is
+    // Desktop WebKit + mobile viewport — NOT touch emulation; only "Mobile
+    // Chrome" reports touchpoints > 0.
+    const isTouchDevice = await page.evaluate(
+      () => navigator.maxTouchPoints > 0
     )
-    const expectedDraggable = isTouchProject ? 'false' : 'true'
+    const expectedDraggable = isTouchDevice ? 'false' : 'true'
 
     // Check that all containers have draggable items
     const containers = [
