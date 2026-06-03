@@ -1,0 +1,7 @@
+Resortable
+Copyright (c) 2025-2026 Jeff Robbins
+
+This product includes software developed by the Sortable.js project
+(https://github.com/SortableJS/Sortable), licensed under the MIT License.
+Portions of the codebase reference patterns and behaviors from Sortable.js v1.x
+for parity (see legacy-sortable/ submodule).
