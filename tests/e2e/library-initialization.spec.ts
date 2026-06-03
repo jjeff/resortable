@@ -16,10 +16,7 @@ test.describe('Library Initialization and Error Handling', () => {
     await expect(page.locator('h2').first()).toBeVisible()
   })
 
-  test('initializes Resortable library successfully', async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
+  test('initializes Resortable library successfully', async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
@@ -29,9 +26,19 @@ test.describe('Library Initialization and Error Handling', () => {
       'Resortable loaded'
     )
 
-    // Verify sortable items are properly configured
+    // The library sets draggable=false when navigator.maxTouchPoints > 0
+    // (touch devices use the pointer pipeline, not HTML5 DnD). Asserting the
+    // device-correct setup. Note Playwright's "Mobile Safari" project is
+    // Desktop WebKit + mobile viewport — NOT touch emulation; only "Mobile
+    // Chrome" reports touchpoints > 0.
+    const isTouchDevice = await page.evaluate(
+      () => navigator.maxTouchPoints > 0
+    )
     const sortableItems = page.locator('.sortable-item')
-    await expect(sortableItems.first()).toHaveAttribute('draggable', 'true')
+    await expect(sortableItems.first()).toHaveAttribute(
+      'draggable',
+      isTouchDevice ? 'false' : 'true'
+    )
   })
 
   test('handles library loading errors gracefully', async ({ page }) => {
@@ -53,16 +60,23 @@ test.describe('Library Initialization and Error Handling', () => {
     )
   })
 
-  test('verifies all sortable containers are initialized', async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
+  test('verifies all sortable containers are initialized', async ({ page }) => {
     await page.goto('/')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
       'Resortable loaded'
     )
+
+    // The library sets draggable=false when navigator.maxTouchPoints > 0
+    // (touch devices use the pointer pipeline, not HTML5 DnD). Asserting the
+    // device-correct setup. Note Playwright's "Mobile Safari" project is
+    // Desktop WebKit + mobile viewport — NOT touch emulation; only "Mobile
+    // Chrome" reports touchpoints > 0.
+    const isTouchDevice = await page.evaluate(
+      () => navigator.maxTouchPoints > 0
+    )
+    const expectedDraggable = isTouchDevice ? 'false' : 'true'
 
     // Check that all containers have draggable items
     const containers = [
@@ -79,7 +93,10 @@ test.describe('Library Initialization and Error Handling', () => {
 
     for (const container of containers) {
       const items = page.locator(`${container} .sortable-item`)
-      await expect(items.first()).toHaveAttribute('draggable', 'true')
+      await expect(items.first()).toHaveAttribute(
+        'draggable',
+        expectedDraggable
+      )
     }
   })
 

@@ -80,14 +80,21 @@ test.describe('Basic Sortable Functionality', () => {
     await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-2')
   })
 
-  test('applies visual feedback classes during drag', async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
+  test('applies visual feedback classes during drag', async ({ page }) => {
     const dragItem = page.locator('#basic-list [data-id="basic-1"]')
 
-    // Check that draggable attribute is set
-    await expect(dragItem).toHaveAttribute('draggable', 'true')
+    // The library sets draggable=false when navigator.maxTouchPoints > 0
+    // (touch devices use the pointer pipeline, not HTML5 DnD). Asserting the
+    // device-correct setup. Note Playwright's "Mobile Safari" project is
+    // Desktop WebKit + mobile viewport — NOT touch emulation; only "Mobile
+    // Chrome" reports touchpoints > 0. Asserts the device-correct setup. #48
+    const isTouchDevice = await page.evaluate(
+      () => navigator.maxTouchPoints > 0
+    )
+    await expect(dragItem).toHaveAttribute(
+      'draggable',
+      isTouchDevice ? 'false' : 'true'
+    )
   })
 
   // FIXME: Hover state does not apply the expected transform on .sortable-item
