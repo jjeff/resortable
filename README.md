@@ -216,4 +216,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for module documentation.
 
 ## License
 
-MIT
+[MIT](./LICENSE) © 2025-2026 Jeff Robbins
+
+## Acknowledgments
+
+Resortable is a TypeScript rewrite of [SortableJS](https://github.com/SortableJS/Sortable) by Lebedev Konstantin and the SortableJS contributors. The original library pioneered the drag-and-drop patterns this project builds on, and the legacy source under `legacy-sortable/` is consulted for v1 parity. See [NOTICE](./NOTICE) for full attribution.
