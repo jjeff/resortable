@@ -255,7 +255,7 @@ export class PluginSystem {
    *
    * @example
    * ```typescript
-   * PluginSystem.installMany(sortable, ['AutoScroll', 'MultiDrag']);
+   * PluginSystem.installMany(sortable, ['AutoScroll', 'Swap']);
    * ```
    */
   public static installMany(instance: SortableInstance, names: string[]): void {
@@ -272,7 +272,7 @@ export class PluginSystem {
    *
    * @example
    * ```typescript
-   * PluginSystem.uninstallMany(sortable, ['AutoScroll', 'MultiDrag']);
+   * PluginSystem.uninstallMany(sortable, ['AutoScroll', 'Swap']);
    * ```
    */
   public static uninstallMany(

@@ -905,7 +905,7 @@
       const { Sortable, PluginSystem } = await import('./src/index.ts');
 
       // Import plugins
-      let AutoScrollPlugin, MarqueeSelectPlugin, MultiDragPlugin, SwapPlugin;
+      let AutoScrollPlugin, MarqueeSelectPlugin, SwapPlugin;
       try {
         const autoModule = await import('./src/plugins/AutoScrollPlugin.ts');
         AutoScrollPlugin = autoModule.AutoScrollPlugin;
@@ -918,13 +918,6 @@
         MarqueeSelectPlugin = marqueeModule.MarqueeSelectPlugin;
       } catch (e) {
         console.warn('Could not import MarqueeSelectPlugin:', e);
-      }
-
-      try {
-        const multiModule = await import('./src/plugins/MultiDragPlugin.ts');
-        MultiDragPlugin = multiModule.MultiDragPlugin;
-      } catch (e) {
-        console.warn('Could not import MultiDragPlugin:', e);
       }
 
       try {
@@ -955,15 +948,6 @@
         }
       }
 
-      if (MultiDragPlugin) {
-        try {
-          PluginSystem.register(MultiDragPlugin);
-          console.log('MultiDragPlugin registered successfully');
-        } catch (e) {
-          console.warn('Failed to register MultiDragPlugin:', e);
-        }
-      }
-
       if (SwapPlugin) {
         try {
           PluginSystem.register(SwapPlugin);
@@ -978,7 +962,6 @@
       window.PluginSystem = PluginSystem;
       window.AutoScrollPlugin = AutoScrollPlugin;
       window.MarqueeSelectPlugin = MarqueeSelectPlugin;
-      window.MultiDragPlugin = MultiDragPlugin;
       window.SwapPlugin = SwapPlugin;
       window.sortables = [];
 

@@ -9,9 +9,8 @@ declare module '../../src' {
   interface Sortable {
     _selectedItems?: Set<HTMLElement>
     _lastSelected?: HTMLElement | null
-    _multiDragInstalled?: boolean
-    _multiDragClickHandler?: (event: MouseEvent) => void
-    _multiDragKeyHandler?: (event: KeyboardEvent) => void
+    _demoSelectInstalled?: boolean
+    _demoSelectClickHandler?: (event: MouseEvent) => void
   }
 }
 
@@ -20,9 +19,8 @@ declare global {
     Sortable?: typeof Sortable
     PluginSystem?: any
     AutoScrollPlugin?: any
-    MultiDragPlugin?: any
     SwapPlugin?: any
-    multiDragSortable?: any
+    demoSelectSortable?: any
     autoScrollSortable?: any
     swapSortable?: any
     debugSortable?: any

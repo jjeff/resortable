@@ -98,7 +98,7 @@ new Sortable(el, { multiDrag: true, selectedClass: 'sortable-selected' });
 new Sortable(el, { multiDrag: true, selectedClass: 'sortable-selected' });
 ```
 
-`MultiDragPlugin` is exported for back-compat but is a deprecated no-op shim; mounting it does nothing useful.
+`MultiDragPlugin` was previously exported as a deprecated no-op shim for v1 back-compat. It was **removed in #34** — there is no `MultiDragPlugin` export in current builds. If you were importing `MultiDragPlugin` (even just to mount it), delete the import and the `Sortable.mount(...)` call; the `multiDrag: true` option is everything you need.
 
 ### AutoScroll plugin renamed and re-optioned
 
@@ -161,7 +161,7 @@ There is one v2-only callback with no v1 equivalent:
 - **`Sortable.utils` shrank from ~13 helpers to 3.** Only `on`, `index`, and `insertAt` are exposed (see `src/index.ts:126-133`). Removed: `off`, `css`, `find`, `bind`, `is`, `closest`, `clone`, `toggleClass`, `detectDirection`, `getChild`, `expando`. If you depend on any of these, use a DOM helper of your choice (e.g. native `Element.matches`, `Element.closest`, `getComputedStyle`).
 - **Plugins must be mounted explicitly.** Even AutoScroll and OnSpill, which were in the v1 default build.
 - **AutoScroll plugin renamed (`'scroll'` → `'AutoScroll'`) and re-optioned.** No alias is provided. See the AutoScroll table above.
-- **MultiDrag plugin is now a deprecated no-op.** Use `{ multiDrag: true }` on the instance instead.
+- **MultiDrag plugin removed.** The `MultiDragPlugin` v1-compat shim (previously deprecated no-op) is gone. Use `{ multiDrag: true }` on the instance instead. Removed in #34.
 - **`filter` no longer accepts a function.** String selector only.
 - **`direction` no longer accepts a function.** `'vertical' \| 'horizontal'` only.
 - **`ignore` option supported with legacy default `'a, img'`.** Restored in v2 (issue #30). Pass `ignore: ''` to disable.
@@ -314,7 +314,7 @@ new Sortable(list, {
 });
 ```
 
-_Changes_: drop the plugin mount entirely — multi-drag is native. The `MultiDragPlugin` export is a deprecated no-op shim retained only so v1 imports don't fail.
+_Changes_: drop the plugin mount entirely — multi-drag is native. The `MultiDragPlugin` v1-compat shim was removed in #34, so an `import { MultiDragPlugin } from 'resortable/plugins'` will now fail at build time. Delete the import and the `Sortable.mount(...)` call.
 
 ## Things that intentionally diverge
 

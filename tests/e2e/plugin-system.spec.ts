@@ -98,44 +98,47 @@ test.describe('Plugin System E2E', () => {
     expect(hasAutoScroll).toBe(true)
   })
 
-  test('should handle MultiDrag plugin integration', async ({ page }) => {
-    // Test MultiDrag plugin functionality
+  // This test exercises the plugin-system lifecycle via a generic
+  // click-handler mock plugin. It used to be named "MultiDrag" but multi-drag
+  // is now a core feature (`multiDrag: true`), not a plugin (#34). The mock
+  // is renamed to DemoSelect so it cannot be mistaken for a built-in.
+  test('should handle a generic click-handler plugin via PluginSystem', async ({
+    page,
+  }) => {
     await page.evaluate(() => {
       // Create test container
       const container = document.createElement('div')
-      container.id = 'multi-drag-test'
+      container.id = 'demo-select-test'
       container.style.padding = '20px'
 
       // Add items
       for (let i = 0; i < 5; i++) {
         const item = document.createElement('div')
         item.className = 'sortable-item'
-        item.textContent = `Multi Item ${i + 1}`
+        item.textContent = `Demo Item ${i + 1}`
         item.style.padding = '10px'
         item.style.margin = '5px'
         item.style.background = '#e0f0ff'
         item.style.cursor = 'pointer'
-        item.setAttribute('data-id', `multi-item-${i + 1}`)
+        item.setAttribute('data-id', `demo-item-${i + 1}`)
         container.appendChild(item)
       }
 
       document.body.appendChild(container)
 
-      // Initialize with MultiDrag
       const { Sortable, PluginSystem } = window as any
 
-      // Unregister existing MultiDrag plugin if it exists
-      PluginSystem.unregister('MultiDrag')
+      // Unregister if previously registered (test isolation)
+      PluginSystem.unregister('DemoSelect')
 
-      // Register mock MultiDrag plugin with enhanced click handling
-      const MultiDragPlugin = {
-        name: 'MultiDrag',
+      // Register mock click-handler plugin
+      const DemoSelectPlugin = {
+        name: 'DemoSelect',
         version: '2.0.0',
         install(sortable: any) {
-          sortable._multiDragInstalled = true
+          sortable._demoSelectInstalled = true
           sortable._selectedItems = new Set()
 
-          // Add click handler for testing with better event handling
           const handleClick = function (e: Event) {
             const event = e as MouseEvent
             if (event.ctrlKey || event.metaKey) {
@@ -148,7 +151,6 @@ test.describe('Plugin System E2E', () => {
                   target.classList.add('selected')
                   sortable._selectedItems.add(target)
                 }
-                // Prevent default to avoid interference
                 event.preventDefault()
                 event.stopPropagation()
               }
@@ -156,39 +158,38 @@ test.describe('Plugin System E2E', () => {
           }
 
           sortable.element.addEventListener('click', handleClick, true)
-          sortable._multiDragClickHandler = handleClick
+          sortable._demoSelectClickHandler = handleClick
         },
         uninstall(sortable: any) {
-          if (sortable._multiDragClickHandler) {
+          if (sortable._demoSelectClickHandler) {
             sortable.element.removeEventListener(
               'click',
-              sortable._multiDragClickHandler,
+              sortable._demoSelectClickHandler,
               true
             )
-            delete sortable._multiDragClickHandler
+            delete sortable._demoSelectClickHandler
           }
-          sortable._multiDragInstalled = false
+          sortable._demoSelectInstalled = false
           if (sortable._selectedItems) {
             sortable._selectedItems.clear()
           }
         },
       }
 
-      PluginSystem.register(MultiDragPlugin)
+      PluginSystem.register(DemoSelectPlugin)
 
-      // Create sortable with multiDrag enabled
-      const sortable = new Sortable(container, { multiDrag: true })
-      PluginSystem.install(sortable, 'MultiDrag')
-      ;(window as any).multiDragSortable = sortable
+      const sortable = new Sortable(container)
+      PluginSystem.install(sortable, 'DemoSelect')
+      ;(window as any).demoSelectSortable = sortable
     })
 
-    // Use direct event dispatch for more reliable modifier handling
+    // Use direct event dispatch for reliable modifier handling
     await page.evaluate(() => {
       const item1 = document.querySelector(
-        '#multi-drag-test .sortable-item:first-child'
+        '#demo-select-test .sortable-item:first-child'
       ) as HTMLElement
       const item2 = document.querySelector(
-        '#multi-drag-test .sortable-item:nth-child(2)'
+        '#demo-select-test .sortable-item:nth-child(2)'
       ) as HTMLElement
 
       const createCtrlClick = (target: HTMLElement) => {
@@ -205,20 +206,18 @@ test.describe('Plugin System E2E', () => {
       createCtrlClick(item2)
     })
 
-    // Wait for DOM updates
     await page.waitForTimeout(100)
 
-    // Verify selection with retry logic
     await expect
       .poll(
         async () => {
           const count = await page
-            .locator('#multi-drag-test .sortable-item.selected')
+            .locator('#demo-select-test .sortable-item.selected')
             .count()
           return count
         },
         {
-          message: 'Expected 2 selected items in MultiDrag plugin test',
+          message: 'Expected 2 selected items in DemoSelect plugin test',
           timeout: 5000,
         }
       )

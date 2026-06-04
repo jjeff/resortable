@@ -34,11 +34,6 @@ declare global {
     AutoScrollPlugin?: typeof import('../../src/plugins/AutoScrollPlugin.js').AutoScrollPlugin
 
     /**
-     * MultiDragPlugin constructor (may be undefined if not loaded)
-     */
-    MultiDragPlugin?: typeof import('../../src/plugins/MultiDragPlugin.js').MultiDragPlugin
-
-    /**
      * SwapPlugin constructor (may be undefined if not loaded)
      */
     SwapPlugin?: typeof import('../../src/plugins/SwapPlugin.js').SwapPlugin
