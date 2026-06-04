@@ -500,7 +500,14 @@ export class KeyboardManager {
     const items = this.zone.getItems()
     const focused = this.selectionManager.getFocused()
     items.forEach((item, index) => {
-      item.setAttribute('role', 'listitem')
+      // Items use role="option" (not "listitem") because the container is
+      // role="listbox". `aria-selected` is allowed on `option` but not on
+      // `listitem`; `listbox` requires `option` children. This satisfies
+      // axe's aria-required-children / aria-required-parent / aria-allowed-attr
+      // rules (issue #40). `aria-grabbed` is also written below — it is
+      // deprecated in WAI-ARIA 1.1 but kept for now for backward compatibility
+      // with consumer code; modernisation tracked in the follow-up issue.
+      item.setAttribute('role', 'option')
       item.setAttribute('aria-setsize', items.length.toString())
       item.setAttribute('aria-posinset', (index + 1).toString())
 

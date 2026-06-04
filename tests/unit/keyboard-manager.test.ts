@@ -83,7 +83,9 @@ describe('KeyboardManager', () => {
       keyboardManager.attach()
 
       items.forEach((item, index) => {
-        expect(item.getAttribute('role')).toBe('listitem')
+        // role="option" (not "listitem") so items are valid children of
+        // role="listbox" and `aria-selected` is an allowed attribute (#40).
+        expect(item.getAttribute('role')).toBe('option')
         expect(item.getAttribute('aria-grabbed')).toBe('false')
         expect(item.getAttribute('aria-selected')).toBe('false')
         expect(item.getAttribute('aria-setsize')).toBe('5')
