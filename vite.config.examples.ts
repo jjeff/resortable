@@ -16,7 +16,7 @@ import { readdirSync } from 'fs';
 //
 // Excluded:
 // - `examples/simple-list.html` and `examples/multi-list.html` import from
-//   `../dist/sortable.es.js`, which the docs workflow does not build. They
+//   `../dist/sortable.esm.js`, which the docs workflow does not build. They
 //   are E2E test fixtures (referenced by `tests/e2e/animation*.spec.ts`) and
 //   are intentionally left untouched here.
 

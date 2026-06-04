@@ -14,7 +14,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Sortable',
-      fileName: (format) => `sortable.${format}.js`,
+      fileName: (format) => {
+        // Map Vite/Rollup's `es` format name to the standard `.esm.js`
+        // extension that package.json `module` and `exports.import` reference.
+        const ext = format === 'es' ? 'esm' : format
+        return `sortable.${ext}.js`
+      },
       formats: ['es', 'cjs', 'umd'],
     },
     rollupOptions: {
