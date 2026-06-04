@@ -21,7 +21,7 @@ Jump to:
 
 ## At a glance
 
-Resortable v2 is a TypeScript-first ESM rewrite of Sortable.js. Most v1 option shapes (`group`, `animation`, `handle`, `filter`, `ghostClass`, `chosenClass`, callback names, event payload shape) carry over unchanged, so simple integrations move with little more than an import change. What changed: package is ESM-first with no `window.Sortable` global; types ship in-package (no `@types/sortablejs`); plugins must be explicitly imported and mounted; a few options were renamed (`fallbackOffset.x` → `fallbackOffsetX`); one v1 option was dropped (`supportPointer`); function-form `filter` and `direction` are not supported; the `Sortable.utils` helper surface shrank from ~13 helpers to 3; and three option defaults silently changed (`animation`, `easing`, `draggable`).
+Resortable v2 is a TypeScript-first ESM rewrite of Sortable.js. Most v1 option shapes (`group`, `animation`, `handle`, `filter`, `ghostClass`, `chosenClass`, callback names, event payload shape) carry over unchanged, so simple integrations move with little more than an import change. What changed: package is ESM-first with no `window.Sortable` global; types ship in-package (no `@types/sortablejs`); plugins must be explicitly imported and mounted; a few options were renamed (`fallbackOffset.x` → `fallbackOffsetX`); one v1 option was dropped (`supportPointer`); function-form `filter` and `direction` are not supported; the `Sortable.utils` helper surface shrank from ~13 helpers to 7; and three option defaults silently changed (`animation`, `easing`, `draggable`).
 
 ## Install
 
@@ -129,7 +129,7 @@ Only the **delta** is shown. Every option not listed here works the same as v1.
 | `easing` default `null` | `easing` default `'cubic-bezier(0.4, 0.0, 0.2, 1)'` | Set `easing: ''` (or any falsy value) to opt out if you relied on `null`. |
 | `draggable` default `'>li'` (for `ul`/`ol`) or `'>*'` | `draggable` default `'.sortable-item'` | **Most impactful default change.** Any v1 code that omitted `draggable` and relied on `>li`/`>*` will silently match nothing in v2 unless items have `.sortable-item`. |
 | `touchStartThreshold` default `devicePixelRatio` | `touchStartThreshold` default `5` | Set explicitly if you want the v1 behavior. |
-| `Sortable.utils` (~13 helpers) | `Sortable.utils.on`, `.index`, `.insertAt` only | See [Breaking changes](#breaking-changes). |
+| `Sortable.utils` (~13 helpers) | `on`, `off`, `index`, `insertAt`, `closest`, `toggleClass`, `clone` | See [Breaking changes](#breaking-changes). Removed v1-only helpers: `is`, `css`, `find`, `bind`, `detectDirection`, `getChild`, `expando`. |
 
 ### Verified-unchanged options
 
@@ -158,7 +158,7 @@ There is one v2-only callback with no v1 equivalent:
 - **Drop `window.Sortable` global.** Import from `'resortable'` (ESM) or `require('resortable')` (CJS). The UMD build exists but is not the documented entry point.
 - **Drop `@types/sortablejs` dependency.** Types ship in-package — remove `@types/sortablejs` from your `devDependencies`.
 - **Drop IE support and any browser more than ~2 years old.** Browser UA sniffing was replaced with feature detection; the `supportPointer` opt-out is gone.
-- **`Sortable.utils` shrank from ~13 helpers to 3.** Only `on`, `index`, and `insertAt` are exposed (see `src/index.ts:126-133`). Removed: `off`, `css`, `find`, `bind`, `is`, `closest`, `clone`, `toggleClass`, `detectDirection`, `getChild`, `expando`. If you depend on any of these, use a DOM helper of your choice (e.g. native `Element.matches`, `Element.closest`, `getComputedStyle`).
+- **`Sortable.utils` shrank from ~13 helpers to 7.** Exposed: `on`, `off`, `index`, `insertAt`, `closest`, `toggleClass`, `clone` (see `src/index.ts`). Removed (no replacement — use native equivalents): `is` (use `Element.matches`), `css` (use `getComputedStyle` / direct `el.style`), `find` (use `querySelectorAll`), `bind` (use `Function.prototype.bind` or arrow functions), `extend` (use spread / `Object.assign`), `detectDirection`, `getChild`, `expando`.
 - **Plugins must be mounted explicitly.** Even AutoScroll and OnSpill, which were in the v1 default build.
 - **AutoScroll plugin renamed (`'scroll'` → `'AutoScroll'`) and re-optioned.** No alias is provided. See the AutoScroll table above.
 - **MultiDrag plugin removed.** The `MultiDragPlugin` v1-compat shim (previously deprecated no-op) is gone. Use `{ multiDrag: true }` on the instance instead. Removed in #34.
@@ -324,7 +324,7 @@ The following deviations are deliberate design choices, not gaps:
 - **No `Sortable.create()` factory.** A single `new Sortable()` form is simpler to type and document; the factory was redundant.
 - **No `supportPointer` option.** Pointer event support is feature-detected — the v1 UA-sniffing fallback (Safari quirks, iOS exceptions) was replaced with capability gates per the implementation plan. Users do not need (and should not have) an opt-out.
 - **No function form for `filter` / `direction`.** Strings cover the overwhelming majority of use cases and keep the type surface tight. If you need dynamic per-event logic, handle it in `onMove` (return `false` to cancel) or in `onFilter`.
-- **Smaller `Sortable.utils`.** Modern browsers ship `Element.matches`, `Element.closest`, `getComputedStyle`, `classList.toggle`, etc. Re-exporting wrappers around them added bytes without adding value.
+- **Smaller `Sortable.utils`.** Helpers that are pure conveniences over a one-line native call (`is` → `Element.matches`, `css` → `getComputedStyle`, `find` → `querySelectorAll`, `extend` → spread/`Object.assign`) were dropped — they added bytes without adding value. The helpers that *do* remain (`on`/`off`/`insertAt`/`closest`/`toggleClass`/`clone`) either add real behavior on top of the DOM API (e.g. `on` returns an unsubscribe function), bound the search (`closest` accepts a `ctx` ancestor), or simply round out the v1 footprint that callers of the migrated library are likely to be importing.
 - **MultiDrag is core, not a plugin.** Per the implementation plan: "take a MultiDrag-first approach to selection and dragging. Single-item drag can be simply treated as a multi-item drag with one item." Pushing this into core eliminated a class of plugin/core coupling bugs.
 - **Drop IE and >2-year-old browsers.** Frees the codebase from polyfills and UA branching.
 

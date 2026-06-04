@@ -805,20 +805,6 @@ export interface SortablePlugin {
 }
 
 /**
- * Utility type for deep partial objects
- * @internal
- */
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
-}
-
-/**
- * Element selector type - can be string selector or HTMLElement
- * @public
- */
-export type ElementSelector = string | HTMLElement
-
-/**
  * Mapping of event names to event payloads
  * @public
  */
