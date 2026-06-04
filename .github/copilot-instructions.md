@@ -146,7 +146,7 @@ examples/              # HTML examples for testing
 - **ESLint**: Code linting with TypeScript rules
 
 ### Output Formats
-- `dist/sortable.es.js` - ES modules (76.72 kB, 14.37 kB gzipped)
+- `dist/sortable.esm.js` - ES modules (76.72 kB, 14.37 kB gzipped)
 - `dist/sortable.cjs.js` - CommonJS (39.58 kB, 8.97 kB gzipped)
 - `dist/sortable.umd.js` - UMD (39.79 kB, 9.06 kB gzipped)
 - `dist/types/index.d.ts` - TypeScript declarations

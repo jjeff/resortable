@@ -43,7 +43,16 @@ import {
   type SortablePlugin,
   type SortableEvents,
 } from './types/index.js'
-import { toArray as domToArray, on, getIndex, insertAt } from './utils/dom.js'
+import {
+  toArray as domToArray,
+  on,
+  off,
+  getIndex,
+  insertAt,
+  closest as domClosest,
+  toggleClass,
+  clone as domClone,
+} from './utils/dom.js'
 
 // Export PluginSystem
 export { PluginSystem }
@@ -146,10 +155,18 @@ export class Sortable {
   public static utils = {
     /** Add an event listener and return an unsubscribe function */
     on,
+    /** Remove a previously-registered event listener (symmetric to `on`) */
+    off,
     /** Get the index of an element within its parent */
     index: getIndex,
     /** Insert an element at a specific index within a parent */
     insertAt,
+    /** Find the nearest ancestor matching `selector`, optionally bounded by `ctx` */
+    closest: domClosest,
+    /** Toggle a CSS class on an element; pass `force` to set explicitly */
+    toggleClass,
+    /** Deep-clone an element (`cloneNode(true)`) */
+    clone: domClone,
   }
 
   /**

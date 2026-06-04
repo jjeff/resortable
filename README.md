@@ -140,11 +140,18 @@ sortable.destroy()              // Remove instance and clean up
 Sortable.active    // Currently active Sortable instance
 Sortable.dragged   // Currently dragged element
 Sortable.ghost     // Ghost placeholder element
-Sortable.clone     // Cloned element (clone operations)
+Sortable.clone     // Cloned element from the most recent clone operation
 Sortable.get(el)   // Get Sortable instance by element
 Sortable.closest(el, selector) // Find closest Sortable ancestor
-Sortable.utils.on(el, event, handler) // addEventListener with unsubscribe
-Sortable.utils.index(el)              // Get element index in parent
+
+// DOM helpers — Sortable.utils.* (note: distinct from the static surface above)
+Sortable.utils.on(el, event, handler)        // addEventListener; returns an unsubscribe fn
+Sortable.utils.off(el, event, handler)       // removeEventListener (symmetric to on)
+Sortable.utils.index(el)                     // Element's index within its parent
+Sortable.utils.insertAt(parent, el, index)   // Insert el at a specific index in parent
+Sortable.utils.closest(el, selector, ctx?)   // Nearest ancestor matching selector, bounded by ctx
+Sortable.utils.toggleClass(el, name, force?) // classList.toggle wrapper
+Sortable.utils.clone(el)                     // Deep-clone an element (cloneNode(true))
 ```
 
 ## Plugins
