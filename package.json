@@ -53,7 +53,7 @@
   "size-limit": [
     {
       "name": "ESM (gzip)",
-      "path": "dist/sortable.es.js",
+      "path": "dist/sortable.esm.js",
       "limit": "50 kB",
       "gzip": true,
       "brotli": false
