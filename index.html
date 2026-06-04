@@ -645,40 +645,50 @@
       <!-- Kanban Board -->
       <div style="margin-bottom: 2rem;">
         <h3>Kanban Board</h3>
+        <!-- a11y (#40): h4 headings live OUTSIDE the sortable container.
+             KeyboardManager marks the sortable container as role="listbox",
+             which requires role="option" children — a non-option child
+             (the heading) trips axe `aria-required-children`. -->
         <div class="kanban-board">
-          <div class="kanban-column todo" id="kanban-todo">
+          <div class="kanban-column todo">
             <h4>📋 To Do</h4>
-            <div class="kanban-card" data-id="task-1">
-              <strong>Design new homepage</strong>
-              <div class="priority high">High Priority</div>
-            </div>
-            <div class="kanban-card" data-id="task-2">
-              <strong>Update documentation</strong>
-              <div class="priority medium">Medium Priority</div>
-            </div>
-            <div class="kanban-card" data-id="task-3">
-              <strong>Fix responsive issues</strong>
-              <div class="priority low">Low Priority</div>
+            <div id="kanban-todo">
+              <div class="kanban-card" data-id="task-1">
+                <strong>Design new homepage</strong>
+                <div class="priority high">High Priority</div>
+              </div>
+              <div class="kanban-card" data-id="task-2">
+                <strong>Update documentation</strong>
+                <div class="priority medium">Medium Priority</div>
+              </div>
+              <div class="kanban-card" data-id="task-3">
+                <strong>Fix responsive issues</strong>
+                <div class="priority low">Low Priority</div>
+              </div>
             </div>
           </div>
-          
-          <div class="kanban-column doing" id="kanban-doing">
+
+          <div class="kanban-column doing">
             <h4>🚧 In Progress</h4>
-            <div class="kanban-card" data-id="task-4">
-              <strong>Implement drag & drop</strong>
-              <div class="priority high">High Priority</div>
-            </div>
-            <div class="kanban-card" data-id="task-5">
-              <strong>Write unit tests</strong>
-              <div class="priority medium">Medium Priority</div>
+            <div id="kanban-doing">
+              <div class="kanban-card" data-id="task-4">
+                <strong>Implement drag & drop</strong>
+                <div class="priority high">High Priority</div>
+              </div>
+              <div class="kanban-card" data-id="task-5">
+                <strong>Write unit tests</strong>
+                <div class="priority medium">Medium Priority</div>
+              </div>
             </div>
           </div>
-          
-          <div class="kanban-column done" id="kanban-done">
+
+          <div class="kanban-column done">
             <h4>✅ Done</h4>
-            <div class="kanban-card" data-id="task-6">
-              <strong>Setup TypeScript</strong>
-              <div class="priority low">Low Priority</div>
+            <div id="kanban-done">
+              <div class="kanban-card" data-id="task-6">
+                <strong>Setup TypeScript</strong>
+                <div class="priority low">Low Priority</div>
+              </div>
             </div>
           </div>
         </div>
@@ -783,16 +793,24 @@
           Library Status: <span id="library-status">Loading...</span>
         </div>
         
+        <!-- a11y (#40): per-list section headings live in a wrapper
+             OUTSIDE the sortable container. KeyboardManager marks each
+             sortable container as role="listbox", which requires
+             role="option" children — a non-option child (the heading)
+             trips axe `aria-required-children`. -->
+
         <!-- Basic Test -->
         <div class="test-container">
           <h3>Basic Sortable List</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="basic-list">
+            <div>
               <h3>Basic</h3>
-              <div class="test-item sortable-item" data-id="basic-1">Basic 1</div>
-              <div class="test-item sortable-item" data-id="basic-2">Basic 2</div>
-              <div class="test-item sortable-item" data-id="basic-3">Basic 3</div>
-              <div class="test-item sortable-item" data-id="basic-4">Basic 4</div>
+              <div class="sortable-list" id="basic-list">
+                <div class="test-item sortable-item" data-id="basic-1">Basic 1</div>
+                <div class="test-item sortable-item" data-id="basic-2">Basic 2</div>
+                <div class="test-item sortable-item" data-id="basic-3">Basic 3</div>
+                <div class="test-item sortable-item" data-id="basic-4">Basic 4</div>
+              </div>
             </div>
           </div>
         </div>
@@ -801,19 +819,23 @@
         <div class="test-container">
           <h3>Shared Groups</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="shared-a-1">
+            <div>
               <h3>Group A - List 1</h3>
-              <div class="test-item sortable-item" data-id="a-1">A1</div>
-              <div class="test-item sortable-item" data-id="a-2">A2</div>
-              <div class="test-item sortable-item" data-id="a-3">A3</div>
-              <div class="test-item sortable-item" data-id="a-4">A4</div>
+              <div class="sortable-list" id="shared-a-1">
+                <div class="test-item sortable-item" data-id="a-1">A1</div>
+                <div class="test-item sortable-item" data-id="a-2">A2</div>
+                <div class="test-item sortable-item" data-id="a-3">A3</div>
+                <div class="test-item sortable-item" data-id="a-4">A4</div>
+              </div>
             </div>
-            <div class="sortable-list" id="shared-a-2">
+            <div>
               <h3>Group A - List 2</h3>
-              <div class="test-item sortable-item" data-id="a-5">A5</div>
-              <div class="test-item sortable-item" data-id="a-6">A6</div>
-              <div class="test-item sortable-item" data-id="a-7">A7</div>
-              <div class="test-item sortable-item" data-id="a-8">A8</div>
+              <div class="sortable-list" id="shared-a-2">
+                <div class="test-item sortable-item" data-id="a-5">A5</div>
+                <div class="test-item sortable-item" data-id="a-6">A6</div>
+                <div class="test-item sortable-item" data-id="a-7">A7</div>
+                <div class="test-item sortable-item" data-id="a-8">A8</div>
+              </div>
             </div>
           </div>
         </div>
@@ -822,17 +844,21 @@
         <div class="test-container">
           <h3>Independent Groups</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="group-a-1">
+            <div>
               <h3>Group A</h3>
-              <div class="test-item sortable-item" data-id="ga-1">GA1</div>
-              <div class="test-item sortable-item" data-id="ga-2">GA2</div>
-              <div class="test-item sortable-item" data-id="ga-3">GA3</div>
+              <div class="sortable-list" id="group-a-1">
+                <div class="test-item sortable-item" data-id="ga-1">GA1</div>
+                <div class="test-item sortable-item" data-id="ga-2">GA2</div>
+                <div class="test-item sortable-item" data-id="ga-3">GA3</div>
+              </div>
             </div>
-            <div class="sortable-list" id="group-b-1">
+            <div>
               <h3>Group B</h3>
-              <div class="test-item sortable-item" data-id="gb-1">GB1</div>
-              <div class="test-item sortable-item" data-id="gb-2">GB2</div>
-              <div class="test-item sortable-item" data-id="gb-3">GB3</div>
+              <div class="sortable-list" id="group-b-1">
+                <div class="test-item sortable-item" data-id="gb-1">GB1</div>
+                <div class="test-item sortable-item" data-id="gb-2">GB2</div>
+                <div class="test-item sortable-item" data-id="gb-3">GB3</div>
+              </div>
             </div>
           </div>
         </div>
@@ -841,19 +867,23 @@
         <div class="test-container">
           <h3>Grid Layout</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-              <h3 style="grid-column:1 / -1;">Grid 1</h3>
-              <div class="test-item sortable-item" data-id="g1-1">G1-1</div>
-              <div class="test-item sortable-item" data-id="g1-2">G1-2</div>
-              <div class="test-item sortable-item" data-id="g1-3">G1-3</div>
-              <div class="test-item sortable-item" data-id="g1-4">G1-4</div>
+            <div>
+              <h3>Grid 1</h3>
+              <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                <div class="test-item sortable-item" data-id="g1-1">G1-1</div>
+                <div class="test-item sortable-item" data-id="g1-2">G1-2</div>
+                <div class="test-item sortable-item" data-id="g1-3">G1-3</div>
+                <div class="test-item sortable-item" data-id="g1-4">G1-4</div>
+              </div>
             </div>
-            <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-              <h3 style="grid-column:1 / -1;">Grid 2</h3>
-              <div class="test-item sortable-item" data-id="g2-1">G2-1</div>
-              <div class="test-item sortable-item" data-id="g2-2">G2-2</div>
-              <div class="test-item sortable-item" data-id="g2-3">G2-3</div>
-              <div class="test-item sortable-item" data-id="g2-4">G2-4</div>
+            <div>
+              <h3>Grid 2</h3>
+              <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                <div class="test-item sortable-item" data-id="g2-1">G2-1</div>
+                <div class="test-item sortable-item" data-id="g2-2">G2-2</div>
+                <div class="test-item sortable-item" data-id="g2-3">G2-3</div>
+                <div class="test-item sortable-item" data-id="g2-4">G2-4</div>
+              </div>
             </div>
           </div>
         </div>
@@ -862,19 +892,23 @@
         <div class="test-container">
           <h3>Legacy E2E Test Lists</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="list1">
+            <div>
               <h3>List 1</h3>
-              <div class="test-item sortable-item" data-id="item-1">Item 1</div>
-              <div class="test-item sortable-item" data-id="item-2">Item 2</div>
-              <div class="test-item sortable-item" data-id="item-3">Item 3</div>
-              <div class="test-item sortable-item" data-id="item-4">Item 4</div>
+              <div class="sortable-list" id="list1">
+                <div class="test-item sortable-item" data-id="item-1">Item 1</div>
+                <div class="test-item sortable-item" data-id="item-2">Item 2</div>
+                <div class="test-item sortable-item" data-id="item-3">Item 3</div>
+                <div class="test-item sortable-item" data-id="item-4">Item 4</div>
+              </div>
             </div>
-            <div class="sortable-list" id="list2">
+            <div>
               <h3>List 2</h3>
-              <div class="test-item sortable-item" data-id="item-5">Item 5</div>
-              <div class="test-item sortable-item" data-id="item-6">Item 6</div>
-              <div class="test-item sortable-item" data-id="item-7">Item 7</div>
-              <div class="test-item sortable-item" data-id="item-8">Item 8</div>
+              <div class="sortable-list" id="list2">
+                <div class="test-item sortable-item" data-id="item-5">Item 5</div>
+                <div class="test-item sortable-item" data-id="item-6">Item 6</div>
+                <div class="test-item sortable-item" data-id="item-7">Item 7</div>
+                <div class="test-item sortable-item" data-id="item-8">Item 8</div>
+              </div>
             </div>
           </div>
         </div>
@@ -883,12 +917,14 @@
         <div class="test-container">
           <h3>Fallback Mode</h3>
           <div class="test-grid">
-            <div class="sortable-list" id="fallback-list">
+            <div>
               <h3>forceFallback: true</h3>
-              <div class="test-item sortable-item" data-id="fb-1">FB1</div>
-              <div class="test-item sortable-item" data-id="fb-2">FB2</div>
-              <div class="test-item sortable-item" data-id="fb-3">FB3</div>
-              <div class="test-item sortable-item" data-id="fb-4">FB4</div>
+              <div class="sortable-list" id="fallback-list">
+                <div class="test-item sortable-item" data-id="fb-1">FB1</div>
+                <div class="test-item sortable-item" data-id="fb-2">FB2</div>
+                <div class="test-item sortable-item" data-id="fb-3">FB3</div>
+                <div class="test-item sortable-item" data-id="fb-4">FB4</div>
+              </div>
             </div>
           </div>
         </div>

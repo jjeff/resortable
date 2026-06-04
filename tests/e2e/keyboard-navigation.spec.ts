@@ -213,7 +213,9 @@ test.describe('Keyboard Navigation', () => {
     // Check item ARIA attributes
     for (let i = 0; i < 4; i++) {
       const item = items.nth(i)
-      await expect(item).toHaveAttribute('role', 'listitem')
+      // Items use role="option" (not "listitem") so they are valid
+      // children of role="listbox" and `aria-selected` is allowed (#40).
+      await expect(item).toHaveAttribute('role', 'option')
       await expect(item).toHaveAttribute('aria-setsize', '4')
       await expect(item).toHaveAttribute('aria-posinset', (i + 1).toString())
       await expect(item).toHaveAttribute('aria-grabbed', 'false')

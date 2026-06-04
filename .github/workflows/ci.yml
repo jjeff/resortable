@@ -56,6 +56,38 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  accessibility:
+    # Hard gate: every page in the curated examples site + the dev
+    # playground must pass axe-core WCAG 2.1 A + AA. Spec lives in
+    # tests/e2e/accessibility-audit.spec.ts. (issue #40)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility audit
+        run: CI=1 npx playwright test --project=chromium tests/e2e/accessibility-audit.spec.ts
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-accessibility
+          path: playwright-report/
+          retention-days: 30
+
   e2e-tests-linux:
     # Chromium-only baseline on GitHub-hosted Linux. Firefox / WebKit / mobile
     # projects are tracked under issue #38 (cross-browser matrix).

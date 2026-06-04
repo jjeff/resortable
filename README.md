@@ -12,7 +12,7 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 - **Cross-Container** — Drag items between lists with shared groups
 - **Clone Support** — `group.pull: 'clone'` to copy items instead of moving
 - **Animations** — FLIP-based 60fps reorder animations
-- **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support
+- **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support. WCAG 2.1 AA verified via an automated axe-core audit in CI; see [docs/accessibility.md](./docs/accessibility.md) for the keyboard contract and ARIA reference.
 - **Multi-Drag** — Ctrl+Click / Shift+Click selection, drag multiple items together
 - **Plugin System** — AutoScroll, Swap plugins (extensible architecture)
 - **TypeScript** — Strict types with full IntelliSense support

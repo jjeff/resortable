@@ -10,7 +10,7 @@
   --border: #e0e0e0;
   --border-strong: #c8c8c8;
   --text: #1f2328;
-  --text-muted: #6a737d;
+  --text-muted: #586069; /* WCAG AA on #f0f3f7 (column/palette bg): 5.5:1 — issue #40 */
   --accent: #2962ff;
   --accent-soft: #e3f2fd;
   --danger: #c62828;
