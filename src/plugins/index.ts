@@ -10,7 +10,6 @@ export {
   type MarqueeSelectOptions,
   type MarqueeFilterConfig,
 } from './MarqueeSelectPlugin.js'
-export { MultiDragPlugin, type MultiDragOptions } from './MultiDragPlugin.js'
 export { OnSpillPlugin, type OnSpillOptions } from './OnSpillPlugin.js'
 export { SwapPlugin, type SwapOptions } from './SwapPlugin.js'
 
@@ -21,7 +20,6 @@ export { PluginSystem } from '../core/PluginSystem.js'
 import { PluginSystem } from '../core/PluginSystem.js'
 import { AutoScrollPlugin } from './AutoScrollPlugin.js'
 import { MarqueeSelectPlugin } from './MarqueeSelectPlugin.js'
-import { MultiDragPlugin } from './MultiDragPlugin.js'
 import { OnSpillPlugin } from './OnSpillPlugin.js'
 import { SwapPlugin } from './SwapPlugin.js'
 import type { SortableInstance } from '../types/index.js'
@@ -41,9 +39,6 @@ export function registerAllPlugins(): void {
   // Check if plugins are already registered to avoid duplicate registration errors
   if (!PluginSystem.get('AutoScroll')) {
     PluginSystem.register(AutoScrollPlugin.create())
-  }
-  if (!PluginSystem.get('MultiDrag')) {
-    PluginSystem.register(MultiDragPlugin.create())
   }
   if (!PluginSystem.get('MarqueeSelect')) {
     PluginSystem.register(MarqueeSelectPlugin.create())
@@ -68,7 +63,7 @@ export function registerAllPlugins(): void {
  * import { installCommonPlugins } from 'resortable/plugins';
  *
  * const sortable = new Sortable(element, { multiDrag: true });
- * installCommonPlugins(sortable, ['AutoScroll', 'MultiDrag']);
+ * installCommonPlugins(sortable, ['AutoScroll', 'Swap']);
  * ```
  */
 export function installCommonPlugins(

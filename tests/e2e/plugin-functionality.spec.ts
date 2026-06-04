@@ -57,12 +57,15 @@ test.describe('Plugin Functionality E2E', () => {
         },
       }
 
-      const MultiDragPlugin = {
-        name: 'MultiDrag',
+      // This is a generic click-selection mock plugin used to exercise the
+      // PluginSystem lifecycle. It used to be named "MultiDrag"; multi-drag
+      // is now a core feature (`multiDrag: true`), not a plugin (#34). The
+      // mock is renamed to DemoSelect to avoid implying a built-in.
+      const DemoSelectPlugin = {
+        name: 'DemoSelect',
         version: '2.0.0',
         install(sortable: any) {
-          if (!sortable.options.multiDrag) return
-          sortable._multiDragInstalled = true
+          sortable._demoSelectInstalled = true
           sortable._selectedItems = new Set()
 
           const handleClick = (event: MouseEvent) => {
@@ -112,17 +115,17 @@ test.describe('Plugin Functionality E2E', () => {
           }
 
           sortable.element.addEventListener('click', handleClick)
-          sortable._multiDragClickHandler = handleClick
+          sortable._demoSelectClickHandler = handleClick
         },
         uninstall(sortable: any) {
-          if (sortable._multiDragClickHandler) {
+          if (sortable._demoSelectClickHandler) {
             sortable.element.removeEventListener(
               'click',
-              sortable._multiDragClickHandler
+              sortable._demoSelectClickHandler
             )
-            delete sortable._multiDragClickHandler
+            delete sortable._demoSelectClickHandler
           }
-          sortable._multiDragInstalled = false
+          sortable._demoSelectInstalled = false
         },
       }
 
@@ -152,10 +155,10 @@ test.describe('Plugin Functionality E2E', () => {
       }
 
       try {
-        window.PluginSystem.register(MultiDragPlugin)
-        console.log('MultiDrag registered successfully')
+        window.PluginSystem.register(DemoSelectPlugin)
+        console.log('DemoSelect registered successfully')
       } catch (e) {
-        console.error('Failed to register MultiDrag:', e)
+        console.error('Failed to register DemoSelect:', e)
       }
 
       try {
@@ -185,13 +188,13 @@ test.describe('Plugin Functionality E2E', () => {
           </style>
 
           <div class="plugin-test-container">
-            <h3>MultiDrag Plugin Test</h3>
-            <div id="multi-drag-list">
-              <div class="plugin-test-item sortable-item" data-id="multi-1">Multi Item 1</div>
-              <div class="plugin-test-item sortable-item" data-id="multi-2">Multi Item 2</div>
-              <div class="plugin-test-item sortable-item" data-id="multi-3">Multi Item 3</div>
-              <div class="plugin-test-item sortable-item" data-id="multi-4">Multi Item 4</div>
-              <div class="plugin-test-item sortable-item" data-id="multi-5">Multi Item 5</div>
+            <h3>DemoSelect Plugin Test</h3>
+            <div id="demo-select-list">
+              <div class="plugin-test-item sortable-item" data-id="demo-1">Demo Item 1</div>
+              <div class="plugin-test-item sortable-item" data-id="demo-2">Demo Item 2</div>
+              <div class="plugin-test-item sortable-item" data-id="demo-3">Demo Item 3</div>
+              <div class="plugin-test-item sortable-item" data-id="demo-4">Demo Item 4</div>
+              <div class="plugin-test-item sortable-item" data-id="demo-5">Demo Item 5</div>
             </div>
           </div>
 
@@ -230,20 +233,19 @@ test.describe('Plugin Functionality E2E', () => {
       // Create sortables with plugins
       console.log('Creating sortables...')
 
-      window.multiDragSortable = new window.Sortable!(
-        document.getElementById('multi-drag-list')!,
+      window.demoSelectSortable = new window.Sortable!(
+        document.getElementById('demo-select-list')!,
         {
-          multiDrag: true,
           animation: 150,
         }
       )
-      console.log('MultiDrag sortable created')
+      console.log('DemoSelect sortable created')
 
       try {
-        window.PluginSystem.install(window.multiDragSortable, 'MultiDrag')
-        console.log('MultiDrag plugin installed successfully')
+        window.PluginSystem.install(window.demoSelectSortable, 'DemoSelect')
+        console.log('DemoSelect plugin installed successfully')
       } catch (e) {
-        console.error('Failed to install MultiDrag plugin:', e)
+        console.error('Failed to install DemoSelect plugin:', e)
       }
 
       window.autoScrollSortable = new window.Sortable!(
@@ -284,7 +286,7 @@ test.describe('Plugin Functionality E2E', () => {
     await page.waitForFunction(
       () => {
         return (
-          window.multiDragSortable &&
+          window.demoSelectSortable &&
           window.autoScrollSortable &&
           window.swapSortable &&
           window.pluginTestsReady
@@ -302,222 +304,20 @@ test.describe('Plugin Functionality E2E', () => {
         testArea.remove()
       }
       // Clean up globals
-      delete (window as any).multiDragSortable
+      delete (window as any).demoSelectSortable
       delete (window as any).autoScrollSortable
       delete (window as any).swapSortable
       delete (window as any).pluginTestsReady
     })
   })
 
-  test.describe('MultiDrag Plugin', () => {
-    test('should enable multi-item selection with Ctrl+Click', async ({
-      page,
-    }) => {
-      // Helper function to verify selection state
-      const verifySelectionState = async (
-        expectedCount: number,
-        expectedSelected: string[]
-      ) => {
-        // Wait for DOM to stabilize after click events
-        await page.waitForTimeout(100)
-
-        // Use retry logic for selection verification
-        await expect
-          .poll(
-            async () => {
-              const count = await page
-                .locator('#multi-drag-list .sortable-selected')
-                .count()
-              return count
-            },
-            {
-              message: `Expected ${expectedCount} selected items`,
-              timeout: 5000,
-            }
-          )
-          .toBe(expectedCount)
-
-        // Verify specific items are selected
-        for (const itemId of expectedSelected) {
-          await expect(
-            page.locator(`#multi-drag-list .sortable-item[data-id="${itemId}"]`)
-          ).toHaveClass(/sortable-selected/, { timeout: 2000 })
-        }
-      }
-
-      // Select multiple items with Ctrl+Click using dispatchEvent for more reliable modifier handling
-      await page.evaluate(() => {
-        const item1 = document.querySelector(
-          '#multi-drag-list .sortable-item[data-id="multi-1"]'
-        ) as HTMLElement
-        const item3 = document.querySelector(
-          '#multi-drag-list .sortable-item[data-id="multi-3"]'
-        ) as HTMLElement
-        const item5 = document.querySelector(
-          '#multi-drag-list .sortable-item[data-id="multi-5"]'
-        ) as HTMLElement
-
-        // Create click events with modifier keys
-        const createCtrlClick = (target: HTMLElement) => {
-          const event = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            ctrlKey: true,
-            metaKey: false,
-          })
-          target.dispatchEvent(event)
-        }
-
-        createCtrlClick(item1)
-        createCtrlClick(item3)
-        createCtrlClick(item5)
-      })
-
-      // Verify selection with retry logic
-      await verifySelectionState(3, ['multi-1', 'multi-3', 'multi-5'])
-    })
-
-    test('should enable range selection with Shift+Click', async ({ page }) => {
-      // First select an item
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-2"]')
-        .click()
-
-      // Then shift+click to select range
-      await page
-        .locator('#multi-drag-list .sortable-item[data-id="multi-4"]')
-        .click({ modifiers: ['Shift'] })
-
-      // Verify range selection (items 2, 3, 4)
-      const selectedCount = await page
-        .locator('#multi-drag-list .sortable-selected')
-        .count()
-      expect(selectedCount).toBe(3)
-
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-2"]')
-      ).toHaveClass(/sortable-selected/)
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-3"]')
-      ).toHaveClass(/sortable-selected/)
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-4"]')
-      ).toHaveClass(/sortable-selected/)
-    })
-
-    test('should toggle selection with Ctrl+Click', async ({ page }) => {
-      // Helper function for reliable modifier clicks
-      const ctrlClickItem = async (itemId: string) => {
-        await page.evaluate((id) => {
-          const item = document.querySelector(
-            `#multi-drag-list .sortable-item[data-id="${id}"]`
-          ) as HTMLElement
-          const event = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            ctrlKey: true,
-            metaKey: false,
-          })
-          item.dispatchEvent(event)
-        }, itemId)
-        // Wait for DOM updates
-        await page.waitForTimeout(50)
-      }
-
-      // Select an item
-      await ctrlClickItem('multi-1')
-
-      // Verify selection with retry logic
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-      ).toHaveClass(/sortable-selected/, { timeout: 2000 })
-
-      // Toggle it off
-      await ctrlClickItem('multi-1')
-
-      // Verify deselection with retry logic
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-1"]')
-      ).not.toHaveClass(/sortable-selected/, { timeout: 2000 })
-    })
-
-    test('should clear selection with single click', async ({ page }) => {
-      // Helper function for reliable clicks
-      const ctrlClickItem = async (itemId: string) => {
-        await page.evaluate((id) => {
-          const item = document.querySelector(
-            `#multi-drag-list .sortable-item[data-id="${id}"]`
-          ) as HTMLElement
-          const event = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            ctrlKey: true,
-            metaKey: false,
-          })
-          item.dispatchEvent(event)
-        }, itemId)
-        await page.waitForTimeout(50)
-      }
-
-      const singleClickItem = async (itemId: string) => {
-        await page.evaluate((id) => {
-          const item = document.querySelector(
-            `#multi-drag-list .sortable-item[data-id="${id}"]`
-          ) as HTMLElement
-          const event = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            ctrlKey: false,
-            metaKey: false,
-          })
-          item.dispatchEvent(event)
-        }, itemId)
-        await page.waitForTimeout(50)
-      }
-
-      // Select multiple items
-      await ctrlClickItem('multi-1')
-      await ctrlClickItem('multi-3')
-
-      // Verify initial selection
-      await expect
-        .poll(
-          async () => {
-            return await page
-              .locator('#multi-drag-list .sortable-selected')
-              .count()
-          },
-          {
-            message: 'Expected 2 selected items initially',
-            timeout: 3000,
-          }
-        )
-        .toBe(2)
-
-      // Single click should clear and select only one
-      await singleClickItem('multi-2')
-
-      // Verify only one item is selected with retry logic
-      await expect
-        .poll(
-          async () => {
-            const count = await page
-              .locator('#multi-drag-list .sortable-selected')
-              .count()
-            return count
-          },
-          {
-            message: 'Expected 1 selected item after single click',
-            timeout: 3000,
-          }
-        )
-        .toBe(1)
-
-      await expect(
-        page.locator('#multi-drag-list .sortable-item[data-id="multi-2"]')
-      ).toHaveClass(/sortable-selected/, { timeout: 2000 })
-    })
-  })
+  // The former 'MultiDrag Plugin' describe block (Ctrl+click / Shift+click /
+  // toggle / single-click selection) was removed in #34: multi-drag is now a
+  // core feature, not a plugin, and these scenarios are covered against the
+  // real implementation in tests/e2e/multi-select.spec.ts. The DemoSelect
+  // mock kept above is wired only so the Plugin Lifecycle describe (further
+  // down) can exercise install/uninstall/duplicate via a real registered
+  // plugin name.
 
   test.describe('AutoScroll Plugin', () => {
     test('should be installed and ready', async ({ page }) => {
@@ -637,9 +437,9 @@ test.describe('Plugin Functionality E2E', () => {
       // Check initial installation
       const initialInstallations = await page.evaluate(() => {
         return {
-          multiDrag: window.PluginSystem.isInstalled(
-            window.multiDragSortable,
-            'MultiDrag'
+          demoSelect: window.PluginSystem.isInstalled(
+            window.demoSelectSortable,
+            'DemoSelect'
           ),
           autoScroll: window.PluginSystem.isInstalled(
             window.autoScrollSortable,
@@ -649,20 +449,20 @@ test.describe('Plugin Functionality E2E', () => {
         }
       })
 
-      expect(initialInstallations.multiDrag).toBe(true)
+      expect(initialInstallations.demoSelect).toBe(true)
       expect(initialInstallations.autoScroll).toBe(true)
       expect(initialInstallations.swap).toBe(true)
 
       // Uninstall a plugin
       await page.evaluate(() => {
-        window.PluginSystem.uninstall(window.multiDragSortable, 'MultiDrag')
+        window.PluginSystem.uninstall(window.demoSelectSortable, 'DemoSelect')
       })
 
       // Verify uninstallation
       const afterUninstall = await page.evaluate(() => {
         return window.PluginSystem.isInstalled(
-          window.multiDragSortable,
-          'MultiDrag'
+          window.demoSelectSortable,
+          'DemoSelect'
         )
       })
 
@@ -670,14 +470,14 @@ test.describe('Plugin Functionality E2E', () => {
 
       // Re-install plugin
       await page.evaluate(() => {
-        window.PluginSystem.install(window.multiDragSortable, 'MultiDrag')
+        window.PluginSystem.install(window.demoSelectSortable, 'DemoSelect')
       })
 
       // Verify re-installation
       const afterReinstall = await page.evaluate(() => {
         return window.PluginSystem.isInstalled(
-          window.multiDragSortable,
-          'MultiDrag'
+          window.demoSelectSortable,
+          'DemoSelect'
         )
       })
 
@@ -687,7 +487,9 @@ test.describe('Plugin Functionality E2E', () => {
     test('should list installed plugins correctly', async ({ page }) => {
       const installedPlugins = await page.evaluate(() => {
         return {
-          multiDrag: window.PluginSystem.getInstalled(window.multiDragSortable),
+          demoSelect: window.PluginSystem.getInstalled(
+            window.demoSelectSortable
+          ),
           autoScroll: window.PluginSystem.getInstalled(
             window.autoScrollSortable
           ),
@@ -695,7 +497,7 @@ test.describe('Plugin Functionality E2E', () => {
         }
       })
 
-      expect(installedPlugins.multiDrag).toContain('MultiDrag')
+      expect(installedPlugins.demoSelect).toContain('DemoSelect')
       expect(installedPlugins.autoScroll).toContain('AutoScroll')
       expect(installedPlugins.swap).toContain('Swap')
     })
@@ -705,7 +507,7 @@ test.describe('Plugin Functionality E2E', () => {
       const result = await page.evaluate(() => {
         try {
           window.PluginSystem.install(
-            window.multiDragSortable,
+            window.demoSelectSortable,
             'NonExistentPlugin'
           )
           return { success: true, error: null }
@@ -722,7 +524,7 @@ test.describe('Plugin Functionality E2E', () => {
       // Try to install an already installed plugin
       const result = await page.evaluate(() => {
         try {
-          window.PluginSystem.install(window.multiDragSortable, 'MultiDrag')
+          window.PluginSystem.install(window.demoSelectSortable, 'DemoSelect')
           return { success: true, error: null }
         } catch (error) {
           return { success: false, error: (error as Error).message }

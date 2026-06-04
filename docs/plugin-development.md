@@ -426,8 +426,11 @@ declare global {
 Study the built-in plugins for examples:
 
 - **AutoScrollPlugin**: Automatic scrolling during drag operations
-- **MultiDragPlugin**: Multi-item selection and dragging
+- **MarqueeSelectPlugin**: Drag a rectangle to select multiple items
+- **OnSpillPlugin**: Revert / remove handlers for items dropped outside a sortable
 - **SwapPlugin**: Swap-based sorting instead of insertion
+
+> Multi-drag is part of the core, not a plugin. Set `multiDrag: true` in `SortableOptions` (no mount/install call needed). The former `MultiDragPlugin` v1-compat shim was removed in #34.
 
 These plugins demonstrate different patterns and can serve as templates for your own plugins.
 

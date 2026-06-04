@@ -161,9 +161,9 @@ sortable.usePlugin('AutoScroll');
 sortable.usePlugin('Swap');
 ```
 
-**Built-in plugins:** `AutoScroll`, `MarqueeSelect`, `OnSpill`, `Swap`. (A `MultiDrag` plugin name is also exported, but it's a deprecated no-op shim — see note below.)
+**Built-in plugins:** `AutoScroll`, `MarqueeSelect`, `OnSpill`, `Swap`.
 
-> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options. The exported `MultiDragPlugin` is preserved as a no-op for v1 back-compat only; see the [migration guide](./docs/migration-from-sortable-v1.md#multidrag-is-built-into-the-core--do-not-mount-the-plugin).
+> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options. (The `MultiDragPlugin` v1-compat shim was removed in #34; see the [migration guide](./docs/migration-from-sortable-v1.md#multidrag-is-built-into-the-core--do-not-mount-the-plugin).)
 
 ### Authoring custom plugins
 

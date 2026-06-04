@@ -38,8 +38,8 @@
         <pre class="code-block"><code>import { Sortable } from '../src/index.ts'
 
 // In v2, multi-drag is built into the core — set `multiDrag: true`
-// on the instance. Do NOT mount MultiDragPlugin: it ships as a
-// deprecated no-op shim for back-compat only.
+// on the instance. There is no MultiDragPlugin to mount (the v1-compat
+// shim was removed in #34).
 new Sortable(document.getElementById('multi-list'), {
   animation: 150,
   draggable: '.sortable-item',
@@ -52,9 +52,9 @@ new Sortable(document.getElementById('multi-list'), {
         <div class="notes">
           <strong>Migration note:</strong> if you're porting from v1's
           <code>MultiDrag</code> plugin, remove the
-          <code>Sortable.mount(new MultiDrag())</code> call. The plugin no
-          longer does anything in v2 &mdash; the
-          <code>multiDrag: true</code> option is enough.
+          <code>Sortable.mount(new MultiDrag())</code> call. v2 has no
+          <code>MultiDragPlugin</code> &mdash; the
+          <code>multiDrag: true</code> option is everything you need.
         </div>
       </section>
     </main>
