@@ -121,7 +121,7 @@ async function idsIn(page: Page, listSelector: string): Promise<string[]> {
 // `tests/unit/on-move.spec.ts`.
 test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator(`${BASIC_LIST} .sortable-item`)).toHaveCount(4)
   })
@@ -241,7 +241,7 @@ test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop
 
 test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners skipped)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(
       page.locator(`${FALLBACK_LIST} .sortable-item:not(.sortable-ghost)`)
@@ -366,7 +366,7 @@ const sharedItem = (id: string): string => `.sortable-item[data-id="${id}"]`
 
 test.describe('onMove (#60) — cross-zone enter (pointer pipeline)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(
       page.locator(`${SHARED_A_1} .sortable-item:not(.sortable-ghost)`)

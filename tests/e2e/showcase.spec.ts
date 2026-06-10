@@ -81,6 +81,9 @@ test.describe('Showcase Page Functionality', () => {
       testInfo.project.name === 'Mobile Safari',
       'dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
     )
+    // #basic-list moved from / to /playground.html when the showcase split
+    // into a polished landing + bare dev playground.
+    await page.goto('/playground.html')
     const basicList = page.locator('#basic-list')
     await expect(basicList).toBeVisible()
 

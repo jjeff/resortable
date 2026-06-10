@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Multi-Select Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })

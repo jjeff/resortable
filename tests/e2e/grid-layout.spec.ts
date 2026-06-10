@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Grid Layout Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await expect(page.locator('#grid-1 .sortable-item')).toHaveCount(4)
     await expect(page.locator('#grid-2 .sortable-item')).toHaveCount(4)
   })

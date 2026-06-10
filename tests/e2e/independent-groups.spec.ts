@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Independent Groups Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await expect(page.locator('#group-a-1 .sortable-item')).toHaveCount(3)
     await expect(page.locator('#group-b-1 .sortable-item')).toHaveCount(3)
   })

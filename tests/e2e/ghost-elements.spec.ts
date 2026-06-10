@@ -9,7 +9,7 @@ const shouldSkipMobileChrome = (
 
 test.describe('Ghost Element Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
   })
 

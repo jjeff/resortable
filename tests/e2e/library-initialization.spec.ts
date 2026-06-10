@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Library Initialization and Error Handling', () => {
   test('loads the development environment correctly', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
 
@@ -17,7 +17,7 @@ test.describe('Library Initialization and Error Handling', () => {
   })
 
   test('initializes Resortable library successfully', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
 
@@ -51,7 +51,7 @@ test.describe('Library Initialization and Error Handling', () => {
       })
     })
 
-    await page.goto('/')
+    await page.goto('/playground.html')
 
     // Wait for the error status to appear (don't wait for resortableLoaded since it won't be set)
     await expect(page.locator('#library-status')).toContainText(
@@ -61,7 +61,7 @@ test.describe('Library Initialization and Error Handling', () => {
   })
 
   test('verifies all sortable containers are initialized', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
@@ -101,7 +101,7 @@ test.describe('Library Initialization and Error Handling', () => {
   })
 
   test('displays proper development status information', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
 
@@ -115,7 +115,7 @@ test.describe('Library Initialization and Error Handling', () => {
   })
 
   test('applies correct CSS classes to sortable elements', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
 
@@ -129,7 +129,7 @@ test.describe('Library Initialization and Error Handling', () => {
   })
 
   test('handles page refresh and reinitialization', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#library-status')).toContainText(
@@ -172,7 +172,7 @@ test.describe('Library Initialization and Error Handling', () => {
       }
     })
 
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await page.waitForTimeout(1000)

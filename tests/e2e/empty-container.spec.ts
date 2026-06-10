@@ -42,7 +42,7 @@ async function pointerDrag(
 
 test.describe('Empty Container Drop Target (#32)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(4)
     await expect(page.locator('#shared-a-2 .sortable-item')).toHaveCount(4)
