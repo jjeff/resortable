@@ -176,34 +176,6 @@
       opacity: 0;
     }
     
-    /* Spring Animation List */
-    .spring-list .sortable-item {
-      background: white;
-      border: 2px solid #667eea;
-      color: #333;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border-radius: 12px;
-      cursor: move;
-      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    }
-    
-    .spring-list .sortable-item:hover {
-      transform: translateX(8px);
-      border-color: #764ba2;
-    }
-    
-    .spring-list .sortable-ghost {
-      opacity: 0.3;
-      transform: scale(0.95);
-    }
-    
-    .spring-list .sortable-chosen {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      transform: scale(1.08) rotate(-2deg);
-    }
-    
     /* Advanced Interactions */
     .interaction-demos {
       display: grid;
@@ -225,18 +197,10 @@
       gap: 0.5rem;
     }
     
-    .multi-select-list .sortable-item::before {
-      content: '☐';
-      font-size: 1.2rem;
-    }
-    
     .multi-select-list .sortable-item.selected {
       background: #28a745;
       transform: translateX(10px);
-    }
-    
-    .multi-select-list .sortable-item.selected::before {
-      content: '☑';
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
     }
     
     .multi-select-list .sortable-ghost {
@@ -287,6 +251,17 @@
       padding: 0.75rem;
       margin-top: 1rem;
       font-size: 0.875rem;
+      color: #0c5460;
+    }
+
+    .keyboard-hint kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: white;
+      border: 1px solid #b0d4dd;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.8125rem;
       color: #0c5460;
     }
     
@@ -477,86 +452,31 @@
       opacity: 0.4;
     }
     
-    /* Developer Section */
-    .developer-section {
+    /* Page footer / link out to the dev playground */
+    .page-footer {
       max-width: 1400px;
-      margin: 2rem auto;
-      padding: 0 2rem;
-    }
-    
-    .developer-container {
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-    
-    .developer-container h2 {
-      background: linear-gradient(90deg, #343a40, #495057);
-      color: white;
-      padding: 1.5rem;
-      margin: 0;
-    }
-    
-    .developer-content {
+      margin: 1rem auto 3rem;
       padding: 2rem;
-      background: #f8f9fa;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.95);
     }
-    
-    /* Original Test Styles */
-    .test-container {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .test-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-    }
-    
-    .sortable-list {
-      background: white;
-      border: 2px dashed #dee2e6;
-      border-radius: 8px;
-      padding: 1rem;
-      min-height: 150px;
-    }
-    
-    .sortable-list h3 {
-      color: #495057;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-    }
-    
-    .test-item {
-      background: #6c757d;
-      color: white;
-      padding: 0.75rem;
+
+    .page-footer p {
       margin: 0.5rem 0;
-      border-radius: 4px;
-      cursor: move;
     }
-    
-    .test-item.sortable-ghost {
-      opacity: 0.5;
-      background: #ddd;
-    }
-    
-    .test-item.sortable-chosen {
-      background: #28a745;
-    }
-    
-    .status {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #e7f5ff;
-      border-left: 4px solid #17a2b8;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
+
+    .page-footer .muted {
+      opacity: 0.7;
       font-size: 0.875rem;
+    }
+
+    .page-footer a {
+      color: white;
+      text-decoration: underline;
+    }
+
+    .playground-link {
+      font-weight: 600;
     }
   </style>
 </head>
@@ -569,39 +489,24 @@
       <span class="badge">✨ Smooth Animations</span>
       <span class="badge">⌨️ Keyboard Navigation</span>
       <span class="badge">📱 Touch & Pen Support</span>
-      <span class="badge">♿ WCAG 2.1 Compliant</span>
+      <span class="badge">♿ WCAG 2.1 AA</span>
       <span class="badge">🚀 Zero Dependencies</span>
-      <span class="badge">📦 &lt; 10KB gzipped</span>
+      <span class="badge">📝 TypeScript First</span>
     </div>
   </div>
 
   <!-- Showcase Section -->
   <div class="showcase">
-    <!-- Visual Effects Demo -->
+    <!-- Smooth Transitions Demo -->
     <div class="demo-section">
-      <h2>✨ Visual Effects</h2>
-      <p class="subtitle">Beautiful animations and transitions that delight users</p>
-      
-      <div class="effects-grid">
-        <div class="effect-demo">
-          <h3>Smooth Transitions</h3>
-          <div class="smooth-list" id="smooth-list">
-            <div class="sortable-item" data-id="smooth-1">🎨 Gradient Card</div>
-            <div class="sortable-item" data-id="smooth-2">🚀 Hover Effects</div>
-            <div class="sortable-item" data-id="smooth-3">✨ Smooth Animation</div>
-            <div class="sortable-item" data-id="smooth-4">💫 Transform Scale</div>
-          </div>
-        </div>
-        
-        <div class="effect-demo">
-          <h3>Spring Physics</h3>
-          <div class="spring-list" id="spring-list">
-            <div class="sortable-item" data-id="spring-1">🌸 Spring Motion</div>
-            <div class="sortable-item" data-id="spring-2">🎯 Elastic Bounce</div>
-            <div class="sortable-item" data-id="spring-3">🎪 Playful Animation</div>
-            <div class="sortable-item" data-id="spring-4">🎭 Dynamic Feel</div>
-          </div>
-        </div>
+      <h2>✨ Smooth Transitions</h2>
+      <p class="subtitle">Animated reordering with easing curves you can configure per-instance</p>
+
+      <div class="smooth-list" id="smooth-list" style="max-width: 480px;">
+        <div class="sortable-item" data-id="smooth-1">🎨 Gradient Card</div>
+        <div class="sortable-item" data-id="smooth-2">🚀 Hover Effects</div>
+        <div class="sortable-item" data-id="smooth-3">✨ Smooth Animation</div>
+        <div class="sortable-item" data-id="smooth-4">💫 Transform Scale</div>
       </div>
     </div>
 
@@ -612,26 +517,34 @@
       
       <div class="interaction-demos">
         <div>
-          <h3>Multi-Select (Click to Toggle)</h3>
+          <h3>Multi-Select &amp; Drag</h3>
           <div class="multi-select-list" id="multi-select-list">
-            <div class="sortable-item" data-id="multi-1">📝 Task Alpha</div>
-            <div class="sortable-item" data-id="multi-2">📊 Task Beta</div>
-            <div class="sortable-item" data-id="multi-3">📈 Task Gamma</div>
-            <div class="sortable-item" data-id="multi-4">📉 Task Delta</div>
-            <div class="sortable-item" data-id="multi-5">📋 Task Epsilon</div>
-          </div>
-        </div>
-        
-        <div>
-          <h3>Keyboard Navigation</h3>
-          <div class="keyboard-list" id="keyboard-list">
-            <div class="sortable-item" data-id="key-1" tabindex="0">🎹 Press Tab to Focus</div>
-            <div class="sortable-item" data-id="key-2" tabindex="-1">⬆️ Arrow Keys to Navigate</div>
-            <div class="sortable-item" data-id="key-3" tabindex="-1">🔤 Space to Select</div>
-            <div class="sortable-item" data-id="key-4" tabindex="-1">↩️ Enter to Grab/Drop</div>
+            <div class="sortable-item" data-id="multi-1">Alpha</div>
+            <div class="sortable-item" data-id="multi-2">Beta</div>
+            <div class="sortable-item" data-id="multi-3">Gamma</div>
+            <div class="sortable-item" data-id="multi-4">Delta</div>
+            <div class="sortable-item" data-id="multi-5">Epsilon</div>
           </div>
           <div class="keyboard-hint">
-            💡 <strong>Try it:</strong> Tab → Arrow keys → Space (select) → Enter (grab) → Arrow keys (move) → Enter (drop)
+            💡 <strong>Try:</strong> Click items to toggle selection &mdash;
+            then drag any selected item to move the whole group together.
+          </div>
+        </div>
+
+        <div>
+          <h3>Keyboard Navigation</h3>
+          <div class="keyboard-list" id="keyboard-list" aria-label="Sortable list — keyboard demo">
+            <div class="sortable-item" data-id="key-1">🎵 Allegro</div>
+            <div class="sortable-item" data-id="key-2">🎶 Andante</div>
+            <div class="sortable-item" data-id="key-3">🎼 Largo</div>
+            <div class="sortable-item" data-id="key-4">🎹 Presto</div>
+          </div>
+          <div class="keyboard-hint">
+            💡 <strong>Try:</strong> Tab into the list, then
+            <kbd>↑</kbd>/<kbd>↓</kbd> to move focus,
+            <kbd>Space</kbd> to toggle selection (additive),
+            <kbd>Enter</kbd> to grab, <kbd>↑</kbd>/<kbd>↓</kbd> to move,
+            <kbd>Enter</kbd> to drop, <kbd>Esc</kbd> to cancel.
           </div>
         </div>
       </div>
@@ -784,236 +697,32 @@
     </div>
   </div>
 
-  <!-- Developer Testing Section -->
-  <div class="developer-section">
-    <div class="developer-container">
-      <h2>🔧 Developer Testing Area</h2>
-      <div class="developer-content">
-        <div class="status" id="status">
-          Library Status: <span id="library-status">Loading...</span>
-        </div>
-        
-        <!-- a11y (#40): per-list section headings live in a wrapper
-             OUTSIDE the sortable container. KeyboardManager marks each
-             sortable container as role="listbox", which requires
-             role="option" children — a non-option child (the heading)
-             trips axe `aria-required-children`. -->
-
-        <!-- Basic Test -->
-        <div class="test-container">
-          <h3>Basic Sortable List</h3>
-          <div class="test-grid">
-            <div>
-              <h3>Basic</h3>
-              <div class="sortable-list" id="basic-list">
-                <div class="test-item sortable-item" data-id="basic-1">Basic 1</div>
-                <div class="test-item sortable-item" data-id="basic-2">Basic 2</div>
-                <div class="test-item sortable-item" data-id="basic-3">Basic 3</div>
-                <div class="test-item sortable-item" data-id="basic-4">Basic 4</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Shared Groups -->
-        <div class="test-container">
-          <h3>Shared Groups</h3>
-          <div class="test-grid">
-            <div>
-              <h3>Group A - List 1</h3>
-              <div class="sortable-list" id="shared-a-1">
-                <div class="test-item sortable-item" data-id="a-1">A1</div>
-                <div class="test-item sortable-item" data-id="a-2">A2</div>
-                <div class="test-item sortable-item" data-id="a-3">A3</div>
-                <div class="test-item sortable-item" data-id="a-4">A4</div>
-              </div>
-            </div>
-            <div>
-              <h3>Group A - List 2</h3>
-              <div class="sortable-list" id="shared-a-2">
-                <div class="test-item sortable-item" data-id="a-5">A5</div>
-                <div class="test-item sortable-item" data-id="a-6">A6</div>
-                <div class="test-item sortable-item" data-id="a-7">A7</div>
-                <div class="test-item sortable-item" data-id="a-8">A8</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Independent Groups -->
-        <div class="test-container">
-          <h3>Independent Groups</h3>
-          <div class="test-grid">
-            <div>
-              <h3>Group A</h3>
-              <div class="sortable-list" id="group-a-1">
-                <div class="test-item sortable-item" data-id="ga-1">GA1</div>
-                <div class="test-item sortable-item" data-id="ga-2">GA2</div>
-                <div class="test-item sortable-item" data-id="ga-3">GA3</div>
-              </div>
-            </div>
-            <div>
-              <h3>Group B</h3>
-              <div class="sortable-list" id="group-b-1">
-                <div class="test-item sortable-item" data-id="gb-1">GB1</div>
-                <div class="test-item sortable-item" data-id="gb-2">GB2</div>
-                <div class="test-item sortable-item" data-id="gb-3">GB3</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Grid Layout -->
-        <div class="test-container">
-          <h3>Grid Layout</h3>
-          <div class="test-grid">
-            <div>
-              <h3>Grid 1</h3>
-              <div class="sortable-list" id="grid-1" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                <div class="test-item sortable-item" data-id="g1-1">G1-1</div>
-                <div class="test-item sortable-item" data-id="g1-2">G1-2</div>
-                <div class="test-item sortable-item" data-id="g1-3">G1-3</div>
-                <div class="test-item sortable-item" data-id="g1-4">G1-4</div>
-              </div>
-            </div>
-            <div>
-              <h3>Grid 2</h3>
-              <div class="sortable-list" id="grid-2" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                <div class="test-item sortable-item" data-id="g2-1">G2-1</div>
-                <div class="test-item sortable-item" data-id="g2-2">G2-2</div>
-                <div class="test-item sortable-item" data-id="g2-3">G2-3</div>
-                <div class="test-item sortable-item" data-id="g2-4">G2-4</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Legacy E2E Test Lists -->
-        <div class="test-container">
-          <h3>Legacy E2E Test Lists</h3>
-          <div class="test-grid">
-            <div>
-              <h3>List 1</h3>
-              <div class="sortable-list" id="list1">
-                <div class="test-item sortable-item" data-id="item-1">Item 1</div>
-                <div class="test-item sortable-item" data-id="item-2">Item 2</div>
-                <div class="test-item sortable-item" data-id="item-3">Item 3</div>
-                <div class="test-item sortable-item" data-id="item-4">Item 4</div>
-              </div>
-            </div>
-            <div>
-              <h3>List 2</h3>
-              <div class="sortable-list" id="list2">
-                <div class="test-item sortable-item" data-id="item-5">Item 5</div>
-                <div class="test-item sortable-item" data-id="item-6">Item 6</div>
-                <div class="test-item sortable-item" data-id="item-7">Item 7</div>
-                <div class="test-item sortable-item" data-id="item-8">Item 8</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fallback Mode (forceFallback + fallbackClass) — #29 PR1 -->
-        <div class="test-container">
-          <h3>Fallback Mode</h3>
-          <div class="test-grid">
-            <div>
-              <h3>forceFallback: true</h3>
-              <div class="sortable-list" id="fallback-list">
-                <div class="test-item sortable-item" data-id="fb-1">FB1</div>
-                <div class="test-item sortable-item" data-id="fb-2">FB2</div>
-                <div class="test-item sortable-item" data-id="fb-3">FB3</div>
-                <div class="test-item sortable-item" data-id="fb-4">FB4</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Footer / nav out to the playground -->
+  <footer class="page-footer">
+    <p>
+      Looking for the raw API surface, shared groups, grid layouts, and
+      fallback-mode test rigs? &rarr;
+      <a class="playground-link" href="./playground.html">Open the dev playground</a>
+    </p>
+    <p class="muted">
+      Resortable is MIT-licensed &middot;
+      <a href="https://github.com/jjeff/resortable">GitHub</a>
+    </p>
+  </footer>
 
   <script type="module">
-    // Initialize status
-    document.getElementById('library-status').textContent = 'Loading Resortable...';
-    
     try {
-      // Import Resortable
       const { Sortable, PluginSystem } = await import('./src/index.ts');
+      const { MarqueeSelectPlugin } = await import('./src/plugins/MarqueeSelectPlugin.ts');
 
-      // Import plugins
-      let AutoScrollPlugin, MarqueeSelectPlugin, SwapPlugin;
-      try {
-        const autoModule = await import('./src/plugins/AutoScrollPlugin.ts');
-        AutoScrollPlugin = autoModule.AutoScrollPlugin;
-      } catch (e) {
-        console.warn('Could not import AutoScrollPlugin:', e);
-      }
+      PluginSystem.register(MarqueeSelectPlugin.create({ marqueeArea: '#marquee-demo' }));
 
-      try {
-        const marqueeModule = await import('./src/plugins/MarqueeSelectPlugin.ts');
-        MarqueeSelectPlugin = marqueeModule.MarqueeSelectPlugin;
-      } catch (e) {
-        console.warn('Could not import MarqueeSelectPlugin:', e);
-      }
-
-      try {
-        const swapModule = await import('./src/plugins/SwapPlugin.ts');
-        SwapPlugin = swapModule.SwapPlugin;
-      } catch (e) {
-        console.warn('Could not import SwapPlugin:', e);
-      }
-
-      // Register plugins if available
-      if (AutoScrollPlugin) {
-        try {
-          PluginSystem.register(AutoScrollPlugin);
-          console.log('AutoScrollPlugin registered successfully');
-        } catch (e) {
-          console.warn('Failed to register AutoScrollPlugin:', e);
-        }
-      }
-
-      if (MarqueeSelectPlugin) {
-        try {
-          PluginSystem.register(MarqueeSelectPlugin.create({
-            marqueeArea: '#marquee-demo',
-          }));
-          console.log('MarqueeSelectPlugin registered successfully');
-        } catch (e) {
-          console.warn('Failed to register MarqueeSelectPlugin:', e);
-        }
-      }
-
-      if (SwapPlugin) {
-        try {
-          PluginSystem.register(SwapPlugin);
-          console.log('SwapPlugin registered successfully');
-        } catch (e) {
-          console.warn('Failed to register SwapPlugin:', e);
-        }
-      }
-
-      // Store globally for testing
       window.Sortable = Sortable;
       window.PluginSystem = PluginSystem;
-      window.AutoScrollPlugin = AutoScrollPlugin;
-      window.MarqueeSelectPlugin = MarqueeSelectPlugin;
-      window.SwapPlugin = SwapPlugin;
       window.sortables = [];
-
-      // Set a flag to indicate that the library is fully loaded
       window.resortableLoaded = true;
-      
-      // Logging helper
-      const log = (label) => (evt) => {
-        const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from?.id || 'unknown'} to ${evt.to?.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
-        console.log(msg, evt);
-        document.getElementById('status').innerHTML = `Last action: ${msg}`;
-      };
 
-      // Initialize Showcase Demos
-      
-      // Visual Effects - Smooth List
+      // Smooth Transitions
       const smoothList = document.getElementById('smooth-list');
       if (smoothList) {
         window.sortables.push(new Sortable(smoothList, {
@@ -1026,21 +735,10 @@
           group: 'smooth-demo',
         }));
       }
-      
-      // Visual Effects - Spring List
-      const springList = document.getElementById('spring-list');
-      if (springList) {
-        window.sortables.push(new Sortable(springList, {
-          animation: 400,
-          draggable: '.sortable-item',
-          easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          group: 'spring-demo',
-        }));
-      }
-      
-      // Multi-Select Demo — uses the library's built-in SelectionManager
+
+      // Multi-select + drag: KeyboardManager already toggles selection on
+      // plain click when `multiDrag: true` is set — no custom click handler
+      // needed.
       const multiSelectList = document.getElementById('multi-select-list');
       if (multiSelectList) {
         window.sortables.push(new Sortable(multiSelectList, {
@@ -1051,20 +749,22 @@
           group: 'multi-select-demo',
         }));
       }
-      
-      // Keyboard Navigation Demo
+
+      // Keyboard nav: multiDrag = true so Space toggles additively
       const keyboardList = document.getElementById('keyboard-list');
       if (keyboardList) {
         window.sortables.push(new Sortable(keyboardList, {
           animation: 200,
           draggable: '.sortable-item',
+          multiDrag: true,
           enableAccessibility: true,
+          selectedClass: 'sortable-selected',
           ghostClass: 'sortable-ghost',
           group: 'keyboard-demo',
         }));
       }
-      
-      // Marquee Select Demo
+
+      // Marquee Select
       const marqueeList = document.getElementById('marquee-list');
       if (marqueeList) {
         const marqueeSortable = new Sortable(marqueeList, {
@@ -1075,32 +775,21 @@
           group: 'marquee-demo',
         });
         window.sortables.push(marqueeSortable);
-        // Install MarqueeSelect plugin
-        try {
-          PluginSystem.install(marqueeSortable, 'MarqueeSelect');
-          console.log('MarqueeSelect installed on marquee-list');
-        } catch (e) {
-          console.warn('Failed to install MarqueeSelect:', e);
-        }
+        PluginSystem.install(marqueeSortable, 'MarqueeSelect');
       }
 
-      // Kanban Board
+      // Kanban
       const kanbanOptions = {
         group: 'kanban',
         animation: 200,
         draggable: '.kanban-card',
         ghostClass: 'sortable-ghost',
-        onAdd: log('Kanban moved'),
       };
-      
-      const kanbanTodo = document.getElementById('kanban-todo');
-      const kanbanDoing = document.getElementById('kanban-doing');
-      const kanbanDone = document.getElementById('kanban-done');
-      
-      if (kanbanTodo) window.sortables.push(new Sortable(kanbanTodo, kanbanOptions));
-      if (kanbanDoing) window.sortables.push(new Sortable(kanbanDoing, kanbanOptions));
-      if (kanbanDone) window.sortables.push(new Sortable(kanbanDone, kanbanOptions));
-      
+      for (const id of ['kanban-todo', 'kanban-doing', 'kanban-done']) {
+        const el = document.getElementById(id);
+        if (el) window.sortables.push(new Sortable(el, kanbanOptions));
+      }
+
       // Image Gallery
       const imageGallery = document.getElementById('image-gallery');
       if (imageGallery) {
@@ -1110,11 +799,10 @@
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           group: 'gallery-demo',
-          onEnd: log('Gallery reordered'),
         }));
       }
-      
-      // Nested Lists - Folders can be reordered
+
+      // Nested Lists — folders reorder via header handle, files move freely
       const nestedList = document.getElementById('nested-list');
       if (nestedList) {
         window.sortables.push(new Sortable(nestedList, {
@@ -1125,124 +813,18 @@
           group: 'folders-demo',
         }));
       }
-      
-      // Files within folders
       const folderOptions = {
         group: 'files',
         animation: 150,
         draggable: '.file',
         ghostClass: 'sortable-ghost',
       };
-      
-      const folder1 = document.getElementById('folder-1-content');
-      const folder2 = document.getElementById('folder-2-content');
-      const folder3 = document.getElementById('folder-3-content');
-      
-      if (folder1) window.sortables.push(new Sortable(folder1, folderOptions));
-      if (folder2) window.sortables.push(new Sortable(folder2, folderOptions));
-      if (folder3) window.sortables.push(new Sortable(folder3, folderOptions));
-      
-      // Initialize Test Lists (in Developer Section)
-      
-      // Basic list (in Developer Section)
-      const basicList = document.getElementById('basic-list');
-      if (basicList) {
-        window.sortables.push(new Sortable(basicList, {
-          group: 'basic-test',
-          animation: 150,
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          onEnd: log('Basic end'),
-        }));
+      for (const id of ['folder-1-content', 'folder-2-content', 'folder-3-content']) {
+        const el = document.getElementById(id);
+        if (el) window.sortables.push(new Sortable(el, folderOptions));
       }
-      
-      // Shared Group A
-      const sharedOpts = {
-        group: 'group-a-test',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        onAdd: log('Group A add'),
-        onRemove: log('Group A remove'),
-      };
-      const sharedA1 = document.getElementById('shared-a-1');
-      const sharedA2 = document.getElementById('shared-a-2');
-      if (sharedA1) window.sortables.push(new Sortable(sharedA1, sharedOpts));
-      if (sharedA2) window.sortables.push(new Sortable(sharedA2, sharedOpts));
-      
-      // Independent groups
-      const groupA1 = document.getElementById('group-a-1');
-      const groupB1 = document.getElementById('group-b-1');
-      
-      if (groupA1) {
-        window.sortables.push(new Sortable(groupA1, {
-          group: 'independent-a-test',
-          animation: 150,
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          onEnd: log('Independent A end'),
-        }));
-      }
-      
-      if (groupB1) {
-        window.sortables.push(new Sortable(groupB1, {
-          group: 'independent-b-test',
-          animation: 150,
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          onEnd: log('Independent B end'),
-        }));
-      }
-      
-      // Grid shared
-      const gridOpts = {
-        group: 'grid-shared-test',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        onEnd: log('Grid end'),
-      };
-      const grid1 = document.getElementById('grid-1');
-      const grid2 = document.getElementById('grid-2');
-      if (grid1) window.sortables.push(new Sortable(grid1, gridOpts));
-      if (grid2) window.sortables.push(new Sortable(grid2, gridOpts));
-      
-      // Legacy E2E lists
-      const e2eOpts = {
-        group: 'shared',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        chosenClass: 'sortable-chosen',
-        onEnd: log('E2E end'),
-        onAdd: log('E2E add'),
-        onUpdate: log('E2E update'),
-        onRemove: log('E2E remove'),
-      };
-      const list1 = document.getElementById('list1');
-      const list2 = document.getElementById('list2');
-      if (list1) window.sortables.push(new Sortable(list1, e2eOpts));
-      if (list2) window.sortables.push(new Sortable(list2, e2eOpts));
-
-      // Fallback mode list (#29 PR1) — pointer-only drag pipeline, no HTML5 DnD.
-      const fallbackList = document.getElementById('fallback-list');
-      if (fallbackList) {
-        window.sortables.push(new Sortable(fallbackList, {
-          group: 'fallback-test',
-          animation: 150,
-          forceFallback: true,
-          fallbackClass: 'sortable-fallback',
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          onEnd: log('Fallback end'),
-        }));
-      }
-
-      // Update status
-      document.getElementById('library-status').textContent = `Resortable loaded - ${window.sortables.length} instances active`;
-      
     } catch (error) {
       console.error('Failed to load Resortable:', error);
-      document.getElementById('library-status').textContent = 'Error loading library: ' + error.message;
     }
   </script>
 </body>

@@ -12,9 +12,10 @@ npm install
 npm run dev     # starts Vite dev server at http://localhost:5173/
 ```
 
-The dev playground lives at the root (`index.html`); curated examples are
-under `examples/`. Both import directly from `src/` via Vite's TypeScript
-resolver — no build step needed during development.
+The polished showcase lives at the root (`index.html`); the bare dev
+playground is at `playground.html`; curated examples are under `examples/`.
+All three import directly from `src/` via Vite's TypeScript resolver — no
+build step needed during development.
 
 ## Tests
 
