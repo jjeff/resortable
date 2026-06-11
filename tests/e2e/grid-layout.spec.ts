@@ -39,8 +39,8 @@ test.describe('Grid Layout Functionality', () => {
     )
 
     // Should have two equal columns (can be fr values, percentages, or computed px values)
-    expect(grid1Columns).toMatch(/1fr 1fr|50% 50%|\d+px \d+px/)
-    expect(grid2Columns).toMatch(/1fr 1fr|50% 50%|\d+px \d+px/)
+    expect(grid1Columns).toMatch(/1fr 1fr|50% 50%|[\d.]+px [\d.]+px/)
+    expect(grid2Columns).toMatch(/1fr 1fr|50% 50%|[\d.]+px [\d.]+px/)
   })
 
   test('allows reordering within the same grid', async ({ page }) => {
