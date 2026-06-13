@@ -118,7 +118,7 @@
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",
-    "@vitest/ui": "^3.2.4",
+    "@vitest/ui": "^4.1.8",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "^9.34.0",
@@ -135,6 +135,6 @@
     "typescript": "^5.9.2",
     "vite": "^7.3.5",
     "vite-plugin-dts": "^4.5.4",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.8"
   }
 }
