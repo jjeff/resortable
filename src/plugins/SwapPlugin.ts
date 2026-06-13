@@ -4,7 +4,11 @@
  * @since 2.0.0
  */
 
-import { SortablePlugin, SortableInstance } from '../types/index.js'
+import {
+  SortablePlugin,
+  SortableInstance,
+  SortableEvent,
+} from '../types/index.js'
 
 /**
  * Configuration options for the Swap plugin
@@ -87,6 +91,7 @@ export class SwapPlugin implements SortablePlugin {
     SortableInstance,
     HTMLElement | null
   >()
+  private draggedItems = new WeakMap<SortableInstance, HTMLElement>()
   private originalMoveMethod = new WeakMap<
     SortableInstance,
     (items: HTMLElement[], targetIndex: number) => void
@@ -141,6 +146,7 @@ export class SwapPlugin implements SortablePlugin {
 
     // Clean up tracking
     this.currentSwapTarget.delete(sortable)
+    this.draggedItems.delete(sortable)
     this.originalMoveMethod.delete(sortable)
   }
 
@@ -243,9 +249,14 @@ export class SwapPlugin implements SortablePlugin {
   /**
    * Handle drag start
    */
-  private handleDragStart(sortable: SortableInstance): void {
-    // Initialize swap tracking
+  private handleDragStart(
+    sortable: SortableInstance,
+    event: SortableEvent
+  ): void {
     this.currentSwapTarget.set(sortable, null)
+    if (event.item) {
+      this.draggedItems.set(sortable, event.item)
+    }
   }
 
   /**
@@ -255,6 +266,7 @@ export class SwapPlugin implements SortablePlugin {
     // Clear swap preview
     this.clearSwapPreview(sortable)
     this.currentSwapTarget.set(sortable, null)
+    this.draggedItems.delete(sortable)
   }
 
   /**
@@ -281,9 +293,7 @@ export class SwapPlugin implements SortablePlugin {
     }
 
     // Check if this is a valid swap target
-    const draggedItem = (
-      sortable.dragManager as { draggedElement?: HTMLElement }
-    )?.draggedElement
+    const draggedItem = this.draggedItems.get(sortable)
     if (!draggedItem || target === draggedItem) {
       return null
     }

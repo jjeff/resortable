@@ -9,7 +9,7 @@ const shouldSkipMobileChrome = (
 
 test.describe('Event Callbacks and Logging', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     // Clear any existing console logs

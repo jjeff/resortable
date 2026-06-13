@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resortable — Dev Playground</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #f5f6f8;
+      color: #212529;
+      min-height: 100vh;
+    }
+
+    .sortable-ghost { opacity: 0.5; background: #ddd !important; }
+    .sortable-chosen { background: #28a745 !important; color: white; }
+
+    .page-header {
+      background: linear-gradient(90deg, #343a40, #495057);
+      color: white;
+      padding: 2rem;
+    }
+
+    .page-header .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .page-header p {
+      opacity: 0.85;
+      font-size: 0.875rem;
+      flex: 1 1 auto;
+    }
+
+    .page-header a {
+      color: white;
+      text-decoration: underline;
+      font-size: 0.875rem;
+    }
+
+    .main {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    .status {
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      background: #e7f5ff;
+      border-left: 4px solid #17a2b8;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8125rem;
+    }
+
+    .test-container {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .test-container > h2 {
+      font-size: 1.125rem;
+      margin-bottom: 1rem;
+      color: #343a40;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .test-grid > div > h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 0.5rem;
+    }
+
+    .sortable-list {
+      background: white;
+      border: 2px dashed #dee2e6;
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 150px;
+    }
+
+    .test-item {
+      background: #6c757d;
+      color: white;
+      padding: 0.625rem 0.75rem;
+      margin: 0.375rem 0;
+      border-radius: 4px;
+      cursor: move;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="container">
+      <div>
+        <h1>🔧 Resortable Dev Playground</h1>
+        <p>Bare-bones harness exercising the full v2 API surface — shared groups, grid layouts, fallback mode, legacy E2E rigs. Use it to repro bugs and test plugin behavior. For the polished demo, see <a href="./">the showcase</a>.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="status" id="status">
+      Library Status: <span id="library-status">Loading…</span>
+    </div>
+
+    <!-- a11y (#40): per-list `<h3>` headings live OUTSIDE the sortable
+         container. KeyboardManager marks each sortable container as
+         role="listbox", which requires role="option" children — a
+         non-option child (the heading) trips axe `aria-required-children`. -->
+
+    <div class="test-container">
+      <h2>Basic Sortable List</h2>
+      <div class="test-grid">
+        <div>
+          <h3>Basic</h3>
+          <div class="sortable-list" id="basic-list">
+            <div class="test-item sortable-item" data-id="basic-1">Basic 1</div>
+            <div class="test-item sortable-item" data-id="basic-2">Basic 2</div>
+            <div class="test-item sortable-item" data-id="basic-3">Basic 3</div>
+            <div class="test-item sortable-item" data-id="basic-4">Basic 4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Shared Groups</h2>
+      <div class="test-grid">
+        <div>
+          <h3>Group A — List 1</h3>
+          <div class="sortable-list" id="shared-a-1">
+            <div class="test-item sortable-item" data-id="a-1">A1</div>
+            <div class="test-item sortable-item" data-id="a-2">A2</div>
+            <div class="test-item sortable-item" data-id="a-3">A3</div>
+            <div class="test-item sortable-item" data-id="a-4">A4</div>
+          </div>
+        </div>
+        <div>
+          <h3>Group A — List 2</h3>
+          <div class="sortable-list" id="shared-a-2">
+            <div class="test-item sortable-item" data-id="a-5">A5</div>
+            <div class="test-item sortable-item" data-id="a-6">A6</div>
+            <div class="test-item sortable-item" data-id="a-7">A7</div>
+            <div class="test-item sortable-item" data-id="a-8">A8</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Independent Groups</h2>
+      <div class="test-grid">
+        <div>
+          <h3>Group A</h3>
+          <div class="sortable-list" id="group-a-1">
+            <div class="test-item sortable-item" data-id="ga-1">GA1</div>
+            <div class="test-item sortable-item" data-id="ga-2">GA2</div>
+            <div class="test-item sortable-item" data-id="ga-3">GA3</div>
+          </div>
+        </div>
+        <div>
+          <h3>Group B</h3>
+          <div class="sortable-list" id="group-b-1">
+            <div class="test-item sortable-item" data-id="gb-1">GB1</div>
+            <div class="test-item sortable-item" data-id="gb-2">GB2</div>
+            <div class="test-item sortable-item" data-id="gb-3">GB3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Grid Layout</h2>
+      <div class="test-grid">
+        <div>
+          <h3>Grid 1</h3>
+          <div class="sortable-list" id="grid-1" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div class="test-item sortable-item" data-id="g1-1">G1-1</div>
+            <div class="test-item sortable-item" data-id="g1-2">G1-2</div>
+            <div class="test-item sortable-item" data-id="g1-3">G1-3</div>
+            <div class="test-item sortable-item" data-id="g1-4">G1-4</div>
+          </div>
+        </div>
+        <div>
+          <h3>Grid 2</h3>
+          <div class="sortable-list" id="grid-2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div class="test-item sortable-item" data-id="g2-1">G2-1</div>
+            <div class="test-item sortable-item" data-id="g2-2">G2-2</div>
+            <div class="test-item sortable-item" data-id="g2-3">G2-3</div>
+            <div class="test-item sortable-item" data-id="g2-4">G2-4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Legacy E2E Test Lists</h2>
+      <div class="test-grid">
+        <div>
+          <h3>List 1</h3>
+          <div class="sortable-list" id="list1">
+            <div class="test-item sortable-item" data-id="item-1">Item 1</div>
+            <div class="test-item sortable-item" data-id="item-2">Item 2</div>
+            <div class="test-item sortable-item" data-id="item-3">Item 3</div>
+            <div class="test-item sortable-item" data-id="item-4">Item 4</div>
+          </div>
+        </div>
+        <div>
+          <h3>List 2</h3>
+          <div class="sortable-list" id="list2">
+            <div class="test-item sortable-item" data-id="item-5">Item 5</div>
+            <div class="test-item sortable-item" data-id="item-6">Item 6</div>
+            <div class="test-item sortable-item" data-id="item-7">Item 7</div>
+            <div class="test-item sortable-item" data-id="item-8">Item 8</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Fallback Mode (forceFallback)</h2>
+      <div class="test-grid">
+        <div>
+          <h3>forceFallback: true</h3>
+          <div class="sortable-list" id="fallback-list">
+            <div class="test-item sortable-item" data-id="fb-1">FB1</div>
+            <div class="test-item sortable-item" data-id="fb-2">FB2</div>
+            <div class="test-item sortable-item" data-id="fb-3">FB3</div>
+            <div class="test-item sortable-item" data-id="fb-4">FB4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    document.getElementById('library-status').textContent = 'Loading Resortable…';
+
+    try {
+      const { Sortable, PluginSystem } = await import('./src/index.ts');
+      const { AutoScrollPlugin } = await import('./src/plugins/AutoScrollPlugin.ts');
+      const { SwapPlugin } = await import('./src/plugins/SwapPlugin.ts');
+
+      PluginSystem.register(AutoScrollPlugin);
+      PluginSystem.register(SwapPlugin);
+
+      window.Sortable = Sortable;
+      window.PluginSystem = PluginSystem;
+      window.sortables = [];
+      window.resortableLoaded = true;
+
+      const log = (label) => (evt) => {
+        const msg = `${label}: ${evt.item?.dataset?.id ?? 'item'} from ${evt.from?.id || 'unknown'} to ${evt.to?.id || 'unknown'} (old: ${evt.oldIndex}, new: ${evt.newIndex})`;
+        console.log(msg, evt);
+        document.getElementById('status').innerHTML = `Last action: ${msg}`;
+      };
+
+      const push = (id, opts) => {
+        const el = document.getElementById(id);
+        if (el) window.sortables.push(new Sortable(el, opts));
+      };
+
+      // Basic
+      push('basic-list', {
+        group: 'basic-test',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('Basic end'),
+      });
+
+      // Shared Group A
+      const sharedOpts = {
+        group: 'group-a-test',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onAdd: log('Group A add'),
+        onRemove: log('Group A remove'),
+      };
+      push('shared-a-1', sharedOpts);
+      push('shared-a-2', sharedOpts);
+
+      // Independent groups
+      push('group-a-1', {
+        group: 'independent-a-test',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('Independent A end'),
+      });
+      push('group-b-1', {
+        group: 'independent-b-test',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('Independent B end'),
+      });
+
+      // Grid shared
+      const gridOpts = {
+        group: 'grid-shared-test',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('Grid end'),
+      };
+      push('grid-1', gridOpts);
+      push('grid-2', gridOpts);
+
+      // Legacy E2E lists
+      const e2eOpts = {
+        group: 'shared',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('E2E end'),
+        onAdd: log('E2E add'),
+        onUpdate: log('E2E update'),
+        onRemove: log('E2E remove'),
+      };
+      push('list1', e2eOpts);
+      push('list2', e2eOpts);
+
+      // Fallback mode — pointer-only drag pipeline, no HTML5 DnD.
+      push('fallback-list', {
+        group: 'fallback-test',
+        animation: 150,
+        forceFallback: true,
+        fallbackClass: 'sortable-fallback',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: log('Fallback end'),
+      });
+
+      document.getElementById('library-status').textContent = `Resortable loaded — ${window.sortables.length} instances active`;
+    } catch (error) {
+      console.error('Failed to load Resortable:', error);
+      document.getElementById('library-status').textContent = 'Error loading library: ' + error.message;
+    }
+  </script>
+</body>
+</html>

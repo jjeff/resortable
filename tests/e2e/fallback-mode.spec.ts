@@ -37,7 +37,7 @@ const FALLBACK_REAL_ITEMS = `${FALLBACK_LIST} .sortable-item:not(.sortable-ghost
 
 test.describe('forceFallback (#29 PR1)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator(FALLBACK_REAL_ITEMS)).toHaveCount(4)
   })
@@ -179,7 +179,7 @@ test.describe('fallback positioning (#29 PR2)', () => {
   }
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
@@ -387,7 +387,7 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
   }
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
@@ -565,7 +565,7 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
   }
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 

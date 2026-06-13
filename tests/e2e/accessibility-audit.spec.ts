@@ -24,8 +24,8 @@ interface AxePage {
 }
 
 const PAGES: AxePage[] = [
-  // Dev playground at the root. Densely-packed showcase with many
-  // sortable instances; everything here doubles as the smoke surface.
+  // Polished showcase at the root. Densely-packed with smooth transitions,
+  // multi-select, keyboard nav, Kanban, gallery, and nested lists.
   {
     url: '/',
     disableRules: [
@@ -41,6 +41,8 @@ const PAGES: AxePage[] = [
       },
     ],
   },
+  // Bare dev playground — shared groups, grid layouts, fallback mode rigs.
+  { url: '/playground.html' },
   { url: '/examples/basic.html' },
   { url: '/examples/shared-lists.html' },
   { url: '/examples/kanban.html' },

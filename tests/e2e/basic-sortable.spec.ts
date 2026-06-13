@@ -3,7 +3,7 @@ import { dragAndDropWithAnimation } from './helpers/animations'
 
 test.describe('Basic Sortable Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     // Wait for the library to fully load
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)

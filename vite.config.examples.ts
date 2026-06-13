@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { readdirSync } from 'fs';
 
-// Multi-page build for the examples + dev playground.
+// Multi-page build for the showcase + dev playground + curated examples.
 //
 // This config is SEPARATE from the library build (`vite.config.ts`). It
 // produces a static site at `docs/demo/` that gh-pages serves alongside the
@@ -11,7 +11,8 @@ import { readdirSync } from 'fs';
 // incompatible Vite options (`build.lib` vs `build.rollupOptions.input`).
 //
 // Pages bundled:
-// - `index.html` (dev playground at the repo root) → `docs/demo/index.html`
+// - `index.html` (polished showcase at repo root) → `docs/demo/index.html`
+// - `playground.html` (bare API harness) → `docs/demo/playground.html`
 // - Each `examples/*.html` → `docs/demo/examples/<name>.html`
 //
 // Excluded:
@@ -28,8 +29,10 @@ const exampleHtmlFiles = readdirSync(examplesDir)
   .filter((f) => !EXCLUDED_EXAMPLES.has(f));
 
 const input: Record<string, string> = {
-  // Dev playground at the root of /demo/
+  // Polished showcase at the root of /demo/
   main: resolve(__dirname, 'index.html'),
+  // Bare-bones dev playground at /demo/playground.html
+  playground: resolve(__dirname, 'playground.html'),
 };
 for (const file of exampleHtmlFiles) {
   const name = file.replace(/\.html$/, '');

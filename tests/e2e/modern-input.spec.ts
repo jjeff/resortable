@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Modern Input Handling (Pointer Events)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/playground.html')
     await expect(page.locator('#basic-list .sortable-item')).toHaveCount(4)
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(4)
   })
