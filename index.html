@@ -722,10 +722,21 @@
       window.sortables = [];
       window.resortableLoaded = true;
 
+      // Touch tuning shared by every demo below.
+      // The library default is delayOnTouchOnly: 200ms / touchStartThreshold: 5px.
+      // That 5px cancel-threshold is so tight that a natural drag motion (press +
+      // immediately move) blows past it before the 200ms hold elapses, so the
+      // pending drag is cancelled and the gesture falls through to a PAGE SCROLL.
+      // Snappier hold (150ms) + a forgiving 15px tolerance means a deliberate
+      // press-and-drag reliably starts a drag, while a fast swipe — which covers
+      // far more than 15px well under 150ms — still scrolls the page.
+      const TOUCH = { delayOnTouchOnly: 150, touchStartThreshold: 15 };
+
       // Smooth Transitions
       const smoothList = document.getElementById('smooth-list');
       if (smoothList) {
         window.sortables.push(new Sortable(smoothList, {
+          ...TOUCH,
           animation: 300,
           draggable: '.sortable-item',
           easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -742,6 +753,7 @@
       const multiSelectList = document.getElementById('multi-select-list');
       if (multiSelectList) {
         window.sortables.push(new Sortable(multiSelectList, {
+          ...TOUCH,
           animation: 200,
           draggable: '.sortable-item',
           multiDrag: true,
@@ -754,6 +766,7 @@
       const keyboardList = document.getElementById('keyboard-list');
       if (keyboardList) {
         window.sortables.push(new Sortable(keyboardList, {
+          ...TOUCH,
           animation: 200,
           draggable: '.sortable-item',
           multiDrag: true,
@@ -768,6 +781,7 @@
       const marqueeList = document.getElementById('marquee-list');
       if (marqueeList) {
         const marqueeSortable = new Sortable(marqueeList, {
+          ...TOUCH,
           animation: 200,
           draggable: '.sortable-item',
           multiDrag: true,
@@ -780,6 +794,7 @@
 
       // Kanban
       const kanbanOptions = {
+        ...TOUCH,
         group: 'kanban',
         animation: 200,
         draggable: '.kanban-card',
@@ -794,6 +809,7 @@
       const imageGallery = document.getElementById('image-gallery');
       if (imageGallery) {
         window.sortables.push(new Sortable(imageGallery, {
+          ...TOUCH,
           animation: 300,
           draggable: '.gallery-item',
           ghostClass: 'sortable-ghost',
@@ -806,6 +822,7 @@
       const nestedList = document.getElementById('nested-list');
       if (nestedList) {
         window.sortables.push(new Sortable(nestedList, {
+          ...TOUCH,
           animation: 200,
           draggable: '.folder',
           handle: '.folder-header',
@@ -814,6 +831,7 @@
         }));
       }
       const folderOptions = {
+        ...TOUCH,
         group: 'files',
         animation: 150,
         draggable: '.file',
