@@ -19,6 +19,16 @@
       "require": "./dist/react/index.cjs"
     }
   },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/types/react/index.d.ts"
+      ],
+      "*": [
+        "./dist/types/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],
