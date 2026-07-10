@@ -26,6 +26,7 @@ export class KeyboardManager {
   private controlled: boolean
   private ghostManager?: GhostManager
   private hiddenDisplays: Map<HTMLElement, string> | null = null
+  private draggableSelector: string
 
   constructor(
     private container: HTMLElement,
@@ -38,12 +39,14 @@ export class KeyboardManager {
       multiDrag?: boolean
       controlled?: boolean
       ghostManager?: GhostManager
+      draggable?: string
     }
   ) {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.multiDrag = options?.multiDrag ?? false
     this.controlled = options?.controlled ?? false
     this.ghostManager = options?.ghostManager
+    this.draggableSelector = options?.draggable ?? '.sortable-item'
     this.setupAnnouncer()
   }
 
@@ -129,7 +132,7 @@ export class KeyboardManager {
     // When using container.press() in tests, the target is the container
     // When pressing keys normally, the target is the focused element
     if (
-      !target.classList.contains('sortable-item') &&
+      !target.matches(this.draggableSelector) &&
       target !== this.container &&
       !this.container.contains(target)
     ) {
@@ -258,7 +261,7 @@ export class KeyboardManager {
     const target = e.target as HTMLElement
 
     // If a sortable item receives focus, update SelectionManager
-    if (target.classList.contains('sortable-item')) {
+    if (target.matches(this.draggableSelector)) {
       this.selectionManager.setFocus(target)
     }
   }
@@ -268,7 +271,7 @@ export class KeyboardManager {
    */
   private onClick = (e: MouseEvent): void => {
     const target = (e.target as HTMLElement).closest(
-      '.sortable-item'
+      this.draggableSelector
     ) as HTMLElement
     if (!target) return
 
@@ -386,11 +389,12 @@ export class KeyboardManager {
         restoreControlledHidden(this.hiddenDisplays)
         this.hiddenDisplays = null
       }
+      // Refocus the anchor BEFORE endDrag so end-event listeners can see
+      // that focus sits on a dragged item (framework adapters use this to
+      // re-focus by data-id after their re-render replaces the node).
+      anchor?.focus()
       // endDrag emits unchoose + end from pending (intent-only).
       globalDragState.endDrag('keyboard-drag')
-      // Best-effort refocus; a framework adapter re-focuses by data-id
-      // after its re-render replaces the node.
-      anchor?.focus()
       this.announce(
         `Dropped ${count} item${count > 1 ? 's' : ''} at position ${(pending?.index ?? 0) + 1}`
       )

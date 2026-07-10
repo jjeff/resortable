@@ -15,6 +15,10 @@ export default defineConfig({
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Sortable',
       fileName: (format) => {
+        // CJS must ship as `.cjs`: package.json has `"type": "module"`, so
+        // Node would parse a `.cjs.js` file as ESM and require() would
+        // return an empty object.
+        if (format === 'cjs') return 'sortable.cjs'
         // Map Vite/Rollup's `es` format name to the standard `.esm.js`
         // extension that package.json `module` and `exports.import` reference.
         const ext = format === 'es' ? 'esm' : format

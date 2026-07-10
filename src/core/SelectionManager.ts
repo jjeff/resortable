@@ -12,6 +12,7 @@ export class SelectionManager implements SelectionManagerInterface {
   private selectedClass: string
   private focusedItem: HTMLElement | null = null
   private focusClass: string
+  private draggableSelector: string
 
   constructor(
     private container: HTMLElement,
@@ -23,10 +24,12 @@ export class SelectionManager implements SelectionManagerInterface {
       // argument on select()/toggle(), so SelectionManager does not need
       // to retain the flag itself.
       multiSelect?: boolean
+      draggable?: string
     }
   ) {
     this.selectedClass = options?.selectedClass || 'sortable-selected'
     this.focusClass = options?.focusClass || 'sortable-focused'
+    this.draggableSelector = options?.draggable || '.sortable-item'
   }
 
   /**
@@ -223,10 +226,13 @@ export class SelectionManager implements SelectionManagerInterface {
   }
 
   /**
-   * Get all sortable items in the container
+   * Get all sortable items in the container (honors the `draggable`
+   * selector; excludes the controlled-mode placeholder)
    */
   private getSortableItems(): HTMLElement[] {
-    return Array.from(this.container.querySelectorAll('.sortable-item'))
+    return Array.from(
+      this.container.querySelectorAll<HTMLElement>(this.draggableSelector)
+    ).filter((el) => !el.hasAttribute('data-resortable-placeholder'))
   }
 
   /**
@@ -234,7 +240,9 @@ export class SelectionManager implements SelectionManagerInterface {
    */
   private isValidItem(item: HTMLElement): boolean {
     return (
-      item.classList.contains('sortable-item') && this.container.contains(item)
+      item.matches(this.draggableSelector) &&
+      !item.hasAttribute('data-resortable-placeholder') &&
+      this.container.contains(item)
     )
   }
 

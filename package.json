@@ -3,7 +3,7 @@
   "version": "2.0.0-alpha.1",
   "description": "Modern TypeScript rewrite of Sortable.js - reorderable drag-and-drop lists",
   "type": "module",
-  "main": "dist/sortable.cjs.js",
+  "main": "dist/sortable.cjs",
   "module": "dist/sortable.esm.js",
   "unpkg": "dist/sortable.umd.js",
   "types": "dist/types/index.d.ts",
@@ -11,7 +11,22 @@
     ".": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/sortable.esm.js",
-      "require": "./dist/sortable.cjs.js"
+      "require": "./dist/sortable.cjs"
+    },
+    "./react": {
+      "types": "./dist/types/react/index.d.ts",
+      "import": "./dist/react/index.esm.js",
+      "require": "./dist/react/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/types/react/index.d.ts"
+      ],
+      "*": [
+        "./dist/types/index.d.ts"
+      ]
     }
   },
   "files": [
@@ -20,7 +35,7 @@
   "scripts": {
     "dev": "vite",
     "dev:debug": "NODE_OPTIONS='--inspect' vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && vite build --config vite.config.react.ts",
     "build:debug": "NODE_OPTIONS='--inspect-brk' npm run build",
     "build:rollup": "rollup -c",
     "build:examples": "vite build --config vite.config.examples.ts",
@@ -60,7 +75,7 @@
     },
     {
       "name": "CJS (gzip)",
-      "path": "dist/sortable.cjs.js",
+      "path": "dist/sortable.cjs",
       "limit": "30 kB",
       "gzip": true,
       "brotli": false
@@ -71,6 +86,10 @@
       "limit": "30 kB",
       "gzip": true,
       "brotli": false
+    },
+    {
+      "path": "dist/react/index.esm.js",
+      "limit": "5 kB"
     }
   ],
   "keywords": [
@@ -114,8 +133,11 @@
     "@semantic-release/npm": "^12.0.2",
     "@semantic-release/release-notes-generator": "^14.0.3",
     "@size-limit/file": "^12.1.0",
+    "@testing-library/react": "^16.3.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",
     "@vitest/ui": "^3.2.4",
@@ -127,6 +149,8 @@
     "eslint-plugin-tsdoc": "^0.4.0",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "rimraf": "^6.0.1",
     "rollup-plugin-dts": "^6.2.3",
     "semantic-release": "^24.2.7",
@@ -136,5 +160,13 @@
     "vite": "^7.3.5",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }
