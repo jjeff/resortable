@@ -104,3 +104,33 @@ export function toArray(parent: HTMLElement, dataIdAttr = 'data-id'): string[] {
     return el.dataset[attrName] ?? el.getAttribute(dataIdAttr) ?? String(i)
   })
 }
+
+/**
+ * CSS class marking items hidden for an active controlled-mode drag.
+ * Index math (DropZone.getControlledIndex) excludes items carrying it.
+ */
+export const CONTROLLED_HIDDEN_CLASS = 'sortable-controlled-hidden'
+
+/**
+ * Hide elements for a controlled-mode drag (visual removal without touching
+ * their structural position). Returns the original inline `display` values
+ * so {@link restoreControlledHidden} can put them back exactly.
+ */
+export function hideControlled(items: HTMLElement[]): Map<HTMLElement, string> {
+  const saved = new Map<HTMLElement, string>()
+  for (const item of items) {
+    saved.set(item, item.style.display)
+    item.classList.add(CONTROLLED_HIDDEN_CLASS)
+    item.style.display = 'none'
+  }
+  return saved
+}
+
+/** Restore elements hidden by {@link hideControlled}. */
+export function restoreControlledHidden(saved: Map<HTMLElement, string>): void {
+  saved.forEach((display, item) => {
+    item.classList.remove(CONTROLLED_HIDDEN_CLASS)
+    item.style.display = display
+  })
+  saved.clear()
+}

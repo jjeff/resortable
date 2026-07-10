@@ -7,7 +7,8 @@ import {
 } from '../types/index.js'
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
-import { globalDragState } from './GlobalDragState.js'
+import { globalDragState, type ActiveDrag } from './GlobalDragState.js'
+import { hideControlled, restoreControlledHidden } from '../utils/dom.js'
 import { SelectionManager } from './SelectionManager.js'
 import { KeyboardManager } from './KeyboardManager.js'
 import { GhostManager } from './GhostManager.js'
@@ -116,6 +117,14 @@ export class DragManager implements DragManagerInterface {
   ) => boolean | -1 | 1 | void
   private ghostManager: GhostManager
 
+  // Controlled mode (see the `controlled` option): consumer-owned nodes are
+  // never structurally moved — the placeholder is the only thing that
+  // travels, and events carry the intent for the consumer to commit.
+  private controlled: boolean
+  // Original inline `display` values of items hidden for a controlled
+  // pointer drag; null when nothing is hidden.
+  private hiddenDisplays: Map<HTMLElement, string> | null = null
+
   private groupManager: GroupManager
 
   private originalTouchActions = new Map<HTMLElement, string>()
@@ -170,6 +179,7 @@ export class DragManager implements DragManagerInterface {
         event: MoveEvent,
         originalEvent: Event
       ) => boolean | -1 | 1 | void
+      controlled?: boolean
     }
   ) {
     // Initialize group manager
@@ -224,6 +234,7 @@ export class DragManager implements DragManagerInterface {
     this._dataIdAttr = options?.dataIdAttr ?? 'data-id'
     this._setData = options?.setData
     this._onMove = options?.onMove
+    this.controlled = options?.controlled ?? false
 
     // Initialize ghost manager with classes
     this.ghostManager = new GhostManager(
@@ -253,6 +264,8 @@ export class DragManager implements DragManagerInterface {
       {
         deselectOnClickOutside: options?.deselectOnClickOutside,
         multiDrag: options?.multiSelect,
+        controlled: this.controlled,
+        ghostManager: this.ghostManager,
       }
     )
   }
@@ -373,7 +386,8 @@ export class DragManager implements DragManagerInterface {
       this,
       this.groupManager.getName(),
       this.startIndex,
-      this.events
+      this.events,
+      this.controlled
     )
 
     const evt: SortableEvent = {
@@ -472,6 +486,177 @@ export class DragManager implements DragManagerInterface {
     return this._onMove?.(moveEvent, originalEvent)
   }
 
+  /**
+   * Controlled-mode move handling, shared by both pipelines (HTML5 dragover
+   * and pointer move). Only the placeholder travels; consumer-owned nodes
+   * are never structurally moved. `onMove` cancellation/override semantics
+   * are preserved (dispatched on the SOURCE sortable's options, legacy
+   * parity). Per-pipeline differences:
+   *
+   * - `emitHtml5Events` — the HTML5 pipeline emits sort/update/change on
+   *   same-list reorders; the pointer pipeline only emits update (parity
+   *   with the uncontrolled paths).
+   * - `commitPending`  — the pointer pipeline commits pending live
+   *   (pointerup IS the drop); the HTML5 pipeline commits only in onDrop
+   *   so a cancelled drag (dragend without drop) reports a no-op.
+   */
+  private handleControlledMove(
+    e: Event,
+    over: HTMLElement | null,
+    targetManager: DragManager,
+    activeDrag: ActiveDrag,
+    opts: { emitHtml5Events: boolean; commitPending: boolean }
+  ): void {
+    const sourceManager = activeDrag.fromDragManager as DragManager
+    const placeholder = sourceManager.ghostManager.getPlaceholderElement()
+    if (!placeholder) return
+
+    const targetZone = targetManager.zone
+    const targetZoneElement = targetZone.element
+    if (targetZone.isAnimating) return
+
+    const items = activeDrag.items
+    const overIsValid =
+      over !== null && !items.includes(over) && over !== placeholder
+
+    if (placeholder.parentElement !== targetZoneElement) {
+      // ── Entering this zone (cross-zone, or returning to the source) ──
+      if (
+        targetZoneElement !== activeDrag.fromZone &&
+        !globalDragState.canAcceptDrop(
+          activeDrag.id,
+          targetManager.groupManager.getName()
+        )
+      ) {
+        return
+      }
+      globalDragState.setPutTarget(
+        activeDrag.id,
+        targetZoneElement,
+        targetManager,
+        targetManager.groupManager.getName()
+      )
+
+      const hasSibling = overIsValid && over.parentElement === targetZoneElement
+      const related: HTMLElement = hasSibling && over ? over : targetZoneElement
+      const visible = targetZone.getVisibleItems(items)
+      const newIndex =
+        hasSibling && over ? visible.indexOf(over) : visible.length
+      if (newIndex === -1) return
+
+      const moveEvent: MoveEvent = {
+        item: items[0],
+        items,
+        from: activeDrag.fromZone,
+        to: targetZoneElement,
+        oldIndex: activeDrag.startIndices[0],
+        newIndex,
+        related,
+        willInsertAfter: false,
+        draggedRect: placeholder.getBoundingClientRect(),
+        targetRect: related.getBoundingClientRect(),
+      }
+      const moveResult = sourceManager.dispatchMove(moveEvent, e)
+      if (moveResult === false) return
+
+      let insertRef: Node | null = hasSibling && over ? over : null
+      let index = newIndex
+      if (hasSibling && over && moveResult === 1) {
+        insertRef = over.nextSibling
+        index = newIndex + 1
+      }
+      targetZone.insertWithAnimation(placeholder, insertRef)
+      if (opts.commitPending) {
+        globalDragState.setPending(activeDrag.id, {
+          zone: targetZoneElement,
+          index,
+        })
+      }
+      return
+    }
+
+    // ── Reorder within the placeholder's current zone ──
+    if (!overIsValid || !over || over.parentElement !== targetZoneElement) {
+      return
+    }
+
+    const visible = targetZone.getVisibleItems(items)
+    const overIdx = visible.indexOf(over)
+    if (overIdx === -1) return
+    const oldIdx = targetZone.getControlledIndex(placeholder, items)
+
+    // Overlap gate: the ghost is the moving visual in controlled mode.
+    const movingRect = (
+      sourceManager.ghostManager.getGhostElement() ?? placeholder
+    ).getBoundingClientRect()
+    const overRect = over.getBoundingClientRect()
+    const naturalAfter = !!(
+      placeholder.compareDocumentPosition(over) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+    if (
+      !this.shouldSwap(
+        movingRect,
+        overRect,
+        naturalAfter ? 'forward' : 'backward'
+      )
+    ) {
+      return
+    }
+
+    const moveEvent: MoveEvent = {
+      item: items[0],
+      items,
+      from: targetZoneElement,
+      to: targetZoneElement,
+      oldIndex: oldIdx,
+      newIndex: overIdx + (naturalAfter ? 1 : 0),
+      related: over,
+      willInsertAfter: naturalAfter,
+      draggedRect: placeholder.getBoundingClientRect(),
+      targetRect: overRect,
+    }
+    const moveResult = sourceManager.dispatchMove(moveEvent, e)
+    if (moveResult === false) return
+
+    const insertAfter =
+      moveResult === 1 ? true : moveResult === -1 ? false : naturalAfter
+    const newIndex = overIdx + (insertAfter ? 1 : 0)
+    if (newIndex === oldIdx) return
+
+    targetZone.insertWithAnimation(
+      placeholder,
+      insertAfter ? over.nextSibling : over
+    )
+    if (opts.commitPending) {
+      globalDragState.setPending(activeDrag.id, {
+        zone: targetZoneElement,
+        index: newIndex,
+      })
+    }
+
+    const evt = {
+      item: items[0],
+      items,
+      from: targetZoneElement,
+      to: targetZoneElement,
+      oldIndex: oldIdx,
+      newIndex,
+    }
+    const isSourceList = activeDrag.fromZone === targetZoneElement
+    if (opts.emitHtml5Events) {
+      // HTML5-pipeline parity: sort always, update/change on the source list.
+      targetManager.events.emit('sort', evt)
+      if (isSourceList) {
+        targetManager.events.emit('update', evt)
+        targetManager.events.emit('change', evt)
+      }
+    } else if (isSourceList) {
+      // Pointer-pipeline parity: update only.
+      targetManager.events.emit('update', evt)
+    }
+  }
+
   private onDragOver = (e: DragEvent): void => {
     e.preventDefault()
     // Stop the event from bubbling to ancestor sortables unless the user
@@ -513,6 +698,17 @@ export class DragManager implements DragManagerInterface {
     const overEl = (e.target as HTMLElement).closest(this.draggable)
     const over: HTMLElement | null =
       overEl instanceof HTMLElement ? overEl : null
+
+    if (this.controlled) {
+      // Controlled mode: only the placeholder travels. Mid-drag events fire
+      // (HTML5 parity: sort/update/change) but pending is only committed in
+      // onDrop — a dragend without a drop must not commit intent.
+      this.handleControlledMove(e, over, this, activeDrag, {
+        emitHtml5Events: true,
+        commitPending: false,
+      })
+      return
+    }
 
     // Handle cross-zone dragging
     if (originalItem.parentElement !== this.zone.element) {
@@ -724,6 +920,20 @@ export class DragManager implements DragManagerInterface {
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
+
+    if (this.controlled) {
+      // Commit the intent: record the placeholder's final position. DOM
+      // cleanup + event emission happen in onDragEnd → endDrag.
+      const sourceManager = activeDrag.fromDragManager as DragManager
+      const placeholder = sourceManager.ghostManager.getPlaceholderElement()
+      if (placeholder && placeholder.parentElement === this.zone.element) {
+        globalDragState.setPending(dragId, {
+          zone: this.zone.element,
+          index: this.zone.getControlledIndex(placeholder, activeDrag.items),
+        })
+      }
+      return
+    }
 
     const originalItem = activeDrag.items[0]
     const placeholder = this.ghostManager.getPlaceholderElement()
@@ -1041,7 +1251,8 @@ export class DragManager implements DragManagerInterface {
       this,
       this.groupManager.getName(),
       this.draggedItems.map((item) => this.zone.getIndex(item)),
-      this.events
+      this.events,
+      this.controlled
     )
 
     const evt: SortableEvent = {
@@ -1079,7 +1290,15 @@ export class DragManager implements DragManagerInterface {
     } else {
       this.ghostManager.createGhost(target, e, ghostOptions)
     }
-    this.ghostManager.createPlaceholder(target)
+    const placeholder = this.ghostManager.createPlaceholder(target)
+
+    if (this.controlled) {
+      // The placeholder takes the anchor's spot and the real items are
+      // hidden in place (never structurally moved) — the ghost is the only
+      // visual that follows the pointer. Sized before hiding.
+      target.parentElement?.insertBefore(placeholder, target)
+      this.hiddenDisplays = hideControlled(this.draggedItems)
+    }
 
     // Then emit start event
     this.events.emit('start', evt)
@@ -1128,6 +1347,19 @@ export class DragManager implements DragManagerInterface {
       )
     }
     if (!targetZoneElement) return
+
+    if (this.controlled) {
+      const targetManager = this.findDragManagerForZone(targetZoneElement)
+      if (targetManager) {
+        // Pointer parity: only `update` fires mid-drag (gated on the source
+        // list); pending updates live because pointerup IS the commit.
+        this.handleControlledMove(e, over, targetManager, activeDrag, {
+          emitHtml5Events: false,
+          commitPending: true,
+        })
+      }
+      return
+    }
 
     // Find all Sortable instances and see which one manages this zone
     // We need to handle cross-zone movement by finding the right DragManager
@@ -1366,8 +1598,34 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointerup', this.onPointerUp)
     document.removeEventListener('pointercancel', this.onPointerCancel)
 
+    // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
+    // intent events, so a synchronous state update in a handler re-renders
+    // against clean DOM. Capture the placeholder rect first — the ghost
+    // settles onto the drop position below.
+    let controlledSettleRect: DOMRect | null = null
+    if (this.controlled) {
+      const placeholder = this.ghostManager.getPlaceholderElement()
+      if (placeholder && !revert) {
+        controlledSettleRect = placeholder.getBoundingClientRect()
+      }
+      this.ghostManager.destroyPlaceholder()
+      if (this.hiddenDisplays) {
+        restoreControlledHidden(this.hiddenDisplays)
+        this.hiddenDisplays = null
+      }
+      if (revert && this.activePointerId !== null) {
+        // Cancelled — end reports newIndex = oldIndex.
+        globalDragState.clearPending(`pointer-${this.activePointerId}`)
+      }
+    }
+
     // If reverting (cancelled drag), restore original position
-    if (revert && this.dragElement && this.startIndex >= 0) {
+    if (
+      revert &&
+      !this.controlled &&
+      this.dragElement &&
+      this.startIndex >= 0
+    ) {
       const dragId =
         this.activePointerId !== null ? `pointer-${this.activePointerId}` : null
       const activeDrag = dragId ? globalDragState.getActiveDrag(dragId) : null
@@ -1417,7 +1675,10 @@ export class DragManager implements DragManagerInterface {
     const ghost = this.ghostManager.getGhostElement()
     const dragEl = this.dragElement
     if (ghost && dragEl && !revert) {
-      const finalRect = dragEl.getBoundingClientRect()
+      // Controlled mode: the item was restored to its original spot, so the
+      // ghost settles onto where the placeholder sat (the drop position the
+      // consumer is about to render) instead of the item's stale rect.
+      const finalRect = controlledSettleRect ?? dragEl.getBoundingClientRect()
       const ghostRect = ghost.getBoundingClientRect()
       const deltaX = finalRect.left - ghostRect.left
       const deltaY = finalRect.top - ghostRect.top

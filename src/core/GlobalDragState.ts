@@ -21,6 +21,11 @@ interface ActiveDrag {
   eventSystem: SortableEventSystem
   clones?: HTMLElement[] // Cloned elements for clone operations
   pullMode?: 'move' | 'clone' // How these items were pulled
+  controlled?: boolean // Controlled mode: no consumer-DOM mutation, intent-only events
+  // Controlled mode: where the placeholder currently sits. Set/updated by the
+  // drag pipelines; endDrag() emits indices from here instead of the DOM.
+  // Cleared (left undefined) on cancel/revert so end reports newIndex = oldIndex.
+  pending?: { zone: HTMLElement; index: number }
 }
 
 interface PutTarget {
@@ -46,7 +51,8 @@ class GlobalDragStateManager {
     fromDragManager: DragManager,
     groupName: string,
     startIndex: number | number[],
-    eventSystem: SortableEventSystem
+    eventSystem: SortableEventSystem,
+    controlled = false
   ): void {
     const itemsArray = Array.isArray(items) ? items : [items]
     const indicesArray = Array.isArray(startIndex) ? startIndex : [startIndex]
@@ -58,9 +64,36 @@ class GlobalDragStateManager {
       groupName,
       startIndices: indicesArray,
       eventSystem,
+      controlled,
+      // Controlled drags start with the placeholder at the item's own spot.
+      pending: controlled
+        ? { zone: fromZone, index: indicesArray[0] }
+        : undefined,
     })
     // Clear any existing put target for this drag
     this.putTargets.delete(dragId)
+  }
+
+  /** Controlled mode: record where the placeholder currently sits */
+  public setPending(
+    dragId: string,
+    pending: { zone: HTMLElement; index: number }
+  ): void {
+    const activeDrag = this.activeDrags.get(dragId)
+    if (activeDrag) activeDrag.pending = pending
+  }
+
+  /** Controlled mode: read the current placeholder position */
+  public getPending(
+    dragId: string
+  ): { zone: HTMLElement; index: number } | undefined {
+    return this.activeDrags.get(dragId)?.pending
+  }
+
+  /** Controlled mode: cancel — end will report newIndex = oldIndex */
+  public clearPending(dragId: string): void {
+    const activeDrag = this.activeDrags.get(dragId)
+    if (activeDrag) activeDrag.pending = undefined
   }
 
   /** Set the current drop target for a specific drag */
@@ -83,7 +116,10 @@ class GlobalDragStateManager {
             const pullMode = sourceGroupManager.getPullMode(groupName)
             activeDrag.pullMode = pullMode
 
-            if (pullMode === 'clone') {
+            // Controlled mode never materializes clone nodes — `pullMode:
+            // 'clone'` is reported in the events and the consumer's state
+            // update inserts the copy.
+            if (pullMode === 'clone' && !activeDrag.controlled) {
               // Create clones of all dragged items
               const clones = activeDrag.items.map((item) => {
                 const clone = item.cloneNode(true) as HTMLElement
@@ -122,6 +158,13 @@ class GlobalDragStateManager {
   public endDrag(dragId: string): void {
     const activeDrag = this.activeDrags.get(dragId)
     if (!activeDrag) return
+
+    if (activeDrag.controlled) {
+      this.endControlledDrag(activeDrag)
+      this.activeDrags.delete(dragId)
+      this.putTargets.delete(dragId)
+      return
+    }
 
     const putTarget = this.putTargets.get(dragId)
     const isDifferentZone = putTarget && putTarget.zone !== activeDrag.fromZone
@@ -220,6 +263,65 @@ class GlobalDragStateManager {
 
     this.activeDrags.delete(dragId)
     this.putTargets.delete(dragId)
+  }
+
+  /**
+   * Controlled-mode drag end: the caller (drag pipeline) has already
+   * restored the DOM (placeholder removed, hidden items shown), so every
+   * index here comes from `pending`, never from the DOM. Events carry the
+   * full intent (`oldIndexes`/`newIndexes`); the consumer commits it by
+   * updating state. A cleared `pending` means cancelled — report
+   * newIndex = oldIndex so consumers can no-op.
+   */
+  private endControlledDrag(activeDrag: ActiveDrag): void {
+    const putTarget = this.putTargets.get(activeDrag.id)
+    const { pending } = activeDrag
+    const oldIndex = activeDrag.startIndices[0]
+    const oldIndexes = [...activeDrag.startIndices]
+    const toZone = pending?.zone ?? activeDrag.fromZone
+    const newIndex = pending?.index ?? oldIndex
+    const newIndexes = pending
+      ? activeDrag.items.map((_, i) => pending.index + i)
+      : oldIndexes
+    const isDifferentZone = toZone !== activeDrag.fromZone
+
+    const base = {
+      item: activeDrag.items[0],
+      items: activeDrag.items,
+      from: activeDrag.fromZone,
+      to: toZone,
+      oldIndex,
+      newIndex,
+      oldIndexes,
+      newIndexes,
+    }
+
+    if (isDifferentZone) {
+      const isClone = activeDrag.pullMode === 'clone'
+      const pullMode = isClone
+        ? ('clone' as const)
+        : activeDrag.pullMode || true
+      if (isClone) {
+        // No clone node exists in controlled mode — the event reports the
+        // intent and the consumer's state insert IS the clone.
+        activeDrag.eventSystem.emit('clone', { ...base, pullMode })
+      } else {
+        activeDrag.eventSystem.emit('remove', { ...base, pullMode })
+      }
+      // Fire add on the target's event system (skip if the placeholder
+      // ended somewhere we never registered — shouldn't happen, but don't
+      // emit into the wrong list's handlers).
+      const targetEvents =
+        putTarget && putTarget.zone === toZone
+          ? putTarget.dragManager.events
+          : null
+      if (targetEvents && targetEvents !== activeDrag.eventSystem) {
+        targetEvents.emit('add', { ...base, pullMode })
+      }
+    }
+
+    activeDrag.eventSystem.emit('unchoose', { ...base, newIndex: -1 })
+    activeDrag.eventSystem.emit('end', base)
   }
 
   /** Check if a specific drag can be accepted by a group */

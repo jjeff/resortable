@@ -28,12 +28,63 @@ export class DropZone {
 
   /** Get sortable items (only elements matching the draggable selector) */
   public getItems(): HTMLElement[] {
-    return Array.from(this.element.querySelectorAll(this.draggableSelector))
+    return Array.from(
+      this.element.querySelectorAll<HTMLElement>(this.draggableSelector)
+    ).filter((el) => !el.hasAttribute('data-resortable-placeholder'))
+  }
+
+  /**
+   * Controlled-mode view of the list: draggable items excluding the
+   * placeholder (already filtered by getItems), items hidden for the active
+   * controlled drag, and any explicitly excluded elements (the dragged
+   * items — the HTML5 pipeline leaves them visible in place).
+   */
+  public getVisibleItems(exclude: HTMLElement[] = []): HTMLElement[] {
+    const excluded = new Set(exclude)
+    return this.getItems().filter(
+      (el) =>
+        !excluded.has(el) &&
+        !el.classList.contains('sortable-controlled-hidden')
+    )
+  }
+
+  /**
+   * Controlled-mode drop index: the index the dragged item(s) will occupy
+   * in this list AFTER the consumer commits the move — i.e. the count of
+   * visible draggable siblings (see {@link getVisibleItems}) before
+   * `placeholder`.
+   */
+  public getControlledIndex(
+    placeholder: HTMLElement,
+    exclude: HTMLElement[] = []
+  ): number {
+    const visible = new Set(this.getVisibleItems(exclude))
+    let index = 0
+    for (const child of Array.from(this.element.children)) {
+      if (child === placeholder) return index
+      if (child instanceof HTMLElement && visible.has(child)) {
+        index++
+      }
+    }
+    return index
   }
 
   /** Get index of an item within container */
   public getIndex(item: HTMLElement): number {
     return this.getItems().indexOf(item)
+  }
+
+  /**
+   * Insert `node` before `ref` (append when null), FLIP-animating the
+   * displaced items. Controlled mode uses this to move the placeholder.
+   */
+  public insertWithAnimation(node: HTMLElement, ref: Node | null): void {
+    const doInsert = () => this.element.insertBefore(node, ref)
+    if (this.animationManager) {
+      this.animationManager.animateReorder(this.getItems(), doInsert)
+    } else {
+      doInsert()
+    }
   }
 
   /** Move item to new index within container (among sortable items only) */

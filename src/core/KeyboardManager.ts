@@ -2,6 +2,8 @@ import { SelectionManager } from './SelectionManager.js'
 import { DropZone } from './DropZone.js'
 import { SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
+import { GhostManager } from './GhostManager.js'
+import { hideControlled, restoreControlledHidden } from '../utils/dom.js'
 
 /**
  * Handles keyboard navigation and operations for sortable lists
@@ -18,16 +20,30 @@ export class KeyboardManager {
   private multiDrag: boolean
   private onDocumentClick: ((e: MouseEvent) => void) | null = null
 
+  // Controlled mode (see the `controlled` option): grabbed items are hidden
+  // in place and the placeholder is what arrow keys move; endDrag emits the
+  // intent from pending state.
+  private controlled: boolean
+  private ghostManager?: GhostManager
+  private hiddenDisplays: Map<HTMLElement, string> | null = null
+
   constructor(
     private container: HTMLElement,
     private zone: DropZone,
     private selectionManager: SelectionManager,
     private events: SortableEventSystem,
     private groupName: string,
-    options?: { deselectOnClickOutside?: boolean; multiDrag?: boolean }
+    options?: {
+      deselectOnClickOutside?: boolean
+      multiDrag?: boolean
+      controlled?: boolean
+      ghostManager?: GhostManager
+    }
   ) {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.multiDrag = options?.multiDrag ?? false
+    this.controlled = options?.controlled ?? false
+    this.ghostManager = options?.ghostManager
     this.setupAnnouncer()
   }
 
@@ -318,8 +334,19 @@ export class KeyboardManager {
       { zone: this.zone, events: this.events },
       this.groupName,
       this.originalIndices,
-      this.events
+      this.events,
+      this.controlled
     )
+
+    if (this.controlled && this.ghostManager) {
+      const anchor = selected[0]
+      const placeholder = this.ghostManager.createPlaceholder(anchor)
+      anchor.parentElement?.insertBefore(placeholder, anchor)
+      this.hiddenDisplays = hideControlled(selected)
+      // display:none drops focus from the grabbed item — park focus on the
+      // container so arrow keys keep reaching our keydown listener.
+      this.container.focus()
+    }
 
     // Emit start event
     this.events.emit('start', {
@@ -348,6 +375,31 @@ export class KeyboardManager {
       item.classList.remove('sortable-grabbing')
       item.setAttribute('aria-grabbed', 'false')
     })
+
+    if (this.controlled) {
+      const anchor = this.grabbedItems[0]
+      const count = this.grabbedItems.length
+      const pending = globalDragState.getPending('keyboard-drag')
+      // Restore the consumer's DOM BEFORE endDrag emits the intent events.
+      this.ghostManager?.destroyPlaceholder()
+      if (this.hiddenDisplays) {
+        restoreControlledHidden(this.hiddenDisplays)
+        this.hiddenDisplays = null
+      }
+      // endDrag emits unchoose + end from pending (intent-only).
+      globalDragState.endDrag('keyboard-drag')
+      // Best-effort refocus; a framework adapter re-focuses by data-id
+      // after its re-render replaces the node.
+      anchor?.focus()
+      this.announce(
+        `Dropped ${count} item${count > 1 ? 's' : ''} at position ${(pending?.index ?? 0) + 1}`
+      )
+      this.isGrabbing = false
+      this.grabbedItems = []
+      this.originalIndices = []
+      this.updateItemAttributes()
+      return
+    }
 
     // Get final position before cleanup
     const newIndex = this.zone.getIndex(this.grabbedItems[0])
@@ -396,6 +448,29 @@ export class KeyboardManager {
   private cancelGrab(): void {
     if (!this.isGrabbing) return
 
+    if (this.controlled) {
+      const anchor = this.grabbedItems[0]
+      this.grabbedItems.forEach((item) => {
+        item.classList.remove('sortable-grabbing')
+        item.setAttribute('aria-grabbed', 'false')
+      })
+      this.ghostManager?.destroyPlaceholder()
+      if (this.hiddenDisplays) {
+        restoreControlledHidden(this.hiddenDisplays)
+        this.hiddenDisplays = null
+      }
+      // Cleared pending → end reports newIndex = oldIndex (a no-op commit).
+      globalDragState.clearPending('keyboard-drag')
+      globalDragState.endDrag('keyboard-drag')
+      anchor?.focus()
+      this.announce('Move cancelled')
+      this.isGrabbing = false
+      this.grabbedItems = []
+      this.originalIndices = []
+      this.updateItemAttributes()
+      return
+    }
+
     // Restore original positions
     this.grabbedItems.forEach((item, i) => {
       const currentIndex = this.zone.getIndex(item)
@@ -424,10 +499,43 @@ export class KeyboardManager {
   }
 
   /**
+   * Controlled mode: arrow keys move the placeholder one visible position;
+   * grabbed items stay hidden in place. Pending records the intent.
+   */
+  private moveGrabbedControlled(delta: -1 | 1): void {
+    const placeholder = this.ghostManager?.getPlaceholderElement()
+    if (!placeholder || placeholder.parentElement !== this.container) return
+
+    const visible = this.zone.getVisibleItems(this.grabbedItems)
+    const current = this.zone.getControlledIndex(placeholder, this.grabbedItems)
+
+    if (delta === 1) {
+      if (current >= visible.length) return
+      this.container.insertBefore(placeholder, visible[current].nextSibling)
+    } else {
+      if (current <= 0) return
+      this.container.insertBefore(placeholder, visible[current - 1])
+    }
+
+    const index = current + delta
+    globalDragState.setPending('keyboard-drag', {
+      zone: this.container,
+      index,
+    })
+    this.announce(`Moved to position ${index + 1}`)
+    this.updateItemAttributes()
+  }
+
+  /**
    * Move grabbed items up
    */
   private moveGrabbedUp(): void {
     if (!this.isGrabbing || this.grabbedItems.length === 0) return
+
+    if (this.controlled) {
+      this.moveGrabbedControlled(-1)
+      return
+    }
 
     const firstItem = this.grabbedItems[0]
     const currentIndex = this.zone.getIndex(firstItem)
@@ -457,6 +565,11 @@ export class KeyboardManager {
    */
   private moveGrabbedDown(): void {
     if (!this.isGrabbing || this.grabbedItems.length === 0) return
+
+    if (this.controlled) {
+      this.moveGrabbedControlled(1)
+      return
+    }
 
     const lastItem = this.grabbedItems[this.grabbedItems.length - 1]
     const currentIndex = this.zone.getIndex(lastItem)

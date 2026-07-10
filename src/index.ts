@@ -75,6 +75,7 @@ export {
 export { SelectionManager } from './core/SelectionManager.js'
 export { KeyboardManager } from './core/KeyboardManager.js'
 export { GroupManager } from './core/GroupManager.js'
+export { GhostManager, type CreateGhostOptions } from './core/GhostManager.js'
 export { AnimationManager } from './animation/AnimationManager.js'
 
 // WeakMap to track Sortable instances by their elements
@@ -307,48 +308,7 @@ export class Sortable {
       this.dropZone,
       this.eventSystem,
       this.options.group,
-      {
-        enableAccessibility: this.options.enableAccessibility,
-        multiSelect: this.options.multiDrag,
-        selectedClass: this.options.selectedClass,
-        focusClass: this.options.focusClass,
-        handle: this.options.handle,
-        filter: this.options.filter,
-        onFilter: this.options.onFilter,
-        ignore: this.options.ignore,
-        draggable: this.options.draggable,
-        delay: this.options.delay,
-        delayOnTouchOnly: this.options.delayOnTouchOnly,
-        touchStartThreshold: this.options.touchStartThreshold,
-        swapThreshold: this.options.swapThreshold,
-        invertSwap: this.options.invertSwap,
-        invertedSwapThreshold: this.options.invertedSwapThreshold,
-        direction: this.options.direction,
-        forceFallback: this.options.forceFallback,
-        fallbackClass: this.options.fallbackClass,
-        fallbackOnBody: this.options.fallbackOnBody,
-        fallbackTolerance: this.options.fallbackTolerance,
-        fallbackOffsetX: this.options.fallbackOffsetX,
-        fallbackOffsetY: this.options.fallbackOffsetY,
-        dragoverBubble: this.options.dragoverBubble,
-        dropBubble: this.options.dropBubble,
-        removeCloneOnHide: this.options.removeCloneOnHide,
-        emptyInsertThreshold: this.options.emptyInsertThreshold,
-        preventOnFilter: this.options.preventOnFilter,
-        dataIdAttr: this.options.dataIdAttr,
-        ghostClass: this.options.ghostClass,
-        chosenClass: this.options.chosenClass,
-        dragClass: this.options.dragClass,
-        deselectOnClickOutside: this.options.deselectOnClickOutside,
-        setData: this.options.setData,
-        // `onMove` is threaded directly into DragManager — unlike the other
-        // option callbacks which subscribe to the `EventSystem`, `onMove`
-        // controls cancellation / insert-side override via its return value
-        // (`false` / `-1` / `1`). The event-system can only propagate, not
-        // collect a return, so we wire it through the option bag instead.
-        // See #33.
-        onMove: this.options.onMove,
-      }
+      this.buildDragManagerOptions()
     )
     this.dragManager.attach()
 
@@ -420,12 +380,69 @@ export class Sortable {
       })
     }
 
-    // Restore order from store on initialization
-    if (this.options.store?.get) {
+    // Restore order from store on initialization (controlled mode: order is
+    // consumer state — sort() would warn-and-no-op, so skip entirely)
+    if (this.options.store?.get && !this.options.controlled) {
       const order = this.options.store.get(this)
       if (order && order.length > 0) {
         this.sort(order, false)
       }
+    }
+  }
+
+  /**
+   * The single source of truth for the DragManager option bag. Used by the
+   * constructor and both runtime-rebuild paths in `option()` — previously
+   * three hand-maintained copies that had drifted (the rebuilds silently
+   * dropped `setData`, `onMove`, `dataIdAttr`, `preventOnFilter`,
+   * `emptyInsertThreshold`, `dragoverBubble`, `dropBubble`,
+   * `removeCloneOnHide`).
+   */
+  private buildDragManagerOptions(): ConstructorParameters<
+    typeof DragManager
+  >[3] {
+    return {
+      enableAccessibility: this.options.enableAccessibility,
+      multiSelect: this.options.multiDrag,
+      selectedClass: this.options.selectedClass,
+      focusClass: this.options.focusClass,
+      handle: this.options.handle,
+      filter: this.options.filter,
+      onFilter: this.options.onFilter,
+      ignore: this.options.ignore,
+      draggable: this.options.draggable,
+      delay: this.options.delay,
+      delayOnTouchOnly: this.options.delayOnTouchOnly,
+      touchStartThreshold: this.options.touchStartThreshold,
+      swapThreshold: this.options.swapThreshold,
+      invertSwap: this.options.invertSwap,
+      invertedSwapThreshold: this.options.invertedSwapThreshold,
+      direction: this.options.direction,
+      forceFallback: this.options.forceFallback,
+      fallbackClass: this.options.fallbackClass,
+      fallbackOnBody: this.options.fallbackOnBody,
+      fallbackTolerance: this.options.fallbackTolerance,
+      fallbackOffsetX: this.options.fallbackOffsetX,
+      fallbackOffsetY: this.options.fallbackOffsetY,
+      dragoverBubble: this.options.dragoverBubble,
+      dropBubble: this.options.dropBubble,
+      removeCloneOnHide: this.options.removeCloneOnHide,
+      emptyInsertThreshold: this.options.emptyInsertThreshold,
+      preventOnFilter: this.options.preventOnFilter,
+      dataIdAttr: this.options.dataIdAttr,
+      ghostClass: this.options.ghostClass,
+      chosenClass: this.options.chosenClass,
+      dragClass: this.options.dragClass,
+      deselectOnClickOutside: this.options.deselectOnClickOutside,
+      setData: this.options.setData,
+      // `onMove` is threaded directly into DragManager — unlike the other
+      // option callbacks which subscribe to the `EventSystem`, `onMove`
+      // controls cancellation / insert-side override via its return value
+      // (`false` / `-1` / `1`). The event-system can only propagate, not
+      // collect a return, so we wire it through the option bag instead.
+      // See #33.
+      onMove: this.options.onMove,
+      controlled: this.options.controlled,
     }
   }
 
@@ -574,6 +591,13 @@ export class Sortable {
    * @public
    */
   public sort(order: string[], useAnimation = true): void {
+    if (this.options.controlled) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[resortable] sort() is a no-op in controlled mode — order is consumer state'
+      )
+      return
+    }
     const dataIdAttr = this.options.dataIdAttr ?? 'data-id'
     const items = Array.from(this.element.children) as HTMLElement[]
 
@@ -720,34 +744,7 @@ export class Sortable {
           this.dropZone,
           this.eventSystem,
           this.options.group,
-          {
-            enableAccessibility: this.options.enableAccessibility,
-            multiSelect: this.options.multiDrag,
-            selectedClass: this.options.selectedClass,
-            focusClass: this.options.focusClass,
-            handle: this.options.handle,
-            filter: this.options.filter,
-            onFilter: this.options.onFilter,
-            ignore: this.options.ignore,
-            draggable: this.options.draggable,
-            delay: this.options.delay,
-            delayOnTouchOnly: this.options.delayOnTouchOnly,
-            touchStartThreshold: this.options.touchStartThreshold,
-            swapThreshold: this.options.swapThreshold,
-            invertSwap: this.options.invertSwap,
-            invertedSwapThreshold: this.options.invertedSwapThreshold,
-            direction: this.options.direction,
-            forceFallback: this.options.forceFallback,
-            fallbackClass: this.options.fallbackClass,
-            fallbackOnBody: this.options.fallbackOnBody,
-            fallbackTolerance: this.options.fallbackTolerance,
-            fallbackOffsetX: this.options.fallbackOffsetX,
-            fallbackOffsetY: this.options.fallbackOffsetY,
-            ghostClass: this.options.ghostClass,
-            chosenClass: this.options.chosenClass,
-            dragClass: this.options.dragClass,
-            deselectOnClickOutside: this.options.deselectOnClickOutside,
-          }
+          this.buildDragManagerOptions()
         )
         this.dragManager.attach()
         break
@@ -755,39 +752,13 @@ export class Sortable {
 
       case 'group':
         // Re-create drag manager with new group configuration
+        // (`this.options.group` was already updated above the switch).
         this.dragManager.detach()
         this.dragManager = new DragManager(
           this.dropZone,
           this.eventSystem,
-          value as SortableOptions['group'],
-          {
-            enableAccessibility: this.options.enableAccessibility,
-            multiSelect: this.options.multiDrag,
-            selectedClass: this.options.selectedClass,
-            focusClass: this.options.focusClass,
-            handle: this.options.handle,
-            filter: this.options.filter,
-            onFilter: this.options.onFilter,
-            ignore: this.options.ignore,
-            draggable: this.options.draggable,
-            delay: this.options.delay,
-            delayOnTouchOnly: this.options.delayOnTouchOnly,
-            touchStartThreshold: this.options.touchStartThreshold,
-            swapThreshold: this.options.swapThreshold,
-            invertSwap: this.options.invertSwap,
-            invertedSwapThreshold: this.options.invertedSwapThreshold,
-            direction: this.options.direction,
-            forceFallback: this.options.forceFallback,
-            fallbackClass: this.options.fallbackClass,
-            fallbackOnBody: this.options.fallbackOnBody,
-            fallbackTolerance: this.options.fallbackTolerance,
-            fallbackOffsetX: this.options.fallbackOffsetX,
-            fallbackOffsetY: this.options.fallbackOffsetY,
-            ghostClass: this.options.ghostClass,
-            chosenClass: this.options.chosenClass,
-            dragClass: this.options.dragClass,
-            deselectOnClickOutside: this.options.deselectOnClickOutside,
-          }
+          this.options.group,
+          this.buildDragManagerOptions()
         )
         this.dragManager.attach()
         break
@@ -840,6 +811,7 @@ const defaultOptions: SortableOptions = {
   group: 'default',
   sort: true,
   disabled: false,
+  controlled: false,
   multiDrag: false,
   enableAccessibility: true,
   selectedClass: 'sortable-selected',
