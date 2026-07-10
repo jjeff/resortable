@@ -96,9 +96,15 @@ function arraysEqual(a: number[], b: number[]): boolean {
 }
 
 function escapeAttr(value: string): string {
-  return typeof globalThis.CSS !== 'undefined' && globalThis.CSS.escape
-    ? globalThis.CSS.escape(value)
-    : value.replace(/"/g, '\\"')
+  if (typeof globalThis.CSS !== 'undefined' && globalThis.CSS.escape) {
+    return globalThis.CSS.escape(value)
+  }
+  // Fallback for environments without CSS.escape: backslash-escape `\` and
+  // `"`, hex-escape line terminators — any of these raw would make the
+  // quoted attribute selector invalid and querySelector throw.
+  return value.replace(/[\\"\n\r\f]/g, (c) =>
+    c === '\\' || c === '"' ? `\\${c}` : `\\${c.charCodeAt(0).toString(16)} `
+  )
 }
 
 /**
@@ -121,9 +127,36 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
   const optionsRef = useRef(options)
   const prevOptionsRef = useRef<UseSortableOptions | null>(null)
   const queuedDiffRef = useRef<Map<string, unknown>>(new Map())
+  const flushRafRef = useRef(0)
   optionsRef.current = options
 
   const ref = useCallback((el: T | null) => setElement(el), [])
+
+  // Diffs queued mid-drag can't wait for this instance's own end event —
+  // the active drag may belong to a different list, whose end this hook
+  // never sees. Poll each frame until no drag is active anywhere, then
+  // apply the queued options.
+  const scheduleQueuedFlush = useCallback((): void => {
+    if (flushRafRef.current !== 0) return
+    const tick = (): void => {
+      flushRafRef.current = 0
+      const sortable = sortableRef.current
+      if (!sortable || queuedDiffRef.current.size === 0) return
+      if (Sortable.active) {
+        flushRafRef.current = window.requestAnimationFrame(tick)
+        return
+      }
+      const queued = queuedDiffRef.current
+      queuedDiffRef.current = new Map()
+      for (const [key, value] of queued) {
+        sortable.option(
+          key as keyof SortableOptions,
+          value as SortableOptions[keyof SortableOptions]
+        )
+      }
+    }
+    flushRafRef.current = window.requestAnimationFrame(tick)
+  }, [])
 
   const dataIdAttr = (): string => optionsRef.current.dataIdAttr ?? 'data-id'
 
@@ -170,18 +203,6 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
     coreOptions.onMove = (evt: MoveEvent, orig: Event) =>
       optionsRef.current.onMove?.(evt, orig)
 
-    const flushQueuedDiff = (sortable: Sortable): void => {
-      if (queuedDiffRef.current.size === 0) return
-      const queued = queuedDiffRef.current
-      queuedDiffRef.current = new Map()
-      for (const [key, value] of queued) {
-        sortable.option(
-          key as keyof SortableOptions,
-          value as SortableOptions[keyof SortableOptions]
-        )
-      }
-    }
-
     const sortable = new Sortable(element, {
       ...coreOptions,
       controlled: true,
@@ -223,8 +244,6 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
             })
           }
         }
-
-        flushQueuedDiff(sortable)
       },
     } as SortableOptions)
 
@@ -244,14 +263,19 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
       sortable.destroy()
       sortableRef.current = null
       queuedDiffRef.current = new Map()
+      if (flushRafRef.current !== 0) {
+        window.cancelAnimationFrame(flushRafRef.current)
+        flushRafRef.current = 0
+      }
     }
     // Everything else is intentionally read through optionsRef at call
     // time — only the element identity should remount the instance.
   }, [element])
 
   // Option diff — apply value changes via option() without remounting.
-  // Mid-drag diffs are queued (option() rebuilds DragManager, which would
-  // kill an active drag) and flushed on the instance's next end event.
+  // Diffs arriving while ANY drag is active are queued (option() rebuilds
+  // DragManager; rebuilding either the source or a potential target zone
+  // mid-drag would break the drag) and flushed once no drag is active.
   useEffect(() => {
     const prev = prevOptionsRef.current
     prevOptionsRef.current = options
@@ -274,6 +298,7 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
       if (Object.is(prevValue, nextValue)) continue
       if (Sortable.active) {
         queuedDiffRef.current.set(key, nextValue)
+        scheduleQueuedFlush()
       } else {
         sortable.option(
           key as keyof SortableOptions,

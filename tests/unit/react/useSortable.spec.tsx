@@ -228,6 +228,87 @@ describe('useSortable', () => {
     expect(Sortable.get(list)).toBe(instance)
   })
 
+  it('flushes options queued during another list drag once that drag ends', async () => {
+    // Two unrelated lists. B's options change while A is mid-drag: the diff
+    // must queue (option() rebuilds DragManager) and still flush after A's
+    // drag ends, even though B never sees an end event of its own.
+    let apiB!: UseSortableReturn<HTMLUListElement>
+    function Pair({ animationB }: { animationB: number }): JSX.Element {
+      const a = useSortable<HTMLUListElement>({ animation: 0, onSort })
+      apiB = useSortable<HTMLUListElement>({
+        animation: animationB,
+        onSort: vi.fn(),
+      })
+      return (
+        <div>
+          <ul ref={a.ref} data-testid="a">
+            <li data-id="a1" className="sortable-item">
+              a1
+            </li>
+            <li data-id="a2" className="sortable-item">
+              a2
+            </li>
+          </ul>
+          <ul ref={apiB.ref} data-testid="b">
+            <li data-id="b1" className="sortable-item">
+              b1
+            </li>
+          </ul>
+        </div>
+      )
+    }
+
+    const { container, rerender } = render(<Pair animationB={0} />)
+    const listA = container.querySelector('[data-testid="a"]') as HTMLElement
+    const option = vi.spyOn(apiB.sortable.current as Sortable, 'option')
+
+    act(() => {
+      item(listA, 'a1').dispatchEvent(makeDragEvent('dragstart'))
+    })
+    expect(Sortable.active).not.toBeNull()
+
+    rerender(<Pair animationB={300} />)
+    expect(option).not.toHaveBeenCalled() // queued, not applied mid-drag
+
+    act(() => {
+      item(listA, 'a2').dispatchEvent(makeDragEvent('dragover'))
+      item(listA, 'a2').dispatchEvent(makeDragEvent('drop'))
+      item(listA, 'a1').dispatchEvent(makeDragEvent('dragend'))
+    })
+    expect(Sortable.active).toBeNull()
+
+    await act(
+      () =>
+        new Promise<void>((resolve) =>
+          window.requestAnimationFrame(() =>
+            window.requestAnimationFrame(() => resolve())
+          )
+        )
+    )
+    expect(option).toHaveBeenCalledWith('animation', 300)
+  })
+
+  it('setSelectedIds handles tricky data-ids without CSS.escape', () => {
+    vi.stubGlobal('CSS', undefined)
+    try {
+      const trickyIds = ['he said "hi"', 'back\\slash', 'line\nbreak']
+      const { container } = render(
+        <Harness
+          options={{ animation: 0, multiDrag: true, onSort }}
+          items={trickyIds}
+        />
+      )
+      expect(container.querySelector('ul')).not.toBeNull()
+
+      act(() => {
+        api.setSelectedIds(trickyIds)
+      })
+      expect(api.getSelectedIds().sort()).toEqual([...trickyIds].sort())
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('latest onSort callback is used without touching the instance', () => {
     const { container, rerender } = render(
       <Harness options={{ animation: 0, onSort }} items={ITEMS} />
