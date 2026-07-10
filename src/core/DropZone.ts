@@ -40,9 +40,10 @@ export class DropZone {
    * items — the HTML5 pipeline leaves them visible in place).
    */
   public getVisibleItems(exclude: HTMLElement[] = []): HTMLElement[] {
+    const excluded = new Set(exclude)
     return this.getItems().filter(
       (el) =>
-        !exclude.includes(el) &&
+        !excluded.has(el) &&
         !el.classList.contains('sortable-controlled-hidden')
     )
   }
@@ -57,11 +58,11 @@ export class DropZone {
     placeholder: HTMLElement,
     exclude: HTMLElement[] = []
   ): number {
-    const visible = this.getVisibleItems(exclude)
+    const visible = new Set(this.getVisibleItems(exclude))
     let index = 0
     for (const child of Array.from(this.element.children)) {
       if (child === placeholder) return index
-      if (child instanceof HTMLElement && visible.includes(child)) {
+      if (child instanceof HTMLElement && visible.has(child)) {
         index++
       }
     }

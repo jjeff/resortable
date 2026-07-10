@@ -103,7 +103,7 @@ newIndexes?: number[]   // per items[], indices in `to` after commit (contiguous
 
 ## Follow-on (separate designs)
 
-1. **`resortable/react`** — `useSortable(ref, { items, onSort, ...options })`; forces `controlled: true`; `onSort(intent)` where intent is `{ dataIds, from, to, oldIndexes, newIndexes, pullMode }`; focus restore; StrictMode-safe mount/destroy. Cross-list state coordination stays in userland (each list gets the `add`/`remove` pair; adapter dedupes into one `onSort` on the shared group).
+1. **`resortable/react`** — `useSortable({ onSort, ...options })` returning a callback ref (see `2026-07-09-react-adapter-design.md` for the authoritative API); forces `controlled: true`; `onSort(intent)` where intent is `{ dataIds, from, to, oldIndexes, newIndexes, pullMode }`; focus restore; StrictMode-safe mount/destroy. Cross-list state coordination stays in userland (the intent is assembled from the source list's `end` event; `onAdd`/`onRemove` pass-throughs serve split-state consumers).
 2. **Visibox adoption** — bind the adapter in DS container components (`SongWidget`/`ClipWidget` already stub `dragPreview`, `Grabber`, "binding lives in the container"); map `onSort` → existing `MOVE_SONGS` / `MOVE_CLIP(S)` IPC.
 
 ## Decisions

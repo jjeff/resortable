@@ -99,14 +99,15 @@ describe('controlled mode', () => {
       })
 
       const item1 = container.children[0] as HTMLElement
-      const item3 = container.children[3] as HTMLElement // data-id list-4? index 3 → 'list-4'... children[3] is item 4
-      html5Drag(item1, item3)
+      const item4 = container.children[3] as HTMLElement // data-id 'list-4'
+      html5Drag(item1, item4)
 
       expect(onEnd).toHaveBeenCalledTimes(1)
       const evt = onEnd.mock.calls[0][0]
       expect(evt.oldIndex).toBe(0)
-      // Placeholder ends after children[3] hmm — inserted before/after by drag direction
-      expect(evt.newIndex).toBeGreaterThan(0)
+      // Dragging down: placeholder lands after item4 — index 3 among the
+      // remaining draggables (list-2, list-3, list-4).
+      expect(evt.newIndex).toBe(3)
       expect(evt.oldIndexes).toEqual([0])
       expect(evt.newIndexes).toEqual([evt.newIndex])
       expect(evt.from).toBe(container)
