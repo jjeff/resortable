@@ -3,7 +3,7 @@
   "version": "2.0.0-alpha.1",
   "description": "Modern TypeScript rewrite of Sortable.js - reorderable drag-and-drop lists",
   "type": "module",
-  "main": "dist/sortable.cjs.js",
+  "main": "dist/sortable.cjs",
   "module": "dist/sortable.esm.js",
   "unpkg": "dist/sortable.umd.js",
   "types": "dist/types/index.d.ts",
@@ -11,12 +11,12 @@
     ".": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/sortable.esm.js",
-      "require": "./dist/sortable.cjs.js"
+      "require": "./dist/sortable.cjs"
     },
     "./react": {
       "types": "./dist/types/react/index.d.ts",
       "import": "./dist/react/index.esm.js",
-      "require": "./dist/react/index.cjs.js"
+      "require": "./dist/react/index.cjs"
     }
   },
   "files": [
@@ -65,7 +65,7 @@
     },
     {
       "name": "CJS (gzip)",
-      "path": "dist/sortable.cjs.js",
+      "path": "dist/sortable.cjs",
       "limit": "30 kB",
       "gzip": true,
       "brotli": false

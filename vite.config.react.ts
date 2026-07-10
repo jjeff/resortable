@@ -23,6 +23,9 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/react/index.ts'),
       fileName: (format) => {
+        // `.cjs` because package.json's `"type": "module"` makes Node parse
+        // a `.cjs.js` file as ESM, breaking require().
+        if (format === 'cjs') return 'react/index.cjs'
         const ext = format === 'es' ? 'esm' : format
         return `react/index.${ext}.js`
       },
