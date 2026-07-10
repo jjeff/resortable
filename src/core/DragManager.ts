@@ -251,6 +251,7 @@ export class DragManager implements DragManagerInterface {
         selectedClass: options?.selectedClass,
         focusClass: options?.focusClass,
         multiSelect: options?.multiSelect,
+        draggable: this.draggable,
       }
     )
 
@@ -266,6 +267,7 @@ export class DragManager implements DragManagerInterface {
         multiDrag: options?.multiSelect,
         controlled: this.controlled,
         ghostManager: this.ghostManager,
+        draggable: this.draggable,
       }
     )
   }

@@ -26,6 +26,7 @@ export class KeyboardManager {
   private controlled: boolean
   private ghostManager?: GhostManager
   private hiddenDisplays: Map<HTMLElement, string> | null = null
+  private draggableSelector: string
 
   constructor(
     private container: HTMLElement,
@@ -38,12 +39,14 @@ export class KeyboardManager {
       multiDrag?: boolean
       controlled?: boolean
       ghostManager?: GhostManager
+      draggable?: string
     }
   ) {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.multiDrag = options?.multiDrag ?? false
     this.controlled = options?.controlled ?? false
     this.ghostManager = options?.ghostManager
+    this.draggableSelector = options?.draggable ?? '.sortable-item'
     this.setupAnnouncer()
   }
 
@@ -129,7 +132,7 @@ export class KeyboardManager {
     // When using container.press() in tests, the target is the container
     // When pressing keys normally, the target is the focused element
     if (
-      !target.classList.contains('sortable-item') &&
+      !target.matches(this.draggableSelector) &&
       target !== this.container &&
       !this.container.contains(target)
     ) {
@@ -258,7 +261,7 @@ export class KeyboardManager {
     const target = e.target as HTMLElement
 
     // If a sortable item receives focus, update SelectionManager
-    if (target.classList.contains('sortable-item')) {
+    if (target.matches(this.draggableSelector)) {
       this.selectionManager.setFocus(target)
     }
   }
@@ -268,7 +271,7 @@ export class KeyboardManager {
    */
   private onClick = (e: MouseEvent): void => {
     const target = (e.target as HTMLElement).closest(
-      '.sortable-item'
+      this.draggableSelector
     ) as HTMLElement
     if (!target) return
 
