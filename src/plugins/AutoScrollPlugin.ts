@@ -83,6 +83,11 @@ export class AutoScrollPlugin implements SortablePlugin {
   private options: Required<AutoScrollOptions>
   private scrollIntervals = new WeakMap<object, number>()
   private lastMousePosition = { x: 0, y: 0 }
+  // No scrolling until a real cursor position has been observed —
+  // lastMousePosition starts at (0,0), and scrolling toward the top-left
+  // corner on drag start yanked scrollable ancestors (and the window) to
+  // the top.
+  private cursorSeen = false
   private animationFrame: number | null = null
 
   /**
@@ -96,6 +101,12 @@ export class AutoScrollPlugin implements SortablePlugin {
   }
 
   constructor(options: AutoScrollOptions = {}) {
+    // Drop explicit-undefined entries — spreading them would clobber the
+    // defaults (speed: undefined → NaN scroll amounts, which coerce
+    // scrollTop/scrollLeft to 0 and yank containers to their origin).
+    const defined = Object.fromEntries(
+      Object.entries(options).filter(([, v]) => v !== undefined)
+    )
     this.options = {
       speed: 10,
       sensitivity: 100,
@@ -103,7 +114,7 @@ export class AutoScrollPlugin implements SortablePlugin {
       scrollY: true,
       maxSpeed: 50,
       acceleration: 1.2,
-      ...options,
+      ...defined,
     }
   }
 
@@ -151,8 +162,9 @@ export class AutoScrollPlugin implements SortablePlugin {
    * Attach pointer tracking for auto-scroll
    */
   private attachMouseTracking(sortable: SortableInstance): void {
-    const handlePointerMove = (event: PointerEvent) => {
+    const handlePointerMove = (event: PointerEvent | DragEvent) => {
       this.lastMousePosition = { x: event.clientX, y: event.clientY }
+      this.cursorSeen = true
     }
 
     // Store the handler for cleanup using explicit type extension
@@ -162,6 +174,8 @@ export class AutoScrollPlugin implements SortablePlugin {
     if (!sortableWithAutoScroll._autoScrollPointerHandler) {
       sortableWithAutoScroll._autoScrollPointerHandler = handlePointerMove
       document.addEventListener('pointermove', handlePointerMove)
+      // Native HTML5 drags suppress pointermove — track dragover too.
+      document.addEventListener('dragover', handlePointerMove)
     }
   }
 
@@ -176,6 +190,10 @@ export class AutoScrollPlugin implements SortablePlugin {
       document.removeEventListener(
         'pointermove',
         sortableWithAutoScroll._autoScrollPointerHandler
+      )
+      document.removeEventListener(
+        'dragover',
+        sortableWithAutoScroll._autoScrollPointerHandler as EventListener
       )
       delete sortableWithAutoScroll._autoScrollPointerHandler
     }
@@ -192,10 +210,9 @@ export class AutoScrollPlugin implements SortablePlugin {
         return
       }
 
-      const scrollAmount = this.calculateScrollAmount(sortable)
-
-      if (scrollAmount.x !== 0 || scrollAmount.y !== 0) {
-        this.performScroll(sortable, scrollAmount)
+      // Never scroll on a stale/unseen cursor position.
+      if (this.cursorSeen) {
+        this.scrollNearCursor(sortable)
       }
 
       this.animationFrame = window.requestAnimationFrame(scroll)
@@ -223,46 +240,94 @@ export class AutoScrollPlugin implements SortablePlugin {
   }
 
   /**
-   * Calculate scroll amount based on mouse position
+   * Scroll every scrollable ancestor (the sortable element first, walking
+   * up to the window) whose edge the cursor is near — but ONLY along axes
+   * that element can actually scroll further in that direction.
+   *
+   * Two properties matter here, both learned the hard way:
+   *
+   * - The per-element sensitivity is clamped to a third of the element's
+   *   size. A fixed sensitivity larger than the element (e.g. 200px against
+   *   a 90px-tall clip row) makes the "near top" test true EVERYWHERE, and
+   *   the plugin permanently scrolls up — on drag start this yanked every
+   *   scrollable ancestor and the window to the top.
+   * - An element that cannot scroll further in the wanted direction is
+   *   skipped (instead of feeding `scrollBy` no-ops and then unconditionally
+   *   scrolling the window as a "last resort").
    */
-  private calculateScrollAmount(sortable: SortableInstance): {
-    x: number
-    y: number
-  } {
-    const container = sortable.element
-    const rect = container.getBoundingClientRect()
+  private scrollNearCursor(sortable: SortableInstance): void {
     const mouse = this.lastMousePosition
 
-    let scrollX = 0
-    let scrollY = 0
+    let el: HTMLElement | null = sortable.element
+    while (el && el !== document.body && el !== document.documentElement) {
+      this.scrollElementIfNearEdge(el, mouse)
+      el = el.parentElement
+    }
 
-    // Calculate X-axis scroll
-    if (this.options.scrollX) {
-      if (mouse.x < rect.left + this.options.sensitivity) {
-        // Scroll left
-        const distance = rect.left + this.options.sensitivity - mouse.x
-        scrollX = -this.calculateSpeed(distance)
-      } else if (mouse.x > rect.right - this.options.sensitivity) {
-        // Scroll right
-        const distance = mouse.x - (rect.right - this.options.sensitivity)
-        scrollX = this.calculateSpeed(distance)
+    // Window: same edge rules against the viewport.
+    const doc = document.documentElement
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (this.options.scrollX && doc.scrollWidth > vw) {
+      const sens = Math.min(this.options.sensitivity, vw / 3)
+      if (mouse.x < sens && window.scrollX > 0) {
+        window.scrollBy(-this.calculateSpeed(sens - mouse.x), 0)
+      } else if (mouse.x > vw - sens && window.scrollX + vw < doc.scrollWidth) {
+        window.scrollBy(this.calculateSpeed(mouse.x - (vw - sens)), 0)
+      }
+    }
+    if (this.options.scrollY && doc.scrollHeight > vh) {
+      const sens = Math.min(this.options.sensitivity, vh / 3)
+      if (mouse.y < sens && window.scrollY > 0) {
+        window.scrollBy(0, -this.calculateSpeed(sens - mouse.y))
+      } else if (
+        mouse.y > vh - sens &&
+        window.scrollY + vh < doc.scrollHeight
+      ) {
+        window.scrollBy(0, this.calculateSpeed(mouse.y - (vh - sens)))
+      }
+    }
+  }
+
+  /** Edge-scroll a single element along the axes it can actually scroll. */
+  private scrollElementIfNearEdge(
+    el: HTMLElement,
+    mouse: { x: number; y: number }
+  ): void {
+    const style = window.getComputedStyle(el)
+    const scrollableX =
+      (style.overflowX === 'auto' || style.overflowX === 'scroll') &&
+      el.scrollWidth > el.clientWidth
+    const scrollableY =
+      (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+      el.scrollHeight > el.clientHeight
+    if (!scrollableX && !scrollableY) return
+
+    const rect = el.getBoundingClientRect()
+
+    if (this.options.scrollX && scrollableX) {
+      const sens = Math.min(this.options.sensitivity, rect.width / 3)
+      if (mouse.x < rect.left + sens && el.scrollLeft > 0) {
+        el.scrollLeft -= this.calculateSpeed(rect.left + sens - mouse.x)
+      } else if (
+        mouse.x > rect.right - sens &&
+        el.scrollLeft + el.clientWidth < el.scrollWidth
+      ) {
+        el.scrollLeft += this.calculateSpeed(mouse.x - (rect.right - sens))
       }
     }
 
-    // Calculate Y-axis scroll
-    if (this.options.scrollY) {
-      if (mouse.y < rect.top + this.options.sensitivity) {
-        // Scroll up
-        const distance = rect.top + this.options.sensitivity - mouse.y
-        scrollY = -this.calculateSpeed(distance)
-      } else if (mouse.y > rect.bottom - this.options.sensitivity) {
-        // Scroll down
-        const distance = mouse.y - (rect.bottom - this.options.sensitivity)
-        scrollY = this.calculateSpeed(distance)
+    if (this.options.scrollY && scrollableY) {
+      const sens = Math.min(this.options.sensitivity, rect.height / 3)
+      if (mouse.y < rect.top + sens && el.scrollTop > 0) {
+        el.scrollTop -= this.calculateSpeed(rect.top + sens - mouse.y)
+      } else if (
+        mouse.y > rect.bottom - sens &&
+        el.scrollTop + el.clientHeight < el.scrollHeight
+      ) {
+        el.scrollTop += this.calculateSpeed(mouse.y - (rect.bottom - sens))
       }
     }
-
-    return { x: scrollX, y: scrollY }
   }
 
   /**
@@ -272,58 +337,5 @@ export class AutoScrollPlugin implements SortablePlugin {
     const factor = Math.min(distance / this.options.sensitivity, 1)
     const speed = this.options.speed * factor * this.options.acceleration
     return Math.min(speed, this.options.maxSpeed)
-  }
-
-  /**
-   * Perform the actual scrolling
-   */
-  private performScroll(
-    sortable: SortableInstance,
-    amount: { x: number; y: number }
-  ): void {
-    const container = sortable.element
-
-    // Scroll the container
-    if (amount.x !== 0) {
-      container.scrollLeft += amount.x
-    }
-    if (amount.y !== 0) {
-      container.scrollTop += amount.y
-    }
-
-    // Also scroll parent containers if needed
-    this.scrollParents(container, amount)
-  }
-
-  /**
-   * Scroll parent containers
-   */
-  private scrollParents(
-    element: HTMLElement,
-    amount: { x: number; y: number }
-  ): void {
-    let parent = element.parentElement
-
-    while (parent && parent !== document.body) {
-      const style = window.getComputedStyle(parent)
-      const hasScrollX =
-        style.overflowX === 'auto' || style.overflowX === 'scroll'
-      const hasScrollY =
-        style.overflowY === 'auto' || style.overflowY === 'scroll'
-
-      if (hasScrollX && amount.x !== 0) {
-        parent.scrollLeft += amount.x
-      }
-      if (hasScrollY && amount.y !== 0) {
-        parent.scrollTop += amount.y
-      }
-
-      parent = parent.parentElement
-    }
-
-    // Scroll the window as last resort
-    if (amount.x !== 0 || amount.y !== 0) {
-      window.scrollBy(amount.x, amount.y)
-    }
   }
 }

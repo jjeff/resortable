@@ -320,9 +320,16 @@ export class Sortable {
     // registry) so per-instance sensitivity/speed never clash across
     // sortables.
     if (this.options.scroll) {
+      // Only pass keys the consumer actually set — an explicit `undefined`
+      // would clobber the plugin's defaults through object spread and turn
+      // every computed scroll amount into NaN.
       this.autoScrollPlugin = AutoScrollPlugin.create({
-        sensitivity: this.options.scrollSensitivity,
-        speed: this.options.scrollSpeed,
+        ...(this.options.scrollSensitivity !== undefined && {
+          sensitivity: this.options.scrollSensitivity,
+        }),
+        ...(this.options.scrollSpeed !== undefined && {
+          speed: this.options.scrollSpeed,
+        }),
       })
       this.autoScrollPlugin.install(this)
     }
