@@ -8,6 +8,7 @@ export { AutoScrollPlugin, type AutoScrollOptions } from './AutoScrollPlugin.js'
 export {
   MarqueeSelectPlugin,
   type MarqueeSelectOptions,
+  type MarqueeScopeEntry,
   type MarqueeFilterConfig,
 } from './MarqueeSelectPlugin.js'
 export { OnSpillPlugin, type OnSpillOptions } from './OnSpillPlugin.js'

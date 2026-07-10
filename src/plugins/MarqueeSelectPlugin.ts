@@ -6,10 +6,21 @@
  * Provides Finder/Explorer-style marquee selection:
  *  - Click+drag on empty space to draw a selection rectangle
  *  - Alt+drag on items to start marquee instead of dragging
- *  - Shift held = additive, Alt held = subtractive
+ *  - Shift held at marquee start = additive, Alt held = subtractive
+ *    (cached at start — releasing the key mid-drag doesn't flip the mode)
+ *  - Optional multi-list `scope`: one marquee selects across MANY sortable
+ *    lists (each item's owning instance resolved via the instance
+ *    registry), with the first intersected kind locking the mode
+ *  - Optional `scrollContainer`: the marquee anchors to the container's
+ *    content (it stretches while the container scrolls) and dragging near
+ *    the container's top/bottom edge auto-scrolls it
  */
 
-import type { SortableInstance } from '../types/index.js'
+import type {
+  SelectionManagerInterface,
+  SortableInstance,
+} from '../types/index.js'
+import { findOwningInstance } from '../core/InstanceRegistry.js'
 import { BasePlugin, PluginUtils } from './PluginUtils.js'
 
 /** Filter config for include/exclude CSS selectors */
@@ -18,6 +29,22 @@ export interface MarqueeFilterConfig {
   include?: string
   /** Block when target matches this selector */
   exclude?: string
+}
+
+/**
+ * One kind of selectable item participating in a multi-list marquee.
+ * Kinds are mutually exclusive per marquee: the first kind the rectangle
+ * touches locks the mode until the selection is cleared (Finder-style
+ * "you're selecting clips OR songs, never both").
+ */
+export interface MarqueeScopeEntry {
+  /** CSS selector matching the participating items (e.g. `.clip`) */
+  itemSelector: string
+  /**
+   * Sub-element of the item that must intersect the marquee (e.g. a drag
+   * handle). Items without a match never intersect.
+   */
+  hitSelector?: string
 }
 
 export interface MarqueeSelectOptions {
@@ -39,18 +66,69 @@ export interface MarqueeSelectOptions {
   touchHoldDelay?: number
   /** Pixels of movement allowed during touch hold before cancelling. Default: 10 */
   touchHoldThreshold?: number
+  /**
+   * Multi-list scope. When set, the marquee hit-tests every element
+   * matching each entry's `itemSelector` inside the marquee area, resolves
+   * each item's owning Sortable instance, and applies selection through
+   * that instance (so per-instance `select` events fire normally). When
+   * omitted, only the installing instance's own items participate.
+   */
+  scope?: MarqueeScopeEntry[]
+  /**
+   * Scrollable container to anchor the marquee to. The marquee element is
+   * appended inside it (content coordinates, so it stretches while the
+   * container scrolls) and pointer positions near the container's top or
+   * bottom edge auto-scroll it. HTMLElement or CSS selector.
+   */
+  scrollContainer?: HTMLElement | string
+  /** Distance (px) from the scrollContainer edge that triggers auto-scroll. Default: 30 */
+  autoScrollDistance?: number
+  /** Auto-scroll speed in px per millisecond. Default: 0.3 */
+  autoScrollSpeed?: number
+}
+
+type ResolvedMarqueeOptions = Required<
+  Omit<MarqueeSelectOptions, 'scope' | 'scrollContainer'>
+> &
+  Pick<MarqueeSelectOptions, 'scope' | 'scrollContainer'>
+
+/** A scoped item with its owning instance and scope-entry index. */
+interface ScopedItem {
+  el: HTMLElement
+  instance: SortableInstance
+  kind: number
 }
 
 interface MarqueeState {
   active: boolean
+  /** Start/current points — content coords when scroll-anchored, else viewport */
   startX: number
   startY: number
   currentX: number
   currentY: number
+  /** Last raw pointer position (viewport coords) — drives edge auto-scroll */
+  lastClientX: number
+  lastClientY: number
   marqueeEl: HTMLElement | null
   pointerId: number | null
-  initialSelectionSnapshot: Set<HTMLElement>
-  anchorGroupName: string | null
+  /** Selection snapshot per participating instance, taken at marquee start */
+  snapshot: Map<SortableInstance, Set<HTMLElement>>
+  /** Additive (shift) / subtractive (alt) mode, cached at marquee start */
+  additive: boolean
+  subtractive: boolean
+  /** Scope-entry index the marquee is locked to (null until first hit) */
+  lockedKind: number | null
+  /** Edge auto-scroll direction currently engaged */
+  scrolling: 'up' | 'down' | false
+  scrollRaf: number | null
+  /**
+   * Scroll container's content size captured at marquee start. The marquee
+   * element itself lives INSIDE the container, so its growing rect inflates
+   * live scrollWidth/Height — clamping against the live values let the
+   * auto-scroll chase a bottom edge the marquee kept extending, scrolling
+   * forever past the real content.
+   */
+  contentLimit: { w: number; h: number } | null
   /** Touch hold timer ID (waiting for hold to confirm marquee intent) */
   holdTimer: number | null
   /** Whether marquee was triggered via touch hold */
@@ -67,7 +145,7 @@ type TouchDocumentHandlers = {
   upHandler: (e: TouchEvent) => void
 }
 
-const DEFAULT_OPTIONS: Required<MarqueeSelectOptions> = {
+const DEFAULT_OPTIONS: ResolvedMarqueeOptions = {
   marqueeClass: 'sortable-marquee',
   threshold: 5,
   altDragOnItems: true,
@@ -77,6 +155,10 @@ const DEFAULT_OPTIONS: Required<MarqueeSelectOptions> = {
   deselectFilter: {},
   touchHoldDelay: 300,
   touchHoldThreshold: 10,
+  scope: undefined,
+  scrollContainer: undefined,
+  autoScrollDistance: 30,
+  autoScrollSpeed: 0.3,
 }
 
 function createDefaultState(): MarqueeState {
@@ -86,10 +168,17 @@ function createDefaultState(): MarqueeState {
     startY: 0,
     currentX: 0,
     currentY: 0,
+    lastClientX: 0,
+    lastClientY: 0,
     marqueeEl: null,
     pointerId: null,
-    initialSelectionSnapshot: new Set(),
-    anchorGroupName: null,
+    snapshot: new Map(),
+    additive: false,
+    subtractive: false,
+    lockedKind: null,
+    scrolling: false,
+    scrollRaf: null,
+    contentLimit: null,
     holdTimer: null,
     isTouchHold: false,
   }
@@ -103,12 +192,12 @@ function getMarqueeRect(state: MarqueeState): DOMRect {
   return new DOMRect(x, y, w, h)
 }
 
-function resolveMarqueeArea(area: HTMLElement | string): HTMLElement {
-  if (area instanceof HTMLElement) return area
-  const el = document.querySelector<HTMLElement>(area)
+function resolveElement(ref: HTMLElement | string, what: string): HTMLElement {
+  if (ref instanceof HTMLElement) return ref
+  const el = document.querySelector<HTMLElement>(ref)
   if (!el)
     throw new Error(
-      `MarqueeSelectPlugin: marqueeArea selector "${area}" matched no element`
+      `MarqueeSelectPlugin: ${what} selector "${ref}" matched no element`
     )
   return el
 }
@@ -137,7 +226,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
   public readonly name = 'MarqueeSelect'
   public readonly version = '2.0.0'
 
-  private opts: Required<MarqueeSelectOptions>
+  private opts: ResolvedMarqueeOptions
   private documentHandlers = new WeakMap<SortableInstance, DocumentHandlers>()
   private captureHandler = new WeakMap<
     SortableInstance,
@@ -148,6 +237,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
     SortableInstance,
     (e: PointerEvent) => void
   >()
+  private scrollElement = new WeakMap<SortableInstance, HTMLElement>()
   private savedUserSelect = new WeakMap<SortableInstance, string>()
   private touchDocumentHandlers = new WeakMap<
     SortableInstance,
@@ -155,7 +245,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
   >()
   private throttledUpdateSelection: WeakMap<
     SortableInstance,
-    (sortable: SortableInstance, state: MarqueeState, e: PointerEvent) => void
+    (sortable: SortableInstance, state: MarqueeState) => void
   > = new WeakMap()
 
   public static create(options?: MarqueeSelectOptions): MarqueeSelectPlugin {
@@ -164,7 +254,11 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
   constructor(options?: MarqueeSelectOptions) {
     super()
-    this.opts = { ...DEFAULT_OPTIONS, ...options }
+    // Drop explicit-undefined entries so they can't clobber defaults.
+    const defined = Object.fromEntries(
+      Object.entries(options ?? {}).filter(([, v]) => v !== undefined)
+    )
+    this.opts = { ...DEFAULT_OPTIONS, ...defined }
   }
 
   protected onInstall(sortable: SortableInstance): void {
@@ -172,21 +266,25 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
     // Throttled selection update (~60fps)
     const throttled = PluginUtils.throttle((...args: unknown[]) => {
-      const [s, st, ev] = args as [SortableInstance, MarqueeState, PointerEvent]
-      this.updateSelection(s, st, ev)
+      const [s, st] = args as [SortableInstance, MarqueeState]
+      this.updateSelection(s, st)
     }, 16)
     this.throttledUpdateSelection.set(
       sortable,
-      throttled as (
-        s: SortableInstance,
-        st: MarqueeState,
-        e: PointerEvent
-      ) => void
+      throttled as (s: SortableInstance, st: MarqueeState) => void
     )
 
     // Resolve and store the marquee area element
-    const area = resolveMarqueeArea(this.opts.marqueeArea)
+    const area = resolveElement(this.opts.marqueeArea, 'marqueeArea')
     this.areaElement.set(sortable, area)
+
+    // Resolve the scroll-anchor container, when configured
+    if (this.opts.scrollContainer) {
+      this.scrollElement.set(
+        sortable,
+        resolveElement(this.opts.scrollContainer, 'scrollContainer')
+      )
+    }
 
     // Attach pointerdown on the resolved area (manual, not addDOMListener,
     // to avoid key collisions when multiple instances target <html>)
@@ -219,6 +317,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       this.areaElement.delete(sortable)
       this.areaHandler.delete(sortable)
     }
+    this.scrollElement.delete(sortable)
 
     // Clean up capture handler (not tracked by BasePlugin since it's on document)
     const handler = this.captureHandler.get(sortable)
@@ -229,6 +328,73 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
     // Remove data attribute
     delete sortable.element.dataset.marqueeClickAway
+  }
+
+  // ── Scope resolution ───────────────────────────────────────
+
+  /** The item kinds this marquee selects across (single-list fallback). */
+  private scopeEntries(sortable: SortableInstance): MarqueeScopeEntry[] {
+    if (this.opts.scope && this.opts.scope.length > 0) return this.opts.scope
+    return [{ itemSelector: sortable.options.draggable ?? '.sortable-item' }]
+  }
+
+  /** Root under which scoped items are queried. */
+  private scopeRoot(sortable: SortableInstance): ParentNode {
+    const scroll = this.scrollElement.get(sortable)
+    if (scroll) return scroll
+    const area = this.areaElement.get(sortable)
+    if (area && !isGlobalArea(area)) return area
+    return document
+  }
+
+  /**
+   * Collect every participating item with its owning instance. In
+   * single-list mode the owner is always the installing instance; in
+   * multi-list `scope` mode it's resolved via the instance registry.
+   */
+  private collectScopedItems(sortable: SortableInstance): ScopedItem[] {
+    const entries = this.scopeEntries(sortable)
+    const root = this.scopeRoot(sortable)
+    const out: ScopedItem[] = []
+    entries.forEach((entry, kind) => {
+      root.querySelectorAll<HTMLElement>(entry.itemSelector).forEach((el) => {
+        if (
+          el.hasAttribute('data-resortable-placeholder') ||
+          el.hasAttribute('data-resortable-ghost')
+        )
+          return
+        const instance = this.opts.scope
+          ? findOwningInstance(el)
+          : sortable.element.contains(el)
+            ? sortable
+            : undefined
+        if (!instance) return
+        out.push({ el, instance, kind })
+      })
+    })
+    return out
+  }
+
+  /** Selector matching ANY scoped item (alt+drag-on-item path). */
+  private scopedItemSelector(sortable: SortableInstance): string {
+    return this.scopeEntries(sortable)
+      .map((e) => e.itemSelector)
+      .join(', ')
+  }
+
+  /**
+   * Selector for surfaces that BLOCK marquee-start / click-away-deselect.
+   * An entry with a `hitSelector` only claims that sub-area (a song row
+   * blocks on its drag handle, but its empty body is valid marquee-start
+   * space — legacy Visibox MultiSelect exceptions were `.clip, .handle`,
+   * never the whole `.song`).
+   */
+  private scopedBlockingSelector(sortable: SortableInstance): string {
+    return this.scopeEntries(sortable)
+      .map((e) =>
+        e.hitSelector ? `${e.itemSelector} ${e.hitSelector}` : e.itemSelector
+      )
+      .join(', ')
   }
 
   // ── Pointer-down paths ─────────────────────────────────────
@@ -279,25 +445,23 @@ export class MarqueeSelectPlugin extends BasePlugin {
     // Prevent compatibility mouse events (click, mousedown, etc.)
     e.preventDefault()
 
-    const sm = sortable.dragManager?.selectionManager
-    const snapshot = new Set<HTMLElement>()
-    if (sm) {
-      sm.selectedElements.forEach((el) => snapshot.add(el))
-    }
-
+    const touchScroll = this.scrollElement.get(sortable)
     const state: MarqueeState = {
-      active: false,
+      ...createDefaultState(),
+      contentLimit: touchScroll
+        ? { w: touchScroll.scrollWidth, h: touchScroll.scrollHeight }
+        : null,
       startX,
       startY,
       currentX: startX,
       currentY: startY,
-      marqueeEl: null,
+      lastClientX: startX,
+      lastClientY: startY,
       pointerId,
-      initialSelectionSnapshot: snapshot,
-      anchorGroupName: null,
-      holdTimer: null,
+      snapshot: this.takeSnapshot(sortable),
       isTouchHold: true,
     }
+    state.lockedKind = this.kindOfSnapshot(sortable, state.snapshot)
 
     // ── Hold-period listeners (touch events, NOT pointer events) ──
 
@@ -319,7 +483,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       const touch = ev.changedTouches[0]
       cancelHold()
       // Handle click-away deselection for quick taps on empty space
-      if (touch && sm) {
+      if (touch) {
         const target = document.elementFromPoint(touch.clientX, touch.clientY)
         if (
           this.shouldDeselectOnClick(
@@ -327,7 +491,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
             sortable
           )
         ) {
-          sm.clearSelection()
+          this.clearScopedSelections(sortable)
         }
       }
     }
@@ -352,7 +516,13 @@ export class MarqueeSelectPlugin extends BasePlugin {
       document.removeEventListener('touchend', onHoldTouchEnd)
       document.removeEventListener('touchcancel', onHoldTouchEnd)
 
-      // Hold succeeded — commit to marquee
+      // Hold succeeded — commit to marquee. Anchor the start point now
+      // (content coords when scroll-anchored).
+      const anchored = this.toMarqueePoint(sortable, startX, startY)
+      state.startX = anchored.x
+      state.startY = anchored.y
+      state.currentX = anchored.x
+      state.currentY = anchored.y
       this.setState(sortable, state)
       this.savedUserSelect.set(sortable, document.body.style.userSelect)
       suppressTextSelection()
@@ -369,8 +539,6 @@ export class MarqueeSelectPlugin extends BasePlugin {
             clientX: touch.clientX,
             clientY: touch.clientY,
             pointerId,
-            shiftKey: false,
-            altKey: false,
           } as unknown as PointerEvent,
           sortable
         )
@@ -406,14 +574,13 @@ export class MarqueeSelectPlugin extends BasePlugin {
     if (!e.altKey) return
     if (!this.canStartMarquee(e, sortable)) return
 
-    // Only intercept if target is inside this sortable's container
-    const el = sortable.element
-    if (!el.contains(e.target as Node)) return
-
-    // Must be on an actual item for alt+item path
-    const draggableSelector = sortable.options.draggable ?? '.sortable-item'
-    const target = (e.target as HTMLElement).closest(draggableSelector)
+    // Must be on a scoped item for the alt+item path. In single-list mode
+    // the item must also live inside this instance's container.
+    const target = (e.target as HTMLElement).closest<HTMLElement>(
+      this.scopedItemSelector(sortable)
+    )
     if (!target) return
+    if (!this.opts.scope && !sortable.element.contains(target)) return
 
     // Stop propagation so DragManager never sees this event
     e.stopPropagation()
@@ -447,9 +614,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
   ): boolean {
     const target = e.target as HTMLElement
 
-    // Always exclude draggable items
-    const draggableSelector = sortable.options.draggable ?? '.sortable-item'
-    if (target.closest(draggableSelector)) return false
+    // Always exclude the participating items' grab surfaces
+    if (target.closest(this.scopedBlockingSelector(sortable))) return false
 
     const filter = this.opts.marqueeFilter
 
@@ -472,9 +638,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
     // Guard: target must be an Element (not Document or other node types)
     if (!(target instanceof HTMLElement)) return true
 
-    // Don't deselect when clicking on a draggable item
-    const draggableSelector = sortable.options.draggable ?? '.sortable-item'
-    if (target.closest(draggableSelector)) return false
+    // Don't deselect when clicking on a participating item's grab surface
+    if (target.closest(this.scopedBlockingSelector(sortable))) return false
 
     const filter = this.opts.deselectFilter
 
@@ -487,31 +652,97 @@ export class MarqueeSelectPlugin extends BasePlugin {
     return true
   }
 
+  // ── Snapshot / selection helpers ───────────────────────────
+
+  /** Current selection per participating instance. */
+  private takeSnapshot(
+    sortable: SortableInstance
+  ): Map<SortableInstance, Set<HTMLElement>> {
+    const snapshot = new Map<SortableInstance, Set<HTMLElement>>()
+    for (const { instance } of this.collectScopedItems(sortable)) {
+      if (snapshot.has(instance)) continue
+      const sm = instance.dragManager?.selectionManager
+      snapshot.set(instance, new Set(sm ? sm.selectedElements : []))
+    }
+    // The installing instance always participates, even when it currently
+    // hosts no scoped items.
+    if (!snapshot.has(sortable)) {
+      const sm = sortable.dragManager?.selectionManager
+      snapshot.set(sortable, new Set(sm ? sm.selectedElements : []))
+    }
+    return snapshot
+  }
+
+  /**
+   * The scope kind of an existing selection (or null when empty) — an
+   * additive/subtractive marquee stays locked to the kind already selected,
+   * matching the mode-locking in Visibox's legacy MultiSelect.
+   */
+  private kindOfSnapshot(
+    sortable: SortableInstance,
+    snapshot: Map<SortableInstance, Set<HTMLElement>>
+  ): number | null {
+    const entries = this.scopeEntries(sortable)
+    for (const selected of snapshot.values()) {
+      for (const el of selected) {
+        const kind = entries.findIndex((entry) =>
+          el.matches(entry.itemSelector)
+        )
+        if (kind !== -1) return kind
+      }
+    }
+    return null
+  }
+
+  /** Clear the selection of every participating instance. */
+  private clearScopedSelections(sortable: SortableInstance): void {
+    const seen = new Set<SortableInstance>()
+    for (const { instance } of this.collectScopedItems(sortable)) {
+      if (seen.has(instance)) continue
+      seen.add(instance)
+      instance.dragManager?.selectionManager?.clearSelection()
+    }
+    if (!seen.has(sortable)) {
+      sortable.dragManager?.selectionManager?.clearSelection()
+    }
+  }
+
   // ── Marquee lifecycle ──────────────────────────────────────
 
   private beginMarquee(e: PointerEvent, sortable: SortableInstance): void {
     // Claim multi-instance lock
     activeMarqueeInstance = sortable
 
-    const sm = sortable.dragManager?.selectionManager
-    const snapshot = new Set<HTMLElement>()
-    if (sm) {
-      sm.selectedElements.forEach((el) => snapshot.add(el))
-    }
+    // Measure the content BEFORE the marquee element exists (see
+    // MarqueeState.contentLimit).
+    const scroll = this.scrollElement.get(sortable)
+    const contentLimit = scroll
+      ? { w: scroll.scrollWidth, h: scroll.scrollHeight }
+      : null
 
+    const start = this.toMarqueePoint(sortable, e.clientX, e.clientY)
     const state: MarqueeState = {
-      active: false, // becomes true after threshold
-      startX: e.clientX,
-      startY: e.clientY,
-      currentX: e.clientX,
-      currentY: e.clientY,
-      marqueeEl: null,
+      ...createDefaultState(),
+      contentLimit,
+      startX: start.x,
+      startY: start.y,
+      currentX: start.x,
+      currentY: start.y,
+      lastClientX: e.clientX,
+      lastClientY: e.clientY,
       pointerId: e.pointerId,
-      initialSelectionSnapshot: snapshot,
-      anchorGroupName: null,
-      holdTimer: null,
-      isTouchHold: false,
+      snapshot: this.takeSnapshot(sortable),
+      // Modifiers are cached at start (legacy parity): releasing shift/alt
+      // mid-drag must not flip the mode and blow away the selection.
+      additive: e.shiftKey,
+      subtractive: !e.shiftKey && e.altKey,
     }
+    // Additive/subtractive marquees stay locked to the kind already
+    // selected; a replace marquee re-locks on its first hit.
+    state.lockedKind =
+      state.additive || state.subtractive
+        ? this.kindOfSnapshot(sortable, state.snapshot)
+        : null
     this.setState(sortable, state)
 
     const area = this.areaElement.get(sortable)
@@ -532,12 +763,40 @@ export class MarqueeSelectPlugin extends BasePlugin {
     document.addEventListener('pointerup', upHandler)
   }
 
+  /**
+   * Convert a viewport point into the marquee's coordinate space:
+   * content coordinates of the scroll container when scroll-anchored
+   * (clamped inside the scrollable content, like the legacy Visibox
+   * marquee), viewport coordinates otherwise.
+   */
+  private toMarqueePoint(
+    sortable: SortableInstance,
+    clientX: number,
+    clientY: number
+  ): { x: number; y: number } {
+    const scroll = this.scrollElement.get(sortable)
+    if (!scroll) return { x: clientX, y: clientY }
+    // Clamp to the content size captured at marquee start when available —
+    // the live scrollWidth/Height include the marquee element itself.
+    const limit = this.getState<MarqueeState>(sortable)?.contentLimit
+    const maxX = (limit?.w ?? scroll.scrollWidth) - 1
+    const maxY = (limit?.h ?? scroll.scrollHeight) - 1
+    const rect = scroll.getBoundingClientRect()
+    return {
+      x: Math.max(1, Math.min(clientX - rect.left + scroll.scrollLeft, maxX)),
+      y: Math.max(1, Math.min(clientY - rect.top + scroll.scrollTop, maxY)),
+    }
+  }
+
   private onPointerMove(e: PointerEvent, sortable: SortableInstance): void {
     const state = this.getState<MarqueeState>(sortable)
     if (!state || state.pointerId !== e.pointerId) return
 
-    state.currentX = e.clientX
-    state.currentY = e.clientY
+    state.lastClientX = e.clientX
+    state.lastClientY = e.clientY
+    const point = this.toMarqueePoint(sortable, e.clientX, e.clientY)
+    state.currentX = point.x
+    state.currentY = point.y
 
     if (!state.active) {
       const dx = state.currentX - state.startX
@@ -554,17 +813,32 @@ export class MarqueeSelectPlugin extends BasePlugin {
       }
 
       state.marqueeEl = this.createMarqueeElement()
-      document.body.appendChild(state.marqueeEl)
+      const scroll = this.scrollElement.get(sortable)
+      if (scroll) {
+        // Content-anchored: absolute inside the scroll container, so the
+        // rectangle stretches while the container scrolls beneath the
+        // pointer. The container needs a positioning context.
+        state.marqueeEl.style.position = 'absolute'
+        if (window.getComputedStyle(scroll).position === 'static') {
+          scroll.style.position = 'relative'
+        }
+        scroll.appendChild(state.marqueeEl)
+      } else {
+        document.body.appendChild(state.marqueeEl)
+      }
       sortable.eventSystem.emit('marqueeStart')
     }
 
     // Always update visual position (unthrottled)
     this.updateMarqueeVisual(state)
 
+    // Edge auto-scroll of the scroll container
+    this.updateAutoScroll(sortable, state)
+
     // Throttled hit-testing
     const throttled = this.throttledUpdateSelection.get(sortable)
     if (throttled) {
-      throttled(sortable, state, e)
+      throttled(sortable, state)
     }
   }
 
@@ -574,8 +848,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
     // Click-away deselection: sub-threshold click (marquee never activated)
     if (!state.active && this.shouldDeselectOnClick(e, sortable)) {
-      const sm = sortable.dragManager?.selectionManager
-      if (sm) sm.clearSelection()
+      this.clearScopedSelections(sortable)
     }
 
     this.endMarquee(sortable)
@@ -590,6 +863,13 @@ export class MarqueeSelectPlugin extends BasePlugin {
       window.clearTimeout(state.holdTimer)
       state.holdTimer = null
     }
+
+    // Stop edge auto-scroll
+    if (state.scrollRaf !== null) {
+      window.cancelAnimationFrame(state.scrollRaf)
+      state.scrollRaf = null
+    }
+    state.scrolling = false
 
     // Remove marquee element
     if (state.marqueeEl) {
@@ -635,6 +915,81 @@ export class MarqueeSelectPlugin extends BasePlugin {
     }
   }
 
+  // ── Edge auto-scroll (scrollContainer only) ────────────────
+
+  /**
+   * Auto-scroll the anchored container while the pointer sits near its
+   * top/bottom edge, stretching the marquee and re-hit-testing as content
+   * moves. Time-based speed (px/ms) like the legacy Visibox marquee.
+   */
+  private updateAutoScroll(
+    sortable: SortableInstance,
+    state: MarqueeState
+  ): void {
+    const scroll = this.scrollElement.get(sortable)
+    if (!scroll || !state.active) return
+
+    state.scrolling = this.scrollDirection(state, scroll)
+    if (!state.scrolling || state.scrollRaf !== null) return
+
+    // One loop at a time (guarded by scrollRaf). The frame timestamp lives
+    // in the closure — the loop is the only writer, so re-evaluating the
+    // direction each frame can never reset the clock (a reset made every
+    // elapsed read 0 and the marquee never actually scrolled).
+    let last = 0
+    const tick = (now: number): void => {
+      state.scrollRaf = null
+      if (!state.active) return
+      state.scrolling = this.scrollDirection(state, scroll)
+      if (!state.scrolling) return
+
+      const elapsed = last === 0 ? 0 : now - last
+      last = now
+      const delta = Math.round(elapsed * this.opts.autoScrollSpeed)
+      scroll.scrollBy(0, state.scrolling === 'up' ? -delta : delta)
+
+      // The container moved under a stationary pointer: recompute the
+      // current corner from the last raw pointer position, redraw, and
+      // re-run the (throttled) hit test.
+      const point = this.toMarqueePoint(
+        sortable,
+        state.lastClientX,
+        state.lastClientY
+      )
+      state.currentX = point.x
+      state.currentY = point.y
+      this.updateMarqueeVisual(state)
+      this.throttledUpdateSelection.get(sortable)?.(sortable, state)
+
+      state.scrollRaf = window.requestAnimationFrame(tick)
+    }
+    state.scrollRaf = window.requestAnimationFrame(tick)
+  }
+
+  /** Edge test: which way should the container scroll for the pointer's
+   *  current position — with room left to actually scroll that way. */
+  private scrollDirection(
+    state: MarqueeState,
+    scroll: HTMLElement
+  ): 'up' | 'down' | false {
+    const rect = scroll.getBoundingClientRect()
+    const distance = this.opts.autoScrollDistance
+    if (state.lastClientY < rect.top + distance && scroll.scrollTop > 0) {
+      return 'up'
+    }
+    // "Room to scroll down" is measured against the content captured at
+    // marquee start — the marquee element inflates the live scrollHeight,
+    // which made this chase a bottom edge of its own making.
+    const contentHeight = state.contentLimit?.h ?? scroll.scrollHeight
+    if (
+      state.lastClientY > rect.bottom - distance &&
+      scroll.scrollTop + scroll.clientHeight < contentHeight
+    ) {
+      return 'down'
+    }
+    return false
+  }
+
   // ── Visual ─────────────────────────────────────────────────
 
   private createMarqueeElement(): HTMLElement {
@@ -662,89 +1017,101 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
   // ── Hit-testing & selection ────────────────────────────────
 
-  private updateSelection(
+  /**
+   * The marquee rectangle in VIEWPORT coordinates — computed from state
+   * (not from `marqueeEl.getBoundingClientRect()`, which needs layout):
+   * content coords are mapped back through the scroll container's current
+   * scroll position, so the rect is correct mid-auto-scroll too.
+   */
+  private marqueeViewportRect(
     sortable: SortableInstance,
-    state: MarqueeState,
-    e: PointerEvent
-  ): void {
-    const sm = sortable.dragManager?.selectionManager
-    if (!sm) return
-
-    const marqueeRect = getMarqueeRect(state)
-    const draggableSelector = sortable.options.draggable ?? '.sortable-item'
-    const items = Array.from(
-      sortable.element.querySelectorAll<HTMLElement>(draggableSelector)
+    state: MarqueeState
+  ): DOMRect {
+    const rect = getMarqueeRect(state)
+    const scroll = this.scrollElement.get(sortable)
+    if (!scroll) return rect
+    const c = scroll.getBoundingClientRect()
+    return new DOMRect(
+      rect.x + c.left - scroll.scrollLeft,
+      rect.y + c.top - scroll.scrollTop,
+      rect.width,
+      rect.height
     )
-
-    const intersected = items.filter((item) => {
-      if (!PluginUtils.isVisible(item)) return false
-      const itemRect = PluginUtils.getRect(item)
-      return PluginUtils.rectsOverlap(marqueeRect, itemRect)
-    })
-
-    this.applyMarqueeSelection(sm, state, intersected, e.shiftKey, e.altKey)
   }
 
-  private applyMarqueeSelection(
-    sm: {
-      readonly selectedElements: Set<HTMLElement>
-      select(item: HTMLElement, addToSelection?: boolean): void
-      deselect(item: HTMLElement): void
-      clearSelection(): void
-    },
-    state: MarqueeState,
-    intersected: HTMLElement[],
-    shiftKey: boolean,
-    altKey: boolean
+  private updateSelection(
+    sortable: SortableInstance,
+    state: MarqueeState
   ): void {
-    const snapshot = state.initialSelectionSnapshot
-    const intersectedSet = new Set(intersected)
+    // Throttled — may fire after pointerup already tore the marquee down.
+    if (!state.active) return
 
-    if (altKey) {
-      // Subtractive: restore snapshot, then remove intersected
-      // First restore any snapshot items that were deselected
-      snapshot.forEach((el) => {
-        if (!sm.selectedElements.has(el)) {
-          sm.select(el, true)
-        }
-      })
-      // Deselect items not in snapshot
-      sm.selectedElements.forEach((el) => {
-        if (!snapshot.has(el)) {
-          sm.deselect(el)
-        }
-      })
-      // Now remove intersected from selection
-      intersectedSet.forEach((el) => {
-        if (sm.selectedElements.has(el)) {
-          sm.deselect(el)
-        }
-      })
-    } else if (shiftKey) {
-      // Additive: restore snapshot + add intersected
-      snapshot.forEach((el) => {
-        if (!sm.selectedElements.has(el)) {
-          sm.select(el, true)
-        }
-      })
-      // Deselect items not in snapshot that aren't intersected
-      sm.selectedElements.forEach((el) => {
-        if (!snapshot.has(el) && !intersectedSet.has(el)) {
-          sm.deselect(el)
-        }
-      })
-      // Add intersected
-      intersectedSet.forEach((el) => {
-        if (!sm.selectedElements.has(el)) {
-          sm.select(el, true)
-        }
-      })
-    } else {
-      // Replace: clear all, select only intersected
-      sm.clearSelection()
-      intersected.forEach((el) => {
-        sm.select(el, true)
-      })
+    const marqueeRect = this.marqueeViewportRect(sortable, state)
+
+    const entries = this.scopeEntries(sortable)
+    const items = this.collectScopedItems(sortable)
+    let intersected = items.filter((item) => {
+      if (!PluginUtils.isVisible(item.el)) return false
+      const hitSelector = entries[item.kind]?.hitSelector
+      const hitEl = hitSelector
+        ? item.el.querySelector<HTMLElement>(hitSelector)
+        : item.el
+      if (!hitEl) return false
+      return PluginUtils.rectsOverlap(marqueeRect, PluginUtils.getRect(hitEl))
+    })
+
+    // Mode locking: the first kind the marquee touches wins; other kinds
+    // are ignored for the rest of the marquee.
+    if (state.lockedKind === null && intersected.length > 0) {
+      state.lockedKind = intersected[0].kind
+    }
+    if (state.lockedKind !== null) {
+      intersected = intersected.filter((i) => i.kind === state.lockedKind)
+    }
+
+    this.applyMarqueeSelection(state, items, intersected)
+  }
+
+  /**
+   * Apply the marquee result per participating instance, as a DIFF against
+   * that instance's current selection — one select/deselect (and one
+   * `select` event) per actual change, never a clear-and-rebuild storm.
+   */
+  private applyMarqueeSelection(
+    state: MarqueeState,
+    allItems: ScopedItem[],
+    intersected: ScopedItem[]
+  ): void {
+    const intersectedSet = new Set(intersected.map((i) => i.el))
+
+    // Instances that host scoped items now, plus any that had a snapshot.
+    const instances = new Set<SortableInstance>(state.snapshot.keys())
+    for (const item of allItems) instances.add(item.instance)
+
+    for (const instance of instances) {
+      const sm: SelectionManagerInterface | undefined =
+        instance.dragManager?.selectionManager
+      if (!sm) continue
+      const snap = state.snapshot.get(instance) ?? new Set<HTMLElement>()
+      const here = intersected
+        .filter((i) => i.instance === instance)
+        .map((i) => i.el)
+
+      let wanted: Set<HTMLElement>
+      if (state.subtractive) {
+        wanted = new Set([...snap].filter((el) => !intersectedSet.has(el)))
+      } else if (state.additive) {
+        wanted = new Set([...snap, ...here])
+      } else {
+        wanted = new Set(here)
+      }
+
+      for (const el of Array.from(sm.selectedElements)) {
+        if (!wanted.has(el)) sm.deselect(el)
+      }
+      for (const el of wanted) {
+        if (!sm.selectedElements.has(el)) sm.select(el, true)
+      }
     }
   }
 }

@@ -441,15 +441,16 @@ describe('MarqueeSelectPlugin', () => {
       // Pre-select item 4
       sm.select(items[4], true)
 
-      // Draw marquee over items 0-1 with Shift
-      const down = pointerEvent('pointerdown', { clientX: 40, clientY: 40 })
-      sortable.element.dispatchEvent(down)
-
-      const move = pointerEvent('pointermove', {
-        clientX: 270,
-        clientY: 95,
+      // Draw marquee over items 0-1 with Shift held at START (the mode is
+      // cached at pointerdown — legacy parity)
+      const down = pointerEvent('pointerdown', {
+        clientX: 40,
+        clientY: 40,
         shiftKey: true,
       })
+      sortable.element.dispatchEvent(down)
+
+      const move = pointerEvent('pointermove', { clientX: 270, clientY: 95 })
       document.dispatchEvent(move)
 
       expect(sm.selectedElements.has(items[0])).toBe(true)
@@ -467,15 +468,16 @@ describe('MarqueeSelectPlugin', () => {
       sm.select(items[1], true)
       sm.select(items[2], true)
 
-      // Draw marquee over items 0-1 with Alt
-      const down = pointerEvent('pointerdown', { clientX: 40, clientY: 40 })
-      sortable.element.dispatchEvent(down)
-
-      const move = pointerEvent('pointermove', {
-        clientX: 270,
-        clientY: 95,
+      // Draw marquee over items 0-1 with Alt held at START (the mode is
+      // cached at pointerdown — legacy parity)
+      const down = pointerEvent('pointerdown', {
+        clientX: 40,
+        clientY: 40,
         altKey: true,
       })
+      sortable.element.dispatchEvent(down)
+
+      const move = pointerEvent('pointermove', { clientX: 270, clientY: 95 })
       document.dispatchEvent(move)
 
       // Items 0 and 1 should be deselected (intersected + alt = subtract)
@@ -926,6 +928,229 @@ describe('MarqueeSelectPlugin', () => {
 
       plugin.uninstall(sortable)
       expect(sortable.element.dataset.marqueeClickAway).toBeUndefined()
+    })
+  })
+
+  describe('Cached modifiers (2026-07 MultiSelect parity)', () => {
+    it('stays additive when shift is released mid-drag', () => {
+      plugin.install(sortable)
+      const sm = sortable.dragManager!.selectionManager
+      sm.select(items[4], true)
+
+      // Shift held at pointerdown only
+      const down = pointerEvent('pointerdown', {
+        clientX: 40,
+        clientY: 40,
+        shiftKey: true,
+      })
+      sortable.element.dispatchEvent(down)
+
+      // Shift already released on every move
+      const move = pointerEvent('pointermove', { clientX: 270, clientY: 95 })
+      document.dispatchEvent(move)
+
+      expect(sm.selectedElements.has(items[0])).toBe(true)
+      expect(sm.selectedElements.has(items[1])).toBe(true)
+      // The snapshot selection survives — the mode was cached at start.
+      expect(sm.selectedElements.has(items[4])).toBe(true)
+    })
+
+    it('does not turn additive when shift is pressed mid-drag', () => {
+      plugin.install(sortable)
+      const sm = sortable.dragManager!.selectionManager
+      sm.select(items[4], true)
+
+      const down = pointerEvent('pointerdown', { clientX: 40, clientY: 40 })
+      sortable.element.dispatchEvent(down)
+
+      const move = pointerEvent('pointermove', {
+        clientX: 270,
+        clientY: 95,
+        shiftKey: true,
+      })
+      document.dispatchEvent(move)
+
+      // Replace mode was cached at start: prior selection is gone.
+      expect(sm.selectedElements.has(items[4])).toBe(false)
+      expect(sm.selectedElements.has(items[0])).toBe(true)
+    })
+  })
+
+  describe('Multi-list scope (2026-07 MultiSelect parity)', () => {
+    let wrapper: HTMLElement
+    let clipsA: HTMLElement[]
+    let clipsB: HTMLElement[]
+    let songs: HTMLElement[]
+    let sortableA: SortableInstance
+    let sortableB: SortableInstance
+    let sortableSongs: SortableInstance
+
+    /** Build `count` items with a class + a nested handle child. */
+    function scopedItems(count: number, cls: string): HTMLElement[] {
+      return Array.from({ length: count }, (_, i) => {
+        const el = document.createElement('div')
+        el.className = cls
+        el.dataset.id = `${cls}-${i + 1}`
+        const handle = document.createElement('span')
+        handle.className = 'handle'
+        el.appendChild(handle)
+        return el
+      })
+    }
+
+    function mockHandleRects(
+      els: HTMLElement[],
+      rects: { x: number; y: number; width: number; height: number }[]
+    ) {
+      els.forEach((item, i) => {
+        const handle = item.querySelector('.handle') as HTMLElement
+        if (rects[i]) {
+          vi.spyOn(handle, 'getBoundingClientRect').mockReturnValue(
+            new DOMRect(rects[i].x, rects[i].y, rects[i].width, rects[i].height)
+          )
+        }
+      })
+    }
+
+    beforeEach(async () => {
+      const { registerInstance } = await import(
+        '../../src/core/InstanceRegistry.js'
+      )
+      wrapper = document.createElement('div')
+      document.body.appendChild(wrapper)
+
+      clipsA = scopedItems(3, 'clip')
+      clipsB = scopedItems(3, 'clip')
+      songs = scopedItems(2, 'song')
+
+      sortableA = createMockSortable(clipsA)
+      sortableB = createMockSortable(clipsB)
+      sortableSongs = createMockSortable(songs)
+      ;(sortableA.options as { draggable?: string }).draggable = '.clip'
+      ;(sortableB.options as { draggable?: string }).draggable = '.clip'
+      ;(sortableSongs.options as { draggable?: string }).draggable = '.song'
+
+      // Song rows CONTAIN the clip grids (like the Visibox controller).
+      songs[0].appendChild(sortableA.element)
+      songs[1].appendChild(sortableB.element)
+      wrapper.appendChild(sortableSongs.element)
+
+      registerInstance(sortableA.element, sortableA)
+      registerInstance(sortableB.element, sortableB)
+      registerInstance(sortableSongs.element, sortableSongs)
+
+      // Rows: song 1 at y=0..200 (clips A at y=50), song 2 at y=200..400
+      // (clips B at y=250). Song handles hug the left edge (x=0..20).
+      mockItemRects(songs, [
+        { x: 0, y: 0, width: 400, height: 200 },
+        { x: 0, y: 200, width: 400, height: 200 },
+      ])
+      mockHandleRects(songs, [
+        { x: 0, y: 0, width: 20, height: 200 },
+        { x: 0, y: 200, width: 20, height: 200 },
+      ])
+      mockItemRects(clipsA, [
+        { x: 50, y: 50, width: 100, height: 40 },
+        { x: 160, y: 50, width: 100, height: 40 },
+        { x: 270, y: 50, width: 100, height: 40 },
+      ])
+      mockItemRects(clipsB, [
+        { x: 50, y: 250, width: 100, height: 40 },
+        { x: 160, y: 250, width: 100, height: 40 },
+        { x: 270, y: 250, width: 100, height: 40 },
+      ])
+
+      vi.spyOn(window, 'getComputedStyle').mockImplementation(
+        () =>
+          ({
+            display: 'block',
+            visibility: 'visible',
+            opacity: '1',
+            position: 'relative',
+          }) as CSSStyleDeclaration
+      )
+
+      plugin = MarqueeSelectPlugin.create({
+        marqueeArea: wrapper,
+        scope: [
+          { itemSelector: '.clip' },
+          { itemSelector: '.song', hitSelector: '.handle' },
+        ],
+      })
+      plugin.install(sortableSongs)
+    })
+
+    afterEach(() => {
+      plugin.uninstall(sortableSongs)
+      wrapper.remove()
+    })
+
+    it("selects clips across MULTIPLE lists through each list's own instance", () => {
+      // Marquee from (40,40) to (200,300) — covers clipsA[0..1] and clipsB[0..1]
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 40, clientY: 40 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 265, clientY: 300 })
+      )
+
+      const smA = sortableA.dragManager!.selectionManager
+      const smB = sortableB.dragManager!.selectionManager
+      expect(smA.selectedElements.has(clipsA[0])).toBe(true)
+      expect(smA.selectedElements.has(clipsA[1])).toBe(true)
+      expect(smA.selectedElements.has(clipsA[2])).toBe(false)
+      expect(smB.selectedElements.has(clipsB[0])).toBe(true)
+      expect(smB.selectedElements.has(clipsB[1])).toBe(true)
+    })
+
+    it('locks the mode to the first intersected kind', () => {
+      // First hit only song 1's handle (x 0..20) → mode locks to songs.
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 5, clientY: 40 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 18, clientY: 95 })
+      )
+      const smSongs = sortableSongs.dragManager!.selectionManager
+      expect(smSongs.selectedElements.has(songs[0])).toBe(true)
+
+      // Extend over clip A1 too — mode already locked to songs; clips ignored
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 155, clientY: 95 })
+      )
+      const smA = sortableA.dragManager!.selectionManager
+      expect(smA.selectedElements.size).toBe(0)
+      expect(smSongs.selectedElements.has(songs[0])).toBe(true)
+    })
+
+    it('songs are hit by their HANDLE, not the whole row', () => {
+      // Rect over the row body (right of the handle) — no song selected
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 380, clientY: 5 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 390, clientY: 45 })
+      )
+      const smSongs = sortableSongs.dragManager!.selectionManager
+      expect(smSongs.selectedElements.size).toBe(0)
+    })
+
+    it('sub-threshold click-away clears the selection of EVERY scoped list', () => {
+      const smA = sortableA.dragManager!.selectionManager
+      const smB = sortableB.dragManager!.selectionManager
+      smA.select(clipsA[0], true)
+      smB.select(clipsB[0], true)
+
+      // Click empty wrapper space without moving
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 395, clientY: 395 })
+      )
+      const up = pointerEvent('pointerup', { clientX: 395, clientY: 395 })
+      Object.defineProperty(up, 'target', { value: wrapper })
+      document.dispatchEvent(up)
+
+      expect(smA.selectedElements.size).toBe(0)
+      expect(smB.selectedElements.size).toBe(0)
     })
   })
 

@@ -278,6 +278,7 @@ export class DragManager implements DragManagerInterface {
         deselectOnClickOutside: options?.deselectOnClickOutside,
         multiDrag: options?.multiSelect,
         multiDragKey: options?.multiDragKey,
+        handle: this.handle,
         controlled: this.controlled,
         ghostManager: this.ghostManager,
         draggable: this.draggable,
@@ -1125,10 +1126,13 @@ export class DragManager implements DragManagerInterface {
     // Check if the element is draggable
     if (!this.isDraggable(target)) return
 
-    // Check if drag should be allowed based on handle/filter options
+    // Check if drag should be allowed based on handle/filter options.
+    // preventDefault, but do NOT stopPropagation: the event must keep
+    // bubbling so ancestor listeners (e.g. MarqueeSelectPlugin's lasso
+    // start on a song row's empty space) still see presses that aren't
+    // drag-eligible for THIS zone.
     if (!this.shouldAllowDrag(e, target)) {
       e.preventDefault()
-      e.stopPropagation()
       return
     }
 
