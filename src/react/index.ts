@@ -43,6 +43,13 @@ export type UseSortableOptions = Omit<
   onSort: (intent: SortIntent) => void
   /** Mirrors multi-drag selection changes out as data-ids */
   onSelectionChange?: (ids: string[]) => void
+  /**
+   * Controlled selection: data-ids that should be selected in this list.
+   * Ids not present in the list are ignored, so a consumer may pass one
+   * app-wide selection array to every zone. Pair with `onSelectionChange`
+   * to make consumer state the single source of truth.
+   */
+  selectedIds?: readonly string[]
   /** Names this zone in cross-list intents (fromId/toId) */
   id?: string
 }
@@ -68,7 +75,12 @@ interface ZoneRecord {
 const zones = new WeakMap<HTMLElement, ZoneRecord>()
 
 /** Option keys the adapter owns — never forwarded to the core instance. */
-const ADAPTER_KEYS = new Set(['onSort', 'onSelectionChange', 'id'])
+const ADAPTER_KEYS = new Set([
+  'onSort',
+  'onSelectionChange',
+  'selectedIds',
+  'id',
+])
 
 /**
  * Core callback options that must read the latest consumer prop at call
@@ -128,6 +140,10 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
   const prevOptionsRef = useRef<UseSortableOptions | null>(null)
   const queuedDiffRef = useRef<Map<string, unknown>>(new Map())
   const flushRafRef = useRef(0)
+  // True while the controlled-selection effect is writing to the
+  // SelectionManager — suppresses the select-event mirror so applying the
+  // consumer's own state never echoes back as onSelectionChange calls.
+  const syncingSelectionRef = useRef(false)
   optionsRef.current = options
 
   const ref = useCallback((el: T | null) => setElement(el), [])
@@ -249,6 +265,7 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
 
     // Selection bridge: elements → data-ids at the boundary.
     sortable.eventSystem.on('select', (event) => {
+      if (syncingSelectionRef.current) return
       const items = event.items ?? []
       optionsRef.current.onSelectionChange?.(
         items.map((el, i) => readId(el, i))
@@ -305,6 +322,43 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
           nextValue as SortableOptions[keyof SortableOptions]
         )
       }
+    }
+  })
+
+  // Controlled selection — when `selectedIds` is provided, consumer state
+  // is authoritative. Runs every render (like the option diff above): the
+  // set of matching DOM nodes can change without the prop's identity
+  // changing (re-renders, cross-list moves). Skipped mid-drag — the
+  // internal selection IS the dragged set; the consumer's post-drop
+  // re-render re-runs the sync. Ids with no matching item here are
+  // ignored, so one app-wide selection array can be passed to every zone.
+  useEffect(() => {
+    const ids = optionsRef.current.selectedIds
+    if (ids === undefined) return
+    const sortable = sortableRef.current
+    const el = sortable?.element
+    if (!sortable || !el || Sortable.active) return
+
+    const attr = dataIdAttr()
+    const selection = sortable.dragManager.selectionManager
+    const wanted: HTMLElement[] = []
+    for (const id of ids) {
+      const item = el.querySelector<HTMLElement>(
+        `[${attr}="${escapeAttr(id)}"]`
+      )
+      if (item) wanted.push(item)
+    }
+    const current = selection.selectedElements
+    const inSync =
+      current.size === wanted.length && wanted.every((w) => current.has(w))
+    if (inSync) return
+
+    syncingSelectionRef.current = true
+    try {
+      selection.clearSelection()
+      for (const item of wanted) selection.select(item, true)
+    } finally {
+      syncingSelectionRef.current = false
     }
   })
 

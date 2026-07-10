@@ -172,6 +172,35 @@ describe('controlled-mode parity fixes (2026-07)', () => {
       expect(a.classList.contains('sortable-selected')).toBe(true)
     })
 
+    it('with a handle configured, modifier+click selects only via the handle', () => {
+      // Give each item a handle child plus other content.
+      for (const li of Array.from(ul.children)) {
+        const handle = document.createElement('span')
+        handle.className = 'grip'
+        const body = document.createElement('span')
+        body.className = 'body'
+        li.append(handle, body)
+      }
+      sortable = new Sortable(ul, {
+        multiDrag: true,
+        multiDragKey: 'meta',
+        draggable: '.item',
+        handle: '.grip',
+      })
+
+      const item = ul.children[1] as HTMLElement
+      const body = item.querySelector('.body') as HTMLElement
+      const grip = item.querySelector('.grip') as HTMLElement
+
+      // Modifier+click on non-handle content (e.g. a nested sortable's
+      // items) passes through — the outer item must NOT toggle.
+      click(body, { metaKey: true })
+      expect(item.classList.contains('sortable-selected')).toBe(false)
+
+      click(grip, { metaKey: true })
+      expect(item.classList.contains('sortable-selected')).toBe(true)
+    })
+
     it('shift+click extends a range from the last selection', () => {
       sortable = new Sortable(ul, {
         multiDrag: true,

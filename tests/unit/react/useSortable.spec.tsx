@@ -352,6 +352,52 @@ describe('useSortable', () => {
     expect(api.getSelectedIds().sort()).toEqual(['a', 'd'])
   })
 
+  it('controlled selectedIds: prop drives selection, echo is suppressed', () => {
+    const onSelectionChange = vi.fn<(ids: string[]) => void>()
+    const { container, rerender } = render(
+      <Harness
+        options={{
+          animation: 0,
+          multiDrag: true,
+          onSort,
+          onSelectionChange,
+          selectedIds: ['b', 'c'],
+        }}
+        items={ITEMS}
+      />
+    )
+    const list = container.querySelector('ul') as HTMLElement
+
+    // The controlled prop was applied to the SelectionManager…
+    expect(api.getSelectedIds().sort()).toEqual(['b', 'c'])
+    expect(item(list, 'b').classList.contains('sortable-selected')).toBe(true)
+    // …WITHOUT echoing back through onSelectionChange (loop guard).
+    expect(onSelectionChange).not.toHaveBeenCalled()
+
+    // Shrinking the prop deselects; ids not in this list are ignored.
+    rerender(
+      <Harness
+        options={{
+          animation: 0,
+          multiDrag: true,
+          onSort,
+          onSelectionChange,
+          selectedIds: ['c', 'not-here'],
+        }}
+        items={ITEMS}
+      />
+    )
+    expect(api.getSelectedIds()).toEqual(['c'])
+    expect(item(list, 'b').classList.contains('sortable-selected')).toBe(false)
+    expect(onSelectionChange).not.toHaveBeenCalled()
+
+    // User-driven changes still mirror out normally.
+    act(() => {
+      item(list, 'a').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onSelectionChange).toHaveBeenCalled()
+  })
+
   it('restores keyboard focus to the moved item after the commit re-render', async () => {
     let order = [...ITEMS]
     const commit = (intent: SortIntent): void => {

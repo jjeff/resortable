@@ -38,6 +38,10 @@ export class KeyboardManager {
   // When set, click-to-select requires this modifier key; plain clicks pass
   // through to the app untouched (see the `multiDragKey` option).
   private multiDragKey: 'ctrl' | 'meta' | 'shift' | 'alt' | null
+  // With a drag `handle` configured, modifier-click selection follows it:
+  // clicks elsewhere in the item (e.g. inside a nested sortable) pass
+  // through. Matches drag semantics — the handle is the item's grab surface.
+  private handle: string | null
   private dataIdAttr: string
   private onDocumentClick: ((e: MouseEvent) => void) | null = null
 
@@ -59,6 +63,7 @@ export class KeyboardManager {
       deselectOnClickOutside?: boolean
       multiDrag?: boolean
       multiDragKey?: 'ctrl' | 'meta' | 'shift' | 'alt' | null
+      handle?: string
       controlled?: boolean
       ghostManager?: GhostManager
       draggable?: string
@@ -68,6 +73,7 @@ export class KeyboardManager {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.multiDrag = options?.multiDrag ?? false
     this.multiDragKey = options?.multiDragKey ?? null
+    this.handle = options?.handle ?? null
     this.controlled = options?.controlled ?? false
     this.ghostManager = options?.ghostManager
     this.draggableSelector = options?.draggable ?? '.sortable-item'
@@ -305,6 +311,13 @@ export class KeyboardManager {
     // does nothing here — no selection, no focus steal — so the app keeps
     // its own plain-click semantics (e.g. activating/triggering the item).
     if (this.multiDragKey) {
+      // Selection clicks follow the drag handle when one is configured.
+      // Without this, a modifier-click on content nested inside the item
+      // (including a nested sortable's own items) would bubble here and
+      // toggle the OUTER item too.
+      if (this.handle && !(e.target as HTMLElement).closest(this.handle)) {
+        return
+      }
       if (e.shiftKey && this.selectionManager.getLastSelected()) {
         e.preventDefault()
         const last = this.selectionManager.getLastSelected()

@@ -37,10 +37,16 @@ import { AnimationManager } from './animation/AnimationManager.js'
 import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
+import {
+  getInstance,
+  registerInstance,
+  unregisterInstance,
+} from './core/InstanceRegistry.js'
 import { PluginSystem } from './core/PluginSystem.js'
 import { AutoScrollPlugin } from './plugins/AutoScrollPlugin.js'
 import {
   SortableOptions,
+  type SortableInstance,
   type SortablePlugin,
   type SortableEvents,
 } from './types/index.js'
@@ -75,12 +81,19 @@ export {
 } from './core/EventSystem.js'
 export { SelectionManager } from './core/SelectionManager.js'
 export { KeyboardManager } from './core/KeyboardManager.js'
+// Plugins consumers wire up themselves (no `./plugins` subpath export yet)
+export {
+  MarqueeSelectPlugin,
+  type MarqueeSelectOptions,
+  type MarqueeScopeEntry,
+  type MarqueeFilterConfig,
+} from './plugins/MarqueeSelectPlugin.js'
 export { GroupManager } from './core/GroupManager.js'
 export { GhostManager, type CreateGhostOptions } from './core/GhostManager.js'
 export { AnimationManager } from './animation/AnimationManager.js'
 
-// WeakMap to track Sortable instances by their elements
-const sortableInstances = new WeakMap<HTMLElement, Sortable>()
+// Element → instance tracking lives in core/InstanceRegistry.ts so plugins
+// can resolve owning instances without importing this module (cycle).
 
 /**
  * @beta
@@ -147,7 +160,7 @@ export class Sortable {
    * @public
    */
   public static get(element: HTMLElement): Sortable | undefined {
-    return sortableInstances.get(element)
+    return getInstance(element) as Sortable | undefined
   }
 
   /**
@@ -233,8 +246,7 @@ export class Sortable {
       }
 
       // Check if current element has a Sortable instance
-      // We'll need to track instances in a WeakMap
-      const sortable = sortableInstances.get(current)
+      const sortable = getInstance(current) as Sortable | undefined
       if (sortable) {
         return sortable
       }
@@ -296,7 +308,7 @@ export class Sortable {
     this.options = { ...defaultOptions, ...options }
 
     // Track this instance
-    sortableInstances.set(element, this)
+    registerInstance(element, this as unknown as SortableInstance)
 
     // Create animation manager first
     this.animationManager = new AnimationManager({
@@ -498,7 +510,7 @@ export class Sortable {
 
     this.dragManager.detach()
     // Remove from instance tracking
-    sortableInstances.delete(this.element)
+    unregisterInstance(this.element)
   }
 
   /**
