@@ -2,6 +2,10 @@ import { beforeEach, vi } from 'vitest'
 
 // Mock DOM methods that might not be available in jsdom
 beforeEach(() => {
+  // Node-environment tests (e.g. the SSR import check) have no DOM at all —
+  // nothing to patch.
+  if (typeof Element === 'undefined') return
+
   // Mock requestAnimationFrame
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     return globalThis.setTimeout(cb, 16) // ~60fps

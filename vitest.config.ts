@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -26,12 +29,15 @@ export default defineConfig({
         },
       },
     },
-    include: ['tests/unit/**/*.{test,spec}.{js,ts}'],
+    include: ['tests/unit/**/*.{test,spec}.{js,ts,tsx}'],
     exclude: ['tests/e2e/**/*'],
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      // Self-reference used by src/react so the built adapter externalizes
+      // to the package name while tests exercise live source.
+      resortable: resolve(__dirname, 'src/index.ts'),
     },
   },
 });

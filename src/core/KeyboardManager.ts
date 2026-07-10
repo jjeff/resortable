@@ -389,11 +389,12 @@ export class KeyboardManager {
         restoreControlledHidden(this.hiddenDisplays)
         this.hiddenDisplays = null
       }
+      // Refocus the anchor BEFORE endDrag so end-event listeners can see
+      // that focus sits on a dragged item (framework adapters use this to
+      // re-focus by data-id after their re-render replaces the node).
+      anchor?.focus()
       // endDrag emits unchoose + end from pending (intent-only).
       globalDragState.endDrag('keyboard-drag')
-      // Best-effort refocus; a framework adapter re-focuses by data-id
-      // after its re-render replaces the node.
-      anchor?.focus()
       this.announce(
         `Dropped ${count} item${count > 1 ? 's' : ''} at position ${(pending?.index ?? 0) + 1}`
       )
