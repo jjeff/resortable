@@ -1457,11 +1457,20 @@ export class DragManager implements DragManagerInterface {
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
-    // Find the element under the mouse cursor. Optional call: older jsdom
-    // builds (CI) don't implement elementFromPoint, and this path is now
-    // reachable from unit tests via the capture-phase commit's first-move
-    // processing.
+    // Find the element under the mouse cursor. The cursor-following ghost
+    // sits exactly there: its inline `pointer-events: none` normally keeps
+    // it hit-transparent, but consumer CSS that re-enables pointer-events on
+    // item DESCENDANTS (`.item .overlay { pointer-events: auto }`) defeats
+    // the inherited none — elementFromPoint then returns the ghost's
+    // interior and, since the ghost is an identity-stripped clone, every
+    // index lookup on it misses. Hide the ghost for the hit test (legacy
+    // parity: Sortable.js `_hideGhostForTarget`). Optional call: older
+    // jsdom builds (CI) don't implement elementFromPoint.
+    const ghostEl = this.ghostManager.getGhostElement()
+    const savedGhostDisplay = ghostEl?.style.display
+    if (ghostEl) ghostEl.style.display = 'none'
     const elementUnderMouse = document.elementFromPoint?.(e.clientX, e.clientY)
+    if (ghostEl) ghostEl.style.display = savedGhostDisplay ?? ''
     const over = elementUnderMouse?.closest(
       this.draggable
     ) as HTMLElement | null
