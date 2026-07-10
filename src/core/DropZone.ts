@@ -26,11 +26,21 @@ export class DropZone {
     return this.animationManager?.isAnimating ?? false
   }
 
-  /** Get sortable items (only elements matching the draggable selector) */
+  /**
+   * Get sortable items (only elements matching the draggable selector).
+   * The placeholder and the ghost are clones of a real item, so they match
+   * the selector — both are marked with data attributes and excluded here,
+   * otherwise index math counts phantom items (the ghost lives inside the
+   * zone element when `fallbackOnBody` is false).
+   */
   public getItems(): HTMLElement[] {
     return Array.from(
       this.element.querySelectorAll<HTMLElement>(this.draggableSelector)
-    ).filter((el) => !el.hasAttribute('data-resortable-placeholder'))
+    ).filter(
+      (el) =>
+        !el.hasAttribute('data-resortable-placeholder') &&
+        !el.hasAttribute('data-resortable-ghost')
+    )
   }
 
   /**

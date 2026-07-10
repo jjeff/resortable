@@ -1,94 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ignore Option Test</title>
-  <style>
-    body { font-family: sans-serif; padding: 16px; }
-    #ignore-test { width: 320px; }
-    .sortable-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px;
-      margin: 6px 0;
-      background: #f0f0f0;
-      border: 1px solid #ccc;
-      height: 36px;
-    }
-    .sortable-item .link { color: #06c; text-decoration: underline; }
-    .sortable-item .img {
-      width: 24px;
-      height: 24px;
-      background: #888;
-      display: inline-block;
-    }
-    .sortable-item .body {
-      flex: 1;
-      cursor: move;
-    }
-    .sortable-item .btn {
-      padding: 2px 8px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Ignore Option Test</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ignore Option Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 16px;
+      }
+      #ignore-test {
+        width: 320px;
+      }
+      .sortable-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        margin: 6px 0;
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        height: 36px;
+      }
+      .sortable-item .link {
+        color: #06c;
+        text-decoration: underline;
+      }
+      .sortable-item .img {
+        width: 24px;
+        height: 24px;
+        background: #888;
+        display: inline-block;
+      }
+      .sortable-item .body {
+        flex: 1;
+        cursor: move;
+      }
+      .sortable-item .btn {
+        padding: 2px 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Ignore Option Test</h1>
 
-  <!-- List 1: default ignore = 'a, img' -->
-  <div id="ignore-test">
-    <div class="sortable-item" data-id="item-1">
-      <a href="javascript:void(0)" class="link" data-link>link</a>
-      <img class="img" alt="x"
-           src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs="
-           data-img>
-      <span class="body">Item 1</span>
-      <button type="button" class="btn">btn</button>
+    <!-- List 1: default ignore = 'a, img' -->
+    <div id="ignore-test">
+      <div class="sortable-item" data-id="item-1">
+        <a href="javascript:void(0)" class="link" data-link>link</a>
+        <img
+          class="img"
+          alt="x"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs="
+          data-img
+        />
+        <span class="body">Item 1</span>
+        <button type="button" class="btn">btn</button>
+      </div>
+      <div class="sortable-item" data-id="item-2">
+        <span class="body">Item 2</span>
+      </div>
+      <div class="sortable-item" data-id="item-3">
+        <span class="body">Item 3</span>
+      </div>
     </div>
-    <div class="sortable-item" data-id="item-2">
-      <span class="body">Item 2</span>
-    </div>
-    <div class="sortable-item" data-id="item-3">
-      <span class="body">Item 3</span>
-    </div>
-  </div>
 
-  <!-- List 2: custom ignore = 'input, button' (a should be draggable) -->
-  <div id="ignore-custom" style="margin-top: 24px;">
-    <div class="sortable-item" data-id="cust-1">
-      <a href="javascript:void(0)" class="link" data-link>link-cust</a>
-      <button type="button" class="btn" data-btn>btn-cust</button>
-      <span class="body">Custom 1</span>
+    <!-- List 2: custom ignore = 'input, button' (a should be draggable) -->
+    <div id="ignore-custom" style="margin-top: 24px">
+      <div class="sortable-item" data-id="cust-1">
+        <a href="javascript:void(0)" class="link" data-link>link-cust</a>
+        <button type="button" class="btn" data-btn>btn-cust</button>
+        <span class="body">Custom 1</span>
+      </div>
+      <div class="sortable-item" data-id="cust-2">
+        <span class="body">Custom 2</span>
+      </div>
+      <div class="sortable-item" data-id="cust-3">
+        <span class="body">Custom 3</span>
+      </div>
     </div>
-    <div class="sortable-item" data-id="cust-2">
-      <span class="body">Custom 2</span>
-    </div>
-    <div class="sortable-item" data-id="cust-3">
-      <span class="body">Custom 3</span>
-    </div>
-  </div>
 
-  <script type="module">
-    import { Sortable } from '/src/index.js';
+    <script type="module">
+      import { Sortable } from '/src/index.js'
 
-    // `dragStarts` exposes a counter the test asserts against; each
-    // sortable's `onStart` increments its own counter so tests don't
-    // need to disambiguate flaky pointer-event reorder semantics.
-    window.dragStarts = { default: 0, custom: 0 };
+      // `dragStarts` exposes a counter the test asserts against; each
+      // sortable's `onStart` increments its own counter so tests don't
+      // need to disambiguate flaky pointer-event reorder semantics.
+      window.dragStarts = { default: 0, custom: 0 }
 
-    // Default — ignore defaults to 'a, img'.
-    window.sortableDefault = new Sortable(document.getElementById('ignore-test'), {
-      animation: 0,
-      onStart: () => { window.dragStarts.default += 1; },
-    });
+      // Default — ignore defaults to 'a, img'.
+      window.sortableDefault = new Sortable(
+        document.getElementById('ignore-test'),
+        {
+          animation: 0,
+          onStart: () => {
+            window.dragStarts.default += 1
+          },
+        }
+      )
 
-    // Custom — overrides default so links remain draggable but buttons do not.
-    window.sortableCustom = new Sortable(document.getElementById('ignore-custom'), {
-      ignore: 'input, button',
-      animation: 0,
-      onStart: () => { window.dragStarts.custom += 1; },
-    });
-  </script>
-</body>
+      // Custom — overrides default so links remain draggable but buttons do not.
+      window.sortableCustom = new Sortable(
+        document.getElementById('ignore-custom'),
+        {
+          ignore: 'input, button',
+          animation: 0,
+          onStart: () => {
+            window.dragStarts.custom += 1
+          },
+        }
+      )
+    </script>
+  </body>
 </html>

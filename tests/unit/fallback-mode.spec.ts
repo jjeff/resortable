@@ -352,7 +352,9 @@ describe('fallbackTolerance state machine (#29 PR3)', () => {
     document.dispatchEvent(makePointer('pointermove', 50, 24))
 
     expect(dm.isDragging).toBe(false)
-    expect(chooseSpy).not.toHaveBeenCalled()
+    // Legacy parity: `choose` fires at tap start, but the drag itself
+    // (start event, ghost, global state) must NOT have committed.
+    expect(chooseSpy).toHaveBeenCalledTimes(1)
     expect(startSpy).not.toHaveBeenCalled()
 
     document.dispatchEvent(makePointer('pointerup', 50, 24))
@@ -389,7 +391,7 @@ describe('fallbackTolerance state machine (#29 PR3)', () => {
     dm.detach()
   })
 
-  it('tolerance > 0: pointerup before threshold fires no drag events', () => {
+  it('tolerance > 0: pointerup before threshold is a click — choose/unchoose only, no drag', () => {
     const container = makeContainer()
     const target = container.firstElementChild as HTMLElement
     const zone = new DropZone(container)
@@ -401,9 +403,11 @@ describe('fallbackTolerance state machine (#29 PR3)', () => {
     dm.attach()
 
     const chooseSpy = vi.fn()
+    const unchooseSpy = vi.fn()
     const startSpy = vi.fn()
     const endSpy = vi.fn()
     events.on('choose', chooseSpy)
+    events.on('unchoose', unchooseSpy)
     events.on('start', startSpy)
     events.on('end', endSpy)
 
@@ -412,9 +416,13 @@ describe('fallbackTolerance state machine (#29 PR3)', () => {
     document.dispatchEvent(makePointer('pointerup', 53, 21))
 
     expect(dm.isDragging).toBe(false)
-    expect(chooseSpy).not.toHaveBeenCalled()
+    // Legacy parity: choose at tap start, balanced by unchoose on the
+    // abandoned tap. No drag lifecycle events, no chosen class left over.
+    expect(chooseSpy).toHaveBeenCalledTimes(1)
+    expect(unchooseSpy).toHaveBeenCalledTimes(1)
     expect(startSpy).not.toHaveBeenCalled()
     expect(endSpy).not.toHaveBeenCalled()
+    expect(target.classList.contains('sortable-chosen')).toBe(false)
     dm.detach()
   })
 })

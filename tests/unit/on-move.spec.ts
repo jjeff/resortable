@@ -59,9 +59,13 @@ function makeDragEvent(
 }
 
 function ids(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('.sortable-item')).map(
-    (el) => (el as HTMLElement).dataset.id ?? ''
-  )
+  // The placeholder is a clone of a real item (same classes), so exclude it
+  // via its canonical marker when reading the list order.
+  return Array.from(
+    container.querySelectorAll(
+      '.sortable-item:not([data-resortable-placeholder])'
+    )
+  ).map((el) => (el as HTMLElement).dataset.id ?? '')
 }
 
 describe('onMove (#33)', () => {
@@ -157,12 +161,9 @@ describe('onMove (#33)', () => {
 
     // The placeholder should now sit immediately after item-3 (dragging
     // down → naturalAfter = true).
-    // Placeholder element is created by GhostManager with the configured
-    // `ghostClass` (default `sortable-ghost`). We track it by querying the
-    // DOM directly — it's a non-`.sortable-item` child carrying that class.
-    const placeholder = container.querySelector(
-      '.sortable-ghost:not(.sortable-item)'
-    )
+    // The placeholder is a clone of the dragged item (so it shares its
+    // classes) marked with the canonical data attribute.
+    const placeholder = container.querySelector('[data-resortable-placeholder]')
     expect(placeholder).not.toBeNull()
     expect(placeholder?.previousElementSibling).toBe(item3)
   })
@@ -178,12 +179,9 @@ describe('onMove (#33)', () => {
     item1.dispatchEvent(makeDragEvent('dragstart'))
     item3.dispatchEvent(makeDragEvent('dragover'))
 
-    // Placeholder element is created by GhostManager with the configured
-    // `ghostClass` (default `sortable-ghost`). We track it by querying the
-    // DOM directly — it's a non-`.sortable-item` child carrying that class.
-    const placeholder = container.querySelector(
-      '.sortable-ghost:not(.sortable-item)'
-    )
+    // The placeholder is a clone of the dragged item (so it shares its
+    // classes) marked with the canonical data attribute.
+    const placeholder = container.querySelector('[data-resortable-placeholder]')
     expect(placeholder).not.toBeNull()
     expect(placeholder?.nextElementSibling).toBe(item3)
   })
@@ -266,12 +264,9 @@ describe('onMove (#33)', () => {
     item3.dispatchEvent(makeDragEvent('dragstart'))
     item1.dispatchEvent(makeDragEvent('dragover'))
 
-    // Placeholder element is created by GhostManager with the configured
-    // `ghostClass` (default `sortable-ghost`). We track it by querying the
-    // DOM directly — it's a non-`.sortable-item` child carrying that class.
-    const placeholder = container.querySelector(
-      '.sortable-ghost:not(.sortable-item)'
-    )
+    // The placeholder is a clone of the dragged item (so it shares its
+    // classes) marked with the canonical data attribute.
+    const placeholder = container.querySelector('[data-resortable-placeholder]')
     expect(placeholder).not.toBeNull()
     expect(placeholder?.previousElementSibling).toBe(item1)
   })
