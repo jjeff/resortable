@@ -273,6 +273,11 @@ export class GhostManager {
     // Create placeholder element
     this.placeholderElement = document.createElement(referenceElement.tagName)
 
+    // Mark the placeholder so index math and DropZone.getItems() can always
+    // exclude it, even if a consumer's `draggable` selector would otherwise
+    // match the bare tag (controlled mode relies on this).
+    this.placeholderElement.setAttribute('data-resortable-placeholder', '')
+
     // Copy dimensions
     const rect = referenceElement.getBoundingClientRect()
     this.placeholderElement.style.width = `${rect.width}px`

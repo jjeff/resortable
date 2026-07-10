@@ -120,6 +120,28 @@ export interface SortableOptions {
   sort?: boolean
 
   /**
+   * Controlled (framework-friendly) mode
+   *
+   * @remarks
+   * When `true`, the library NEVER changes the structural position of
+   * consumer-owned nodes. During a drag it only manages its own overlay
+   * ghost, a single placeholder element, and hide/show styling on the
+   * dragged items. When `end` (and `add`/`remove`/`update`) fire, the DOM
+   * structure is identical to pre-drag; the events carry the full intent
+   * (including {@link SortableEvent.oldIndexes} / {@link SortableEvent.newIndexes})
+   * and the consumer commits it by updating state and re-rendering.
+   *
+   * Designed for declarative frameworks (React, Vue, Svelte) that own the
+   * list DOM. See `docs/plans/2026-07-09-controlled-mode-design.md`.
+   *
+   * Note: `sort()` and `store` are no-ops in controlled mode — order is
+   * consumer state.
+   *
+   * @defaultValue false
+   */
+  controlled?: boolean
+
+  /**
    * Whether the sortable is disabled
    * @defaultValue false
    */
@@ -663,6 +685,25 @@ export interface SortableEvent {
    * Array of selected elements (multi-drag mode)
    */
   items: HTMLElement[]
+
+  /**
+   * Per-item indices in `from` at drag start, parallel to `items`
+   *
+   * @remarks
+   * Only populated in controlled mode (see the `controlled` option).
+   * Named `-Indexes` deliberately — NOT legacy MultiDrag's misspelled
+   * `oldIndicies`.
+   */
+  oldIndexes?: number[]
+
+  /**
+   * Per-item indices in `to` after the consumer commits the move,
+   * parallel to `items` (contiguous block starting at the drop index)
+   *
+   * @remarks
+   * Only populated in controlled mode (see the `controlled` option).
+   */
+  newIndexes?: number[]
 }
 
 /**
