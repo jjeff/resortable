@@ -38,6 +38,7 @@ import { DragManager } from './core/DragManager.js'
 import { DropZone } from './core/DropZone.js'
 import { EventSystem } from './core/EventSystem.js'
 import { PluginSystem } from './core/PluginSystem.js'
+import { AutoScrollPlugin } from './plugins/AutoScrollPlugin.js'
 import {
   SortableOptions,
   type SortablePlugin,
@@ -259,6 +260,8 @@ export class Sortable {
   public dragManager: DragManager // Made non-readonly to allow replacement
   public readonly eventSystem: EventSystem<SortableEvents>
   private animationManager: AnimationManager
+  // Instance-owned auto-scroll plugin, created when `scroll: true`.
+  private autoScrollPlugin?: AutoScrollPlugin
 
   /**
    * Creates a new Sortable instance
@@ -311,6 +314,18 @@ export class Sortable {
       this.buildDragManagerOptions()
     )
     this.dragManager.attach()
+
+    // `scroll: true` — edge auto-scroll during drags (SortableJS Scroll
+    // parity). Instance-owned plugin instance (NOT the global PluginSystem
+    // registry) so per-instance sensitivity/speed never clash across
+    // sortables.
+    if (this.options.scroll) {
+      this.autoScrollPlugin = AutoScrollPlugin.create({
+        sensitivity: this.options.scrollSensitivity,
+        speed: this.options.scrollSpeed,
+      })
+      this.autoScrollPlugin.install(this)
+    }
 
     // Set up internal handlers for static properties
     this.eventSystem.on('start', (event) => {
@@ -443,6 +458,7 @@ export class Sortable {
       // See #33.
       onMove: this.options.onMove,
       controlled: this.options.controlled,
+      multiDragKey: this.options.multiDragKey,
     }
   }
 
@@ -465,6 +481,13 @@ export class Sortable {
   public destroy(): void {
     // Uninstall all plugins
     PluginSystem.uninstallAll(this)
+
+    // Instance-owned auto-scroll (scroll: true) bypasses the registry, so
+    // uninstall it explicitly.
+    if (this.autoScrollPlugin) {
+      this.autoScrollPlugin.uninstall(this)
+      this.autoScrollPlugin = undefined
+    }
 
     this.dragManager.detach()
     // Remove from instance tracking
@@ -813,6 +836,8 @@ const defaultOptions: SortableOptions = {
   disabled: false,
   controlled: false,
   multiDrag: false,
+  multiDragKey: null,
+  scroll: false,
   enableAccessibility: true,
   selectedClass: 'sortable-selected',
   focusClass: 'sortable-focused',

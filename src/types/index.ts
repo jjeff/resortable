@@ -154,10 +154,50 @@ export interface SortableOptions {
   multiDrag?: boolean
 
   /**
+   * Modifier key required for click-to-select in multi-drag mode.
+   *
+   * @remarks
+   * When set, selection becomes an explicit gesture: `<key>`+click toggles
+   * an item in/out of the selection and Shift+click extends a range, while
+   * a PLAIN click does nothing — no selection, no focus steal — leaving
+   * plain-click semantics (activating / triggering the item) to the app.
+   *
+   * When `null` (default), plain clicks toggle selection additively —
+   * appropriate for lists where clicking has no other meaning.
+   *
+   * Keyboard selection (Space) and dragging an existing selection are
+   * unaffected. Legacy parity: SortableJS MultiDrag's `multiDragKey`.
+   *
+   * @defaultValue null
+   */
+  multiDragKey?: 'ctrl' | 'meta' | 'shift' | 'alt' | null
+
+  /**
    * CSS class for selected items in multi-drag mode
    * @defaultValue 'sortable-selected'
    */
   selectedClass?: string
+
+  /**
+   * Auto-scroll scrollable ancestors (and the window) when dragging near
+   * their edges. Legacy parity: SortableJS Scroll plugin's `scroll: true`.
+   * Internally installs an instance-owned `AutoScrollPlugin`.
+   * @defaultValue false
+   */
+  scroll?: boolean
+
+  /**
+   * Distance in px from a scrollable edge at which auto-scroll kicks in.
+   * Only meaningful with `scroll: true`.
+   * @defaultValue 100
+   */
+  scrollSensitivity?: number
+
+  /**
+   * Auto-scroll speed in px per frame. Only meaningful with `scroll: true`.
+   * @defaultValue 10
+   */
+  scrollSpeed?: number
 
   /**
    * Clear selection when clicking outside the sortable container
@@ -405,7 +445,12 @@ export interface SortableOptions {
   fallbackOnBody?: boolean
 
   /**
-   * Fallback tolerance in pixels
+   * Pixels the pointer must travel from pointerdown before the pointer
+   * pipeline commits the drag (ghost, placeholder, start event). `0`
+   * commits immediately on pointerdown. `choose` fires at pointerdown
+   * either way. Recommended for apps where plain click has its own
+   * meaning (e.g. triggering the item): a few px keeps clicks from
+   * churning a full drag start/teardown.
    * @defaultValue 0
    */
   fallbackTolerance?: number

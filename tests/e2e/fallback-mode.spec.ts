@@ -472,11 +472,13 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
     await page.mouse.move(from.x + 2, from.y, { steps: 2 })
     await page.mouse.up()
 
-    // No drag-lifecycle event should have fired.
+    // Legacy parity: `choose` fires at tap start and the abandoned tap
+    // balances it with nothing here (onUnchoose isn't instrumented) — but
+    // no drag COMMIT event (start/end) may fire.
     const events = await page.evaluate(() =>
       (window as unknown as { __pr3Events: string[] }).__pr3Events.slice()
     )
-    expect(events).toEqual([])
+    expect(events).toEqual(['choose'])
 
     // And no ghost lingers.
     await expect(page.locator('.sortable-ghost')).toHaveCount(0)
@@ -672,12 +674,14 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
     await page.mouse.down()
 
     // 2) capture phase — 3px move is under the 8px tolerance, no commit.
+    //    `choose` fires at tap start (legacy parity), but no ghost and no
+    //    start event until the tolerance is crossed.
     await page.mouse.move(from.x + 3, from.y, { steps: 2 })
     await expect(page.locator('.sortable-ghost')).toHaveCount(0)
     const capturedEvents = await page.evaluate(() =>
       (window as unknown as { __pr4Events: string[] }).__pr4Events.slice()
     )
-    expect(capturedEvents).toEqual([])
+    expect(capturedEvents).toEqual(['choose'])
 
     // 3) commit phase — cross the tolerance, ghost should appear inside the
     //    zone (fallbackOnBody:false) with the fallback class.

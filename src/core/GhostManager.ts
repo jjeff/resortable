@@ -46,6 +46,37 @@ export interface CreateGhostOptions {
    * ghost clone so identity queries continue to address only the real item.
    */
   dataIdAttr?: string
+  /**
+   * Cursor position to anchor the grab-point offset to, when it differs
+   * from the triggering event's position. With `fallbackTolerance > 0` the
+   * drag commits only after the pointer has already traveled several
+   * pixels — anchoring to the commit event would shift the ghost by that
+   * traveled distance. Pass the pointerdown position instead.
+   */
+  cursorOrigin?: { x: number; y: number }
+}
+
+/**
+ * Strip identity attributes from a clone of a sortable item. Any attribute
+ * that uniquely identifies the original would otherwise produce duplicate
+ * matches in DOM queries (notably `[data-id="..."]` lookups in tests and
+ * consumer code). Duplicate `id` is invalid HTML in any case; the ARIA /
+ * tabindex state describes the *real* element's user-facing semantics and
+ * has no meaning on a visual-only clone.
+ */
+function stripIdentity(clone: HTMLElement, dataIdAttr: string): HTMLElement {
+  clone.removeAttribute('id')
+  clone.removeAttribute(dataIdAttr)
+  clone.removeAttribute('aria-grabbed')
+  clone.removeAttribute('aria-selected')
+  clone.removeAttribute('aria-posinset')
+  clone.removeAttribute('aria-setsize')
+  clone.removeAttribute('tabindex')
+  // Descendant `id`s would also be duplicated; clear them too.
+  clone
+    .querySelectorAll<HTMLElement>('[id]')
+    .forEach((el) => el.removeAttribute('id'))
+  return clone
 }
 
 /**
@@ -103,27 +134,16 @@ export class GhostManager {
     this.destroyGhost()
 
     // Clone the dragged element
-    this.ghostElement = draggedElement.cloneNode(true) as HTMLElement
-
-    // Strip identity attributes from the clone. With `fallbackOnBody: false`
-    // (PR2 default — legacy parity), the ghost lives inside the sortable
-    // zone, so any attribute that uniquely identifies the original would
-    // otherwise produce duplicate matches in DOM queries (notably
-    // `[data-id="..."]` lookups in tests and consumer code). Duplicate `id`
-    // is invalid HTML in any case; the ARIA / tabindex state describes the
-    // *real* element's user-facing semantics and has no meaning on a
-    // visual-only ghost clone (which is also `pointer-events: none`).
-    this.ghostElement.removeAttribute('id')
-    this.ghostElement.removeAttribute(dataIdAttr)
-    this.ghostElement.removeAttribute('aria-grabbed')
-    this.ghostElement.removeAttribute('aria-selected')
-    this.ghostElement.removeAttribute('aria-posinset')
-    this.ghostElement.removeAttribute('aria-setsize')
-    this.ghostElement.removeAttribute('tabindex')
-    // Descendant `id`s would also be duplicated; clear them too.
-    this.ghostElement
-      .querySelectorAll<HTMLElement>('[id]')
-      .forEach((el) => el.removeAttribute('id'))
+    this.ghostElement = stripIdentity(
+      draggedElement.cloneNode(true) as HTMLElement,
+      dataIdAttr
+    )
+    // The clone keeps the original's classes for its looks, so it can match
+    // the consumer's `draggable` selector. Mark it so DropZone.getItems()
+    // (and index math built on it) always excludes it — with
+    // `fallbackOnBody: false` the ghost lives INSIDE the zone element and
+    // would otherwise be counted as a real item.
+    this.ghostElement.setAttribute('data-resortable-ghost', '')
 
     // Get computed styles from the original element
     const computedStyle = window.getComputedStyle(draggedElement)
@@ -191,9 +211,12 @@ export class GhostManager {
     this.ghostElement.style.transform = 'none' // Reset any transforms
     this.ghostElement.style.transition = 'none' // Disable transitions during drag
 
-    // Calculate offset from cursor to element top-left
-    this.cursorOffsetX = event.clientX - rect.left
-    this.cursorOffsetY = event.clientY - rect.top
+    // Calculate offset from cursor to element top-left. Anchor to the
+    // original grab point when provided (see CreateGhostOptions.cursorOrigin).
+    const anchorX = options?.cursorOrigin?.x ?? event.clientX
+    const anchorY = options?.cursorOrigin?.y ?? event.clientY
+    this.cursorOffsetX = anchorX - rect.left
+    this.cursorOffsetY = anchorY - rect.top
 
     // Set initial position
     this.updateGhostPosition(event.clientX, event.clientY)
@@ -262,33 +285,44 @@ export class GhostManager {
   }
 
   /**
-   * Creates a placeholder element to show where the item will be dropped
+   * Creates a placeholder element to show where the item will be dropped.
+   *
+   * The placeholder is a semi-transparent CLONE of the dragged element —
+   * legacy-SortableJS parity, where the in-list drop indicator is the item
+   * itself wearing `ghostClass`. A bare gray box (the previous behaviour)
+   * reads as a rendering glitch next to rich item content like thumbnails.
+   *
    * @param referenceElement - Element to base the placeholder on
+   * @param options - `dataIdAttr` names the identity attribute to strip
    * @returns The created placeholder element
    */
-  createPlaceholder(referenceElement: HTMLElement): HTMLElement {
+  createPlaceholder(
+    referenceElement: HTMLElement,
+    options?: { dataIdAttr?: string }
+  ): HTMLElement {
     // Clean up any existing placeholder
     this.destroyPlaceholder()
 
-    // Create placeholder element
-    this.placeholderElement = document.createElement(referenceElement.tagName)
+    this.placeholderElement = stripIdentity(
+      referenceElement.cloneNode(true) as HTMLElement,
+      options?.dataIdAttr ?? 'data-id'
+    )
 
-    // Mark the placeholder so index math and DropZone.getItems() can always
-    // exclude it, even if a consumer's `draggable` selector would otherwise
-    // match the bare tag (controlled mode relies on this).
+    // Mark the placeholder so index math and DropZone.getItems() always
+    // exclude it — the clone keeps the original's classes, so it matches
+    // the consumer's `draggable` selector (controlled mode relies on this).
     this.placeholderElement.setAttribute('data-resortable-placeholder', '')
 
-    // Copy dimensions
+    // Fix dimensions so it holds the original's exact footprint
     const rect = referenceElement.getBoundingClientRect()
     this.placeholderElement.style.width = `${rect.width}px`
     this.placeholderElement.style.height = `${rect.height}px`
 
-    // Apply ghost class for styling
+    // Apply ghost class for styling, dim it, and keep it hit-transparent so
+    // elementFromPoint / dragover resolve items and containers beneath it.
     this.placeholderElement.classList.add(this.ghostClass)
-
-    // Make it semi-transparent
     this.placeholderElement.style.opacity = '0.4'
-    this.placeholderElement.style.background = '#e0e0e0'
+    this.placeholderElement.style.pointerEvents = 'none'
 
     return this.placeholderElement
   }

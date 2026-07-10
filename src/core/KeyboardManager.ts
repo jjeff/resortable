@@ -5,6 +5,23 @@ import { globalDragState } from './GlobalDragState.js'
 import { GhostManager } from './GhostManager.js'
 import { hideControlled, restoreControlledHidden } from '../utils/dom.js'
 
+/** Whether the configured multi-drag modifier is held on this event. */
+function isModifierHeld(
+  e: MouseEvent,
+  key: 'ctrl' | 'meta' | 'shift' | 'alt'
+): boolean {
+  switch (key) {
+    case 'ctrl':
+      return e.ctrlKey
+    case 'meta':
+      return e.metaKey
+    case 'shift':
+      return e.shiftKey
+    case 'alt':
+      return e.altKey
+  }
+}
+
 /**
  * Handles keyboard navigation and operations for sortable lists
  * @internal
@@ -18,6 +35,10 @@ export class KeyboardManager {
 
   private deselectOnClickOutside: boolean
   private multiDrag: boolean
+  // When set, click-to-select requires this modifier key; plain clicks pass
+  // through to the app untouched (see the `multiDragKey` option).
+  private multiDragKey: 'ctrl' | 'meta' | 'shift' | 'alt' | null
+  private dataIdAttr: string
   private onDocumentClick: ((e: MouseEvent) => void) | null = null
 
   // Controlled mode (see the `controlled` option): grabbed items are hidden
@@ -37,16 +58,20 @@ export class KeyboardManager {
     options?: {
       deselectOnClickOutside?: boolean
       multiDrag?: boolean
+      multiDragKey?: 'ctrl' | 'meta' | 'shift' | 'alt' | null
       controlled?: boolean
       ghostManager?: GhostManager
       draggable?: string
+      dataIdAttr?: string
     }
   ) {
     this.deselectOnClickOutside = options?.deselectOnClickOutside ?? true
     this.multiDrag = options?.multiDrag ?? false
+    this.multiDragKey = options?.multiDragKey ?? null
     this.controlled = options?.controlled ?? false
     this.ghostManager = options?.ghostManager
     this.draggableSelector = options?.draggable ?? '.sortable-item'
+    this.dataIdAttr = options?.dataIdAttr ?? 'data-id'
     this.setupAnnouncer()
   }
 
@@ -275,6 +300,22 @@ export class KeyboardManager {
     ) as HTMLElement
     if (!target) return
 
+    // With `multiDragKey` configured, selection is an explicit gesture:
+    // modifier+click toggles, shift+click extends a range, and a PLAIN click
+    // does nothing here — no selection, no focus steal — so the app keeps
+    // its own plain-click semantics (e.g. activating/triggering the item).
+    if (this.multiDragKey) {
+      if (e.shiftKey && this.selectionManager.getLastSelected()) {
+        e.preventDefault()
+        const last = this.selectionManager.getLastSelected()
+        if (last) this.selectionManager.selectRange(last, target)
+      } else if (isModifierHeld(e, this.multiDragKey)) {
+        e.preventDefault()
+        this.selectionManager.toggle(target, true)
+      }
+      return
+    }
+
     if (e.shiftKey && this.selectionManager.getLastSelected()) {
       // Range selection
       e.preventDefault()
@@ -343,7 +384,9 @@ export class KeyboardManager {
 
     if (this.controlled && this.ghostManager) {
       const anchor = selected[0]
-      const placeholder = this.ghostManager.createPlaceholder(anchor)
+      const placeholder = this.ghostManager.createPlaceholder(anchor, {
+        dataIdAttr: this.dataIdAttr,
+      })
       anchor.parentElement?.insertBefore(placeholder, anchor)
       this.hiddenDisplays = hideControlled(selected)
       // display:none drops focus from the grabbed item — park focus on the

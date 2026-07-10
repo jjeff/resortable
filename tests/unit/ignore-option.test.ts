@@ -71,6 +71,8 @@ function makeManager(
   const dm = new DragManager(zone, events, undefined, {
     delayOnTouchOnly: 0,
     ignore: options?.ignore,
+    // Commit on pointerdown (explicit, independent of the default).
+    fallbackTolerance: 0,
   })
   dm.attach()
   return { dm, events }
@@ -210,6 +212,8 @@ describe('ignore option (issue #30)', () => {
       delayOnTouchOnly: 0,
       handle: '.drag-handle',
       // ignore defaults to 'a, img'
+      // Commit on pointerdown (explicit, independent of the default).
+      fallbackTolerance: 0,
     })
     dm.attach()
 

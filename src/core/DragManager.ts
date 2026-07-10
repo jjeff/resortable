@@ -29,6 +29,10 @@ export class DragManager implements DragManagerInterface {
   // the drag has NOT yet committed (gated by `fallbackTolerance`). Distinct
   // from `dragElement`, which only becomes non-null at commit. PR3 #29.
   private pointerCaptureTarget: HTMLElement | null = null
+  // True when `choose` was already emitted during the capture phase (legacy
+  // parity: choose fires at tap start). commitPointerDrag must then not
+  // re-emit it, and a tolerance-abandoned tap must emit `unchoose`.
+  private capturePhaseChose = false
   private dragElement: HTMLElement | null = null
   private draggedItems: HTMLElement[] = []
   private _selectionManager: SelectionManager
@@ -144,6 +148,7 @@ export class DragManager implements DragManagerInterface {
     options?: {
       enableAccessibility?: boolean
       multiSelect?: boolean
+      multiDragKey?: 'ctrl' | 'meta' | 'shift' | 'alt' | null
       selectedClass?: string
       focusClass?: string
       handle?: string
@@ -219,6 +224,13 @@ export class DragManager implements DragManagerInterface {
     this._forceFallback = options?.forceFallback ?? false
     this._fallbackClass = options?.fallbackClass
     this._fallbackOnBody = options?.fallbackOnBody ?? false
+    // Default 0 = commit on pointerdown (SortableJS parity). Apps where a
+    // plain click has its own meaning should pass a few px so clicks don't
+    // churn a full drag start/teardown (ghost, placeholder, hidden items) —
+    // native HTML5 drags only ever start after real movement. The default
+    // stays 0 because Firefox under synthesized input (Playwright) delivers
+    // pointermove with coordinates frozen at the pointerdown position, so a
+    // nonzero default would make drags impossible to automate there.
     this._fallbackTolerance = options?.fallbackTolerance ?? 0
     this._fallbackOffsetX = options?.fallbackOffsetX ?? 0
     this._fallbackOffsetY = options?.fallbackOffsetY ?? 0
@@ -265,9 +277,11 @@ export class DragManager implements DragManagerInterface {
       {
         deselectOnClickOutside: options?.deselectOnClickOutside,
         multiDrag: options?.multiSelect,
+        multiDragKey: options?.multiDragKey,
         controlled: this.controlled,
         ghostManager: this.ghostManager,
         draggable: this.draggable,
+        dataIdAttr: this._dataIdAttr,
       }
     )
   }
@@ -405,7 +419,9 @@ export class DragManager implements DragManagerInterface {
 
     // Create ghost element (but for HTML5 drag, we'll use it as a placeholder)
     // The actual dragging visual is handled by the browser
-    const placeholder = this.ghostManager.createPlaceholder(target)
+    const placeholder = this.ghostManager.createPlaceholder(target, {
+      dataIdAttr: this._dataIdAttr,
+    })
     // Insert placeholder where the item was
     target.parentElement?.insertBefore(placeholder, target)
 
@@ -502,6 +518,62 @@ export class DragManager implements DragManagerInterface {
    *   (pointerup IS the drop); the HTML5 pipeline commits only in onDrop
    *   so a cancelled drag (dragend without drop) reports a no-op.
    */
+  /**
+   * Insert-after decision for controlled placement. Real pointer
+   * coordinates beat DOM order: the placeholder goes after `over` when the
+   * cursor is past `over`'s midpoint along the layout axis. This is stable
+   * under repeated events (same cursor → same answer), which the previous
+   * DOM-order heuristic wasn't — placeholder and `over` swap relative DOM
+   * order after each move, so hovering one item oscillated. It also makes
+   * wrapping grids work: the hovered item's row decides, per axis.
+   *
+   * Falls back to DOM order when the event has no usable coordinates or
+   * rects are zero-size (jsdom, synthetic events): moving toward a later
+   * sibling inserts after it.
+   */
+  private controlledInsertAfter(
+    e: Event,
+    over: HTMLElement,
+    placeholder: HTMLElement,
+    visible: HTMLElement[]
+  ): boolean {
+    const pt = e as MouseEvent
+    const hasCoords =
+      typeof pt.clientX === 'number' && (pt.clientX !== 0 || pt.clientY !== 0)
+    if (hasCoords) {
+      const rect = over.getBoundingClientRect()
+      if (rect.width > 0 || rect.height > 0) {
+        return this.detectHorizontalLayout(visible)
+          ? pt.clientX > rect.left + rect.width / 2
+          : pt.clientY > rect.top + rect.height / 2
+      }
+    }
+    // DOM-order fallback is only meaningful when the placeholder already
+    // lives in `over`'s list; across lists (zone enter) default to "before".
+    if (placeholder.parentElement !== over.parentElement) return false
+    return !!(
+      placeholder.compareDocumentPosition(over) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+  }
+
+  /**
+   * Layout-axis detection from the first two visible items: tops within
+   * half an item height of each other → items flow in a row (horizontal or
+   * wrapping grid). Falls back to the `direction` option when there aren't
+   * two measurable items.
+   */
+  private detectHorizontalLayout(visible: HTMLElement[]): boolean {
+    if (visible.length >= 2) {
+      const a = visible[0].getBoundingClientRect()
+      const b = visible[1].getBoundingClientRect()
+      if (a.height > 0 || a.width > 0) {
+        return Math.abs(a.top - b.top) < Math.max(a.height, b.height) / 2
+      }
+    }
+    return this.direction === 'horizontal'
+  }
+
   private handleControlledMove(
     e: Event,
     over: HTMLElement | null,
@@ -542,9 +614,16 @@ export class DragManager implements DragManagerInterface {
       const hasSibling = overIsValid && over.parentElement === targetZoneElement
       const related: HTMLElement = hasSibling && over ? over : targetZoneElement
       const visible = targetZone.getVisibleItems(items)
-      const newIndex =
+      // Which side of the hovered sibling the cursor is on decides the
+      // insert side; hovering empty container space appends at the end.
+      const enterAfter =
+        hasSibling && over
+          ? this.controlledInsertAfter(e, over, placeholder, visible)
+          : false
+      const overIdx =
         hasSibling && over ? visible.indexOf(over) : visible.length
-      if (newIndex === -1) return
+      if (overIdx === -1) return
+      const newIndex = overIdx + (enterAfter ? 1 : 0)
 
       const moveEvent: MoveEvent = {
         item: items[0],
@@ -554,18 +633,22 @@ export class DragManager implements DragManagerInterface {
         oldIndex: activeDrag.startIndices[0],
         newIndex,
         related,
-        willInsertAfter: false,
+        willInsertAfter: enterAfter,
         draggedRect: placeholder.getBoundingClientRect(),
         targetRect: related.getBoundingClientRect(),
       }
       const moveResult = sourceManager.dispatchMove(moveEvent, e)
       if (moveResult === false) return
 
-      let insertRef: Node | null = hasSibling && over ? over : null
-      let index = newIndex
-      if (hasSibling && over && moveResult === 1) {
-        insertRef = over.nextSibling
-        index = newIndex + 1
+      // `onMove` return value overrides the cursor-derived side (legacy
+      // contract: 1 forces after, -1 forces before).
+      const insertAfter =
+        moveResult === 1 ? true : moveResult === -1 ? false : enterAfter
+      let insertRef: Node | null = null
+      let index = visible.length
+      if (hasSibling && over) {
+        insertRef = insertAfter ? over.nextSibling : over
+        index = visible.indexOf(over) + (insertAfter ? 1 : 0)
       }
       targetZone.insertWithAnimation(placeholder, insertRef)
       if (opts.commitPending) {
@@ -592,9 +675,11 @@ export class DragManager implements DragManagerInterface {
       sourceManager.ghostManager.getGhostElement() ?? placeholder
     ).getBoundingClientRect()
     const overRect = over.getBoundingClientRect()
-    const naturalAfter = !!(
-      placeholder.compareDocumentPosition(over) &
-      Node.DOCUMENT_POSITION_FOLLOWING
+    const naturalAfter = this.controlledInsertAfter(
+      e,
+      over,
+      placeholder,
+      visible
     )
     if (
       !this.shouldSwap(
@@ -1143,17 +1228,29 @@ export class DragManager implements DragManagerInterface {
       this.commitPointerDrag(e, target)
       return
     }
-    // Capture phase: pointer held, drag NOT yet committed. setPointerCapture
-    // pins subsequent events to `target` and suppresses default touch panning
-    // on iOS during the tolerance gap. Firefox throws on synthetic events.
+    // Capture phase: pointer held, drag NOT yet committed. Listeners live on
+    // `document`, so NO setPointerCapture here — Firefox freezes pointermove
+    // coordinates at the pointerdown position while an element holds pointer
+    // capture (observed with synthesized input; the tolerance distance then
+    // never accrues and the drag never commits). Capture is taken at commit
+    // time in commitPointerDrag, as it always was.
     this.pointerCaptureTarget = target
     this.activePointerId = e.pointerId
     this.dragStartPosition = { x: e.clientX, y: e.clientY }
-    try {
-      target.setPointerCapture(e.pointerId)
-    } catch {
-      /* synthetic events in Firefox */
-    }
+    // SortableJS parity: `choose` (and chosenClass) fire at tap start,
+    // BEFORE any movement. The rest of the drag (ghost, placeholder, start
+    // event, global state) waits for the tolerance threshold.
+    const idx = this.zone.getIndex(target)
+    target.classList.add(this.ghostManager.getChosenClass())
+    this.capturePhaseChose = true
+    this.events.emit('choose', {
+      item: target,
+      items: [target],
+      from: this.zone.element,
+      to: this.zone.element,
+      oldIndex: idx,
+      newIndex: idx,
+    })
     document.addEventListener('pointermove', this.onPointerMoveCapture)
     document.addEventListener('pointerup', this.onPointerUpCapture)
     document.addEventListener('pointercancel', this.onPointerUpCapture)
@@ -1170,15 +1267,38 @@ export class DragManager implements DragManagerInterface {
       this._fallbackTolerance
     )
       return
+    // Anchor the ghost's grab-point to the ORIGINAL pointerdown position —
+    // the pointer has already traveled up to the tolerance (or the full
+    // first automation step) by commit time.
     this.teardownCapturePhase()
-    this.commitPointerDrag(e, target)
+    this.commitPointerDrag(e, target, origin)
+    // The event that crossed the threshold is also the first real drag
+    // move — process it, or a single-move drag (automation, fast flick)
+    // commits at its final position without ever handling a move and the
+    // drop becomes a no-op.
+    this.onPointerMove(e)
   }
 
   // Pointer released (or cancelled) BEFORE the tolerance threshold — treat
-  // as a click, not a drag. No `choose` / `start` / `end` events fired;
-  // no DOM changes; just tear the capture state down.
+  // as a click, not a drag. `choose` already fired at tap start (legacy
+  // parity), so balance it with `unchoose`; no start/end, no DOM changes.
   private onPointerUpCapture = (e: PointerEvent): void => {
-    if (e.pointerId === this.activePointerId) this.teardownCapturePhase()
+    if (e.pointerId !== this.activePointerId) return
+    const target = this.pointerCaptureTarget
+    if (target && this.capturePhaseChose) {
+      target.classList.remove(this.ghostManager.getChosenClass())
+      this.capturePhaseChose = false
+      const idx = this.zone.getIndex(target)
+      this.events.emit('unchoose', {
+        item: target,
+        items: [target],
+        from: this.zone.element,
+        to: this.zone.element,
+        oldIndex: idx,
+        newIndex: idx,
+      })
+    }
+    this.teardownCapturePhase()
   }
 
   private teardownCapturePhase(): void {
@@ -1203,21 +1323,24 @@ export class DragManager implements DragManagerInterface {
    * registers with `globalDragState`. Reachable directly (tolerance 0) or
    * via {@link onPointerMoveCapture} after the tolerance threshold is met.
    */
-  private commitPointerDrag(e: PointerEvent, target: HTMLElement): void {
+  private commitPointerDrag(
+    e: PointerEvent,
+    target: HTMLElement,
+    cursorOrigin?: { x: number; y: number }
+  ): void {
     // Prevent text selection during drag (especially needed on iOS Safari)
     window.getSelection()?.removeAllRanges()
     this.savedBodyUserSelect = document.body.style.userSelect
     document.body.style.userSelect = 'none'
     document.body.style.setProperty('-webkit-user-select', 'none')
 
-    // Get selected items if multiSelect is enabled
+    // Multi-drag: dragging an already-selected item moves the whole
+    // selection. Dragging an UNselected item moves just that item and does
+    // NOT touch the selection — selecting is an explicit user gesture
+    // (click / modifier+click), not a side effect of dragging.
     this.draggedItems = [target]
     if (this._selectionManager.isSelected(target)) {
-      // If the target is already selected, drag all selected items
       this.draggedItems = this._selectionManager.getSelected()
-    } else {
-      // If target is not selected, select only it
-      this._selectionManager.select(target)
     }
 
     // Dim non-anchor selected items
@@ -1265,8 +1388,13 @@ export class DragManager implements DragManagerInterface {
       oldIndex: this.startIndex,
       newIndex: this.startIndex,
     }
-    // Emit choose event first
-    this.events.emit('choose', evt)
+    // Emit choose first — unless the capture phase already did (legacy
+    // parity: choose fires at tap start when fallbackTolerance > 0).
+    if (this.capturePhaseChose) {
+      this.capturePhaseChose = false
+    } else {
+      this.events.emit('choose', evt)
+    }
 
     // Create ghost element for visual feedback. `fallbackClass` is applied
     // alongside `ghostClass` so fallback-mode styles can target a stable hook
@@ -1281,6 +1409,7 @@ export class DragManager implements DragManagerInterface {
       offsetX: this._fallbackOffsetX,
       offsetY: this._fallbackOffsetY,
       dataIdAttr: this._dataIdAttr,
+      cursorOrigin,
     }
     if (this.draggedItems.length > 1) {
       this.ghostManager.createStackedGhost(
@@ -1292,7 +1421,9 @@ export class DragManager implements DragManagerInterface {
     } else {
       this.ghostManager.createGhost(target, e, ghostOptions)
     }
-    const placeholder = this.ghostManager.createPlaceholder(target)
+    const placeholder = this.ghostManager.createPlaceholder(target, {
+      dataIdAttr: this._dataIdAttr,
+    })
 
     if (this.controlled) {
       // The placeholder takes the anchor's spot and the real items are
@@ -1326,8 +1457,11 @@ export class DragManager implements DragManagerInterface {
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
 
-    // Find the element under the mouse cursor
-    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY)
+    // Find the element under the mouse cursor. Optional call: older jsdom
+    // builds (CI) don't implement elementFromPoint, and this path is now
+    // reachable from unit tests via the capture-phase commit's first-move
+    // processing.
+    const elementUnderMouse = document.elementFromPoint?.(e.clientX, e.clientY)
     const over = elementUnderMouse?.closest(
       this.draggable
     ) as HTMLElement | null
