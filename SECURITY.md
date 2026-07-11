@@ -2,13 +2,13 @@
 
 ## Supported Versions
 
-Resortable is in active pre-1.0 development. Only the latest published version
-on the `main` branch receives security fixes.
+Resortable follows semantic versioning. Only the latest published `2.x`
+release on npm receives security fixes.
 
 | Version | Supported |
 | --- | --- |
-| `2.0.0-beta.*` (and later) | ✅ |
-| `2.0.0-alpha.*` | ❌ (pre-release; upgrade to beta) |
+| `2.0.x` (latest) | ✅ |
+| `2.0.0-alpha.*` / `2.0.0-beta.*` (pre-release) | ❌ |
 | `1.x` | n/a (never published — see [migration guide][mg]) |
 
 ## Reporting a Vulnerability
