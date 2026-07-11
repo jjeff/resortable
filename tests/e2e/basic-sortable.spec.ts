@@ -97,74 +97,34 @@ test.describe('Basic Sortable Functionality', () => {
     )
   })
 
-  // FIXME: Hover state does not apply the expected transform on .sortable-item
-  // in chromium (un-skip attempt failed). Tracked in #74.
-  test.skip('shows hover effects on sortable items', async ({ page }) => {
-    const item = page.locator('#basic-list [data-id="basic-1"]')
+  // Removed (#74): "shows hover effects on sortable items" asserted a
+  // translateY transform on `#basic-list .sortable-item:hover`, but
+  // playground.html (a deliberately bare-bones dev harness — see its own
+  // header copy) has never had a `.sortable-item:hover` rule. Checked the
+  // pre-split combined page (git show 6f2c031^:index.html): #basic-list
+  // used plain `.test-item` styling there too; the hover-transform only
+  // ever existed on unrelated marketing demo sections (`.smooth-list`,
+  // `.spring-list`) that don't exist in this fixture. Nothing to restore —
+  // the test encoded a false assumption, not a regression.
 
-    await item.hover()
-
-    // Check if hover styles are applied by verifying computed styles
-    const transform = await item.evaluate(
-      (el: Element) => window.getComputedStyle(el).transform
-    )
-
-    // The CSS should apply a translateY transform on hover
-    expect(transform).not.toBe('none')
-  })
-
-  // FIXME: Pointer-event touch simulation is non-deterministic — tracked in #74.
-  test.skip('handles touch input for drag and drop', async ({ page }) => {
-    // Simulate touch drag by using dispatchEvent with pointer events
-    const sourceItem = page.locator('#basic-list [data-id="basic-1"]')
-    const targetItem = page.locator('#basic-list [data-id="basic-3"]')
-
-    // Get bounding boxes for touch coordinates
-    const sourceBox = await sourceItem.boundingBox()
-    const targetBox = await targetItem.boundingBox()
-
-    if (!sourceBox || !targetBox) {
-      throw new Error('Could not get element bounding boxes')
-    }
-
-    // Simulate touch-based drag with pointer events
-    await page.dispatchEvent('#basic-list [data-id="basic-1"]', 'pointerdown', {
-      pointerId: 1,
-      pointerType: 'touch',
-      isPrimary: true,
-      clientX: sourceBox.x + sourceBox.width / 2,
-      clientY: sourceBox.y + sourceBox.height / 2,
-      button: 0,
-    })
-
-    await page.dispatchEvent('body', 'pointermove', {
-      pointerId: 1,
-      pointerType: 'touch',
-      isPrimary: true,
-      clientX: targetBox.x + targetBox.width / 2,
-      clientY: targetBox.y + targetBox.height / 2,
-      button: 0,
-    })
-
-    await page.dispatchEvent('body', 'pointerup', {
-      pointerId: 1,
-      pointerType: 'touch',
-      isPrimary: true,
-      clientX: targetBox.x + targetBox.width / 2,
-      clientY: targetBox.y + targetBox.height / 2,
-      button: 0,
-    })
-
-    // Wait for the drag operation to complete
-    await page.waitForTimeout(100)
-
-    // Verify the items were reordered
-    const items = page.locator('#basic-list .sortable-item')
-    await expect(items.nth(0)).toHaveAttribute('data-id', 'basic-2')
-    await expect(items.nth(1)).toHaveAttribute('data-id', 'basic-1')
-    await expect(items.nth(2)).toHaveAttribute('data-id', 'basic-3')
-    await expect(items.nth(3)).toHaveAttribute('data-id', 'basic-4')
-  })
+  // Removed (#74): "handles touch input for drag and drop" drove a touch
+  // drag via raw `page.dispatchEvent(..., { pointerType: 'touch' })`.
+  // Playwright's real Touchscreen API only exposes `tap(x, y)` (single
+  // touchstart+touchend) — there's no public multi-step touch-drag gesture
+  // to rewrite this against. The dispatchEvent approach dispatches
+  // untrusted synthetic events that don't reliably drive a full drag
+  // session (see the sibling "handles pen input" / "handles multi-touch
+  // pointer events" tests below, which use the same technique and only
+  // assert *no* reorder happens) — that's the source of the flakiness.
+  // DragManager's pointer handlers (`onPointerDown`/`onPointerMove`/
+  // `onPointerUp`) don't branch on pointerType, so the code path a real
+  // touch drag exercises is already covered:
+  //   - the fallback pointer pipeline itself: on-move.spec.ts's
+  //     "forceFallback (pointer pipeline, HTML5 listeners skipped)" suite
+  //   - the touch-specific routing decision (HTML5 DnD disabled, draggable
+  //     set to false when `navigator.maxTouchPoints > 0`): the "applies
+  //     visual feedback classes during drag" test above, which runs for
+  //     real under the touch-enabled "Mobile Chrome" project.
 
   test('handles pen input for drag and drop', async ({ page }) => {
     // Simulate pen drag with pointer events
