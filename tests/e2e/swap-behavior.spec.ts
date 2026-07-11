@@ -1,215 +1,468 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 
-// FIXME: Suite needs CSS-positioned fixtures — tracked in #77.
-test.describe.skip(
-  'Swap Behavior Options - TODO: Requires CSS positioning for accurate overlap calculation',
-  () => {
-    // These tests are skipped because:
-    // 1. Swap threshold calculations depend on proper CSS positioning and getBoundingClientRect
-    // 2. The functionality is implemented but needs visual layout for testing
-    // 3. Consider testing with existing page elements that have proper CSS applied
-    test.beforeEach(async ({ page }) => {
-      await page.goto('/')
-    })
+/**
+ * Coverage for `swapThreshold` / `invertSwap` / `invertedSwapThreshold` /
+ * `direction` (#77). Previously skipped: the inline fixtures built plain
+ * `document.createElement` markup with no explicit sizing, so
+ * `getBoundingClientRect()` overlap math (the whole point of these options)
+ * was unpredictable.
+ *
+ * Two things had to be fixed, not just fixture CSS:
+ *
+ * 1. **Geometry** — mirrors `fallback-mode.spec.ts`: `position: absolute`
+ *    fixtures with explicit item width/height so every rect is known in
+ *    advance and overlap fractions are computable exactly.
+ *
+ * 2. **Which pipeline `shouldSwap()` is even wired into.** `DragManager`
+ *    has exactly two call sites for the threshold gate: the native HTML5
+ *    `dragover` handler, and `handleControlledMove` (shared by both
+ *    pipelines when `controlled: true`). The *uncontrolled* pointer path
+ *    that `page.mouse` normally drives (see `on-move.spec.ts`) reorders
+ *    immediately on `over !== movingElement` — it never consults
+ *    `swapThreshold` at all. Native HTML5 `dragstart`/`dragover` can't be
+ *    triggered by Playwright's synthetic mouse input here either (same
+ *    constraint documented in `on-move.spec.ts`). So `controlled: true` is
+ *    the only way to exercise the threshold gate via `page.mouse` — the
+ *    fixtures below all use it, and assertions read the placeholder's
+ *    position (`data-resortable-placeholder`, same signal
+ *    `controlled-pointer.spec.ts` uses) instead of real DOM item order,
+ *    since controlled mode never structurally moves the real items mid-drag.
+ */
 
-    test.skip('should respect swapThreshold option', async ({ page }) => {
-      // Create a test list with swapThreshold set to 0.5
-      await page.evaluate(() => {
-        const container = document.createElement('div')
-        container.id = 'test-list'
-        container.style.padding = '20px'
-        container.innerHTML = `
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 1</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 2</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 3</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 4</div>
-      `
-        document
-          .querySelectorAll('.container')
-          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
-        document.body.appendChild(container)
-        const Sortable = window.Sortable as any
-        if (!Sortable) return
-        new Sortable(container, {
-          swapThreshold: 0.5,
-          animation: 0,
-        })
-      })
+/**
+ * Mouse Y for a given vertical overlap fraction against `targetTop`.
+ *
+ * The ghost (item-sized, tracks the cursor) has `top = mouseY - grabOffset`
+ * where `grabOffset` is how far below the dragged item's own top edge it
+ * was grabbed. Solving `overlap = 1 - |mouseY - targetTop - grabOffset| /
+ * itemHeight` for the branch where the ghost's bottom clips at the
+ * target's bottom gives `mouseY = targetTop + grabOffset +
+ * itemHeight * (1 - overlap)`.
+ *
+ * `grabOffset` also decides which side of the target's midpoint the cursor
+ * lands on (`handleControlledMove`'s `naturalAfter` — insert after the
+ * target when the cursor is past its midpoint). A small `grabOffset` puts
+ * LOW overlaps past the midpoint (used for the inverted-threshold cases,
+ * where the swap fires at low overlap); a `grabOffset` around a quarter of
+ * the item size puts HIGH overlaps past the midpoint too (used for the
+ * normal-threshold cases, where the swap fires at high overlap) — pick
+ * per-test so the swap is a real index change, not a same-index no-op.
+ */
+function overlapY(
+  targetTop: number,
+  itemHeight: number,
+  overlap: number,
+  grabOffset: number
+): number {
+  return targetTop + grabOffset + itemHeight * (1 - overlap)
+}
 
-      const item1 = page.locator('.sortable-item').first()
-      const item2 = page.locator('.sortable-item').nth(1)
+/** Horizontal counterpart of {@link overlapY}. */
+function overlapX(
+  targetLeft: number,
+  itemWidth: number,
+  overlap: number,
+  grabOffset: number
+): number {
+  return targetLeft + grabOffset + itemWidth * (1 - overlap)
+}
 
-      // Get initial positions
-      const item1Box = await item1.boundingBox()
-      const item2Box = await item2.boundingBox()
+/**
+ * DOM order of `container`'s children, labeled the same way
+ * `controlled-pointer.spec.ts` does: the placeholder is `'PH'`, the ghost
+ * (if hit) is `'GHOST'`, everything else reports its `data-id`. Swap
+ * outcome is read from where `'PH'` lands relative to the target's id.
+ */
+async function childLabels(page: Page, containerId: string): Promise<string[]> {
+  return page.evaluate((id) => {
+    const el = document.getElementById(id)
+    if (!el) return []
+    return Array.from(el.children).map((c) =>
+      c.hasAttribute('data-resortable-placeholder')
+        ? 'PH'
+        : c.hasAttribute('data-resortable-ghost')
+          ? 'GHOST'
+          : ((c as HTMLElement).dataset.id ?? '')
+    )
+  }, containerId)
+}
 
-      // Start drag on item1
-      await item1.hover()
-      await page.mouse.down()
+test.describe('Swap Behavior Options (#77)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/playground.html')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+  })
 
-      // Move to 30% overlap with item2 (should not swap with 0.5 threshold)
-      const partialOverlapY = item2Box!.y + item2Box!.height * 0.3
-      await page.mouse.move(item1Box!.x + 10, partialOverlapY)
-      await page.waitForTimeout(100)
-
-      // Check that items haven't swapped
-      let items = await page.locator('.sortable-item').allTextContents()
-      expect(items).toEqual(['Item 1', 'Item 2', 'Item 3', 'Item 4'])
-
-      // Move to 60% overlap (should swap with 0.5 threshold)
-      const fullOverlapY = item2Box!.y + item2Box!.height * 0.6
-      await page.mouse.move(item1Box!.x + 10, fullOverlapY)
-      await page.waitForTimeout(100)
-
-      // Release drag
-      await page.mouse.up()
-
-      // Check that items have swapped
-      items = await page.locator('.sortable-item').allTextContents()
-      expect(items).toEqual(['Item 2', 'Item 1', 'Item 3', 'Item 4'])
-    })
-
-    test.skip('should handle invertSwap option', async ({ page }) => {
-      await page.evaluate(() => {
-        const container = document.createElement('div')
-        container.id = 'test-list'
-        container.style.padding = '20px'
-        container.innerHTML = `
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item A</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item B</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item C</div>
-      `
-        document
-          .querySelectorAll('.container')
-          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
-        document.body.appendChild(container)
-        const Sortable = window.Sortable as any
-        if (!Sortable) return
-        new Sortable(container, {
-          invertSwap: true,
-          swapThreshold: 0.5,
-          animation: 0,
-        })
-      })
-
-      const itemA = page.locator('.sortable-item').first()
-      const itemB = page.locator('.sortable-item').nth(1)
-
-      const itemABox = await itemA.boundingBox()
-      const itemBBox = await itemB.boundingBox()
-
-      // Start drag on itemA
-      await itemA.hover()
-      await page.mouse.down()
-
-      // With invertSwap, small overlap should trigger swap
-      const smallOverlapY = itemBBox!.y + itemBBox!.height * 0.2
-      await page.mouse.move(itemABox!.x + 10, smallOverlapY)
-      await page.waitForTimeout(100)
-      await page.mouse.up()
-
-      // Check that items have swapped due to inverted behavior
-      const items = await page.locator('.sortable-item').allTextContents()
-      expect(items).toEqual(['Item B', 'Item A', 'Item C'])
-    })
-
-    test.skip('should respect direction option for horizontal sorting', async ({
-      page,
-    }) => {
-      await page.evaluate(() => {
-        const container = document.createElement('div')
-        container.id = 'horizontal-list'
-        container.style.display = 'flex'
-        container.style.padding = '20px'
-        container.innerHTML = `
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Card 1</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Card 2</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Card 3</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Card 4</div>
-      `
-        document
-          .querySelectorAll('.container')
-          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
-        document.body.appendChild(container)
-        const Sortable = window.Sortable as any
-        if (!Sortable) return
-        new Sortable(container, {
-          direction: 'horizontal',
-          swapThreshold: 0.5,
-          animation: 0,
-        })
-      })
-
-      const card1 = page.locator('.sortable-item').first()
-      const card2 = page.locator('.sortable-item').nth(1)
-
-      const card1Box = await card1.boundingBox()
-      const card2Box = await card2.boundingBox()
-
-      // Start drag on card1
-      await card1.hover()
-      await page.mouse.down()
-
-      // Move horizontally to overlap with card2
-      const overlapX = card2Box!.x + card2Box!.width * 0.6
-      await page.mouse.move(overlapX, card1Box!.y + 10)
-      await page.waitForTimeout(100)
-      await page.mouse.up()
-
-      // Check that items have swapped horizontally
-      const items = await page.locator('.sortable-item').allTextContents()
-      expect(items).toEqual(['Card 2', 'Card 1', 'Card 3', 'Card 4'])
-    })
-
-    test.skip('should use invertedSwapThreshold when invertSwap is true', async ({
-      page,
-    }) => {
-      await page.evaluate(() => {
-        const container = document.createElement('div')
-        container.id = 'test-list'
-        container.style.padding = '20px'
-        container.innerHTML = `
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 1</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 2</div>
-        <div class="sortable-item" style="padding: 20px; margin: 5px; background: #f0f0f0;">Item 3</div>
-      `
-        document
-          .querySelectorAll('.container')
-          .forEach((el) => ((el as HTMLElement).style.display = 'none'))
-        document.body.appendChild(container)
-        const Sortable = window.Sortable as any
-        if (!Sortable) return
-        new Sortable(container, {
-          invertSwap: true,
-          swapThreshold: 0.8,
-          invertedSwapThreshold: 0.3,
-          animation: 0,
-        })
-      })
-
-      const item1 = page.locator('.sortable-item').first()
-      const item2 = page.locator('.sortable-item').nth(1)
-
-      const item1Box = await item1.boundingBox()
-      const item2Box = await item2.boundingBox()
-
-      // Start drag on item1
-      await item1.hover()
-      await page.mouse.down()
-
-      // Move to 25% overlap (less than invertedSwapThreshold of 0.3, should swap)
-      const smallOverlapY = item2Box!.y + item2Box!.height * 0.25
-      await page.mouse.move(item1Box!.x + 10, smallOverlapY)
-      await page.waitForTimeout(100)
-      await page.mouse.up()
-
-      // Check that items have swapped
-      const items = await page.locator('.sortable-item').allTextContents()
-      expect(items).toEqual(['Item 2', 'Item 1', 'Item 3'])
-    })
+  function skipMobile(testInfo: { project: { name: string } }): boolean {
+    return /Mobile/.test(testInfo.project.name)
   }
-)
+
+  test('should respect swapThreshold option', async ({ page }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-threshold-list'
+    const ITEM_HEIGHT = 60
+
+    await page.evaluate(() => {
+      document.getElementById('swap-threshold-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-threshold-list'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:220px;background:#eef'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="st-1" style="width:220px;height:60px;background:#ccc;">Item 1</div>
+        <div class="sortable-item" data-id="st-2" style="width:220px;height:60px;background:#ddd;">Item 2</div>
+        <div class="sortable-item" data-id="st-3" style="width:220px;height:60px;background:#ccc;">Item 3</div>
+        <div class="sortable-item" data-id="st-4" style="width:220px;height:60px;background:#ddd;">Item 4</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        controlled: true,
+        swapThreshold: 0.5,
+        animation: 0,
+      })
+    })
+
+    const item1Box = await page
+      .locator(`${LIST} [data-id="st-1"]`)
+      .boundingBox()
+    const item2Box = await page
+      .locator(`${LIST} [data-id="st-2"]`)
+      .boundingBox()
+    if (!item1Box || !item2Box) throw new Error('missing item boxes')
+
+    // Grab offset of 15 (a quarter of the 60px item height) keeps the 60%
+    // overlap stage's cursor past item2's midpoint — see {@link overlapY}.
+    const GRAB_OFFSET = 15
+    const grabX = item1Box.x + item1Box.width / 2
+    const grabY = item1Box.y + GRAB_OFFSET
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 30% overlap — below the 0.5 threshold, must NOT swap. `st-1` (the
+    // dragged item) stays in the DOM — hidden, not removed — so it appears
+    // right after the placeholder; the ghost lives inside the zone
+    // (`fallbackOnBody` defaults to false) and sorts last.
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.3, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-threshold-list')).toEqual([
+      'PH',
+      'st-1',
+      'st-2',
+      'st-3',
+      'st-4',
+      'GHOST',
+    ])
+
+    // 60% overlap — above the 0.5 threshold, must swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.6, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-threshold-list')).toEqual([
+      'st-1',
+      'st-2',
+      'PH',
+      'st-3',
+      'st-4',
+      'GHOST',
+    ])
+
+    await page.mouse.up()
+  })
+
+  test('should handle invertSwap option', async ({ page }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-invert-list'
+    const ITEM_HEIGHT = 60
+
+    await page.evaluate(() => {
+      document.getElementById('swap-invert-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-invert-list'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:220px;background:#efe'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="iv-a" style="width:220px;height:60px;background:#cdc;">Item A</div>
+        <div class="sortable-item" data-id="iv-b" style="width:220px;height:60px;background:#dcd;">Item B</div>
+        <div class="sortable-item" data-id="iv-c" style="width:220px;height:60px;background:#cdc;">Item C</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        controlled: true,
+        invertSwap: true,
+        swapThreshold: 0.5,
+        animation: 0,
+      })
+    })
+
+    const itemABox = await page
+      .locator(`${LIST} [data-id="iv-a"]`)
+      .boundingBox()
+    const itemBBox = await page
+      .locator(`${LIST} [data-id="iv-b"]`)
+      .boundingBox()
+    if (!itemABox || !itemBBox) throw new Error('missing item boxes')
+
+    // Grab offset near the item's top edge keeps the low-overlap (0.2) swap
+    // stage's cursor past item B's midpoint — see {@link overlapY}.
+    const GRAB_OFFSET = 5
+    const grabX = itemABox.x + itemABox.width / 2
+    const grabY = itemABox.y + GRAB_OFFSET
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 80% overlap — inverted rule swaps only when overlap < threshold, so a
+    // LARGE overlap must NOT swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(itemBBox.y, ITEM_HEIGHT, 0.8, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-invert-list')).toEqual([
+      'PH',
+      'iv-a',
+      'iv-b',
+      'iv-c',
+      'GHOST',
+    ])
+
+    // 20% overlap — below the 0.5 threshold, inverted rule swaps.
+    await page.mouse.move(
+      grabX,
+      overlapY(itemBBox.y, ITEM_HEIGHT, 0.2, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-invert-list')).toEqual([
+      'iv-a',
+      'iv-b',
+      'PH',
+      'iv-c',
+      'GHOST',
+    ])
+
+    await page.mouse.up()
+  })
+
+  test('should respect direction option for horizontal sorting', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-direction-list'
+    const ITEM_WIDTH = 100
+
+    await page.evaluate(() => {
+      document.getElementById('swap-direction-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-direction-list'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:400px;display:flex;background:#eef'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="card-1" style="width:100px;height:60px;flex-shrink:0;background:#ccc;">Card 1</div>
+        <div class="sortable-item" data-id="card-2" style="width:100px;height:60px;flex-shrink:0;background:#ddd;">Card 2</div>
+        <div class="sortable-item" data-id="card-3" style="width:100px;height:60px;flex-shrink:0;background:#ccc;">Card 3</div>
+        <div class="sortable-item" data-id="card-4" style="width:100px;height:60px;flex-shrink:0;background:#ddd;">Card 4</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        controlled: true,
+        direction: 'horizontal',
+        swapThreshold: 0.5,
+        animation: 0,
+      })
+    })
+
+    const card1Box = await page
+      .locator(`${LIST} [data-id="card-1"]`)
+      .boundingBox()
+    const card2Box = await page
+      .locator(`${LIST} [data-id="card-2"]`)
+      .boundingBox()
+    if (!card1Box || !card2Box) throw new Error('missing item boxes')
+
+    // Grab offset of 20 (a fifth of the 100px item width) keeps the 60%
+    // overlap stage's cursor past card2's midpoint — see {@link overlapY}.
+    const GRAB_OFFSET = 20
+    const grabX = card1Box.x + GRAB_OFFSET
+    const grabY = card1Box.y + card1Box.height / 2
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 30% overlap — below the 0.5 threshold, must NOT swap.
+    await page.mouse.move(
+      overlapX(card2Box.x, ITEM_WIDTH, 0.3, GRAB_OFFSET),
+      grabY,
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-direction-list')).toEqual([
+      'PH',
+      'card-1',
+      'card-2',
+      'card-3',
+      'card-4',
+      'GHOST',
+    ])
+
+    // 60% overlap — above the 0.5 threshold, must swap.
+    await page.mouse.move(
+      overlapX(card2Box.x, ITEM_WIDTH, 0.6, GRAB_OFFSET),
+      grabY,
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-direction-list')).toEqual([
+      'card-1',
+      'card-2',
+      'PH',
+      'card-3',
+      'card-4',
+      'GHOST',
+    ])
+
+    await page.mouse.up()
+  })
+
+  test('should use invertedSwapThreshold when invertSwap is true', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-inverted-threshold-list'
+    const ITEM_HEIGHT = 60
+
+    await page.evaluate(() => {
+      document.getElementById('swap-inverted-threshold-list')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-inverted-threshold-list'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:220px;background:#fee'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="ivt-1" style="width:220px;height:60px;background:#dcc;">Item 1</div>
+        <div class="sortable-item" data-id="ivt-2" style="width:220px;height:60px;background:#ddc;">Item 2</div>
+        <div class="sortable-item" data-id="ivt-3" style="width:220px;height:60px;background:#dcc;">Item 3</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        controlled: true,
+        invertSwap: true,
+        swapThreshold: 0.8,
+        invertedSwapThreshold: 0.3,
+        animation: 0,
+      })
+    })
+
+    const item1Box = await page
+      .locator(`${LIST} [data-id="ivt-1"]`)
+      .boundingBox()
+    const item2Box = await page
+      .locator(`${LIST} [data-id="ivt-2"]`)
+      .boundingBox()
+    if (!item1Box || !item2Box) throw new Error('missing item boxes')
+
+    // Grab offset near the item's top edge keeps the low-overlap (0.25) swap
+    // stage's cursor past item2's midpoint — see {@link overlapY}.
+    const GRAB_OFFSET = 5
+    const grabX = item1Box.x + item1Box.width / 2
+    const grabY = item1Box.y + GRAB_OFFSET
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 50% overlap — not below invertedSwapThreshold (0.3), must NOT swap.
+    // (Also above swapThreshold (0.8)? No — but invertSwap replaces the
+    // normal gate entirely, so only the `< invertedSwapThreshold` check
+    // applies here.)
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.5, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-inverted-threshold-list')).toEqual([
+      'PH',
+      'ivt-1',
+      'ivt-2',
+      'ivt-3',
+      'GHOST',
+    ])
+
+    // 25% overlap — below invertedSwapThreshold (0.3), must swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.25, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-inverted-threshold-list')).toEqual([
+      'ivt-1',
+      'ivt-2',
+      'PH',
+      'ivt-3',
+      'GHOST',
+    ])
+
+    await page.mouse.up()
+  })
+})

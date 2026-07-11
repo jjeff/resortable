@@ -221,10 +221,13 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Delay Functionality', () => {
-    // FIXME: Delay timing simulation is unreliable — tracked in #76.
-    test.skip('requires holding for delay period before drag starts', async ({
+    test('requires holding for delay period before drag starts', async ({
       page,
     }) => {
+      // Fake `setTimeout`/`clearTimeout` so the 300ms `delay` timer can be
+      // crossed deterministically instead of racing real wall-clock waits.
+      await page.clock.install()
+
       const firstItem = page.locator('#delay-list .delay-item').first()
       const lastItem = page.locator('#delay-list .delay-item').last()
 
@@ -232,11 +235,28 @@ test.describe('Feature Demos', () => {
         .locator('#delay-list .delay-item')
         .evaluateAll((els) => els.map((el) => el.dataset.id))
 
+      // The demo page is long — raw page.mouse coordinates (unlike
+      // locator actions) don't auto-scroll, so the list must be scrolled
+      // into view first or the coordinates land outside the viewport.
+      await firstItem.scrollIntoViewIfNeeded()
+
+      const firstBox = await firstItem.boundingBox()
+      const lastBox = await lastItem.boundingBox()
+      if (!firstBox || !lastBox) throw new Error('Could not get bounding boxes')
+      const firstCenter = {
+        x: firstBox.x + firstBox.width / 2,
+        y: firstBox.y + firstBox.height / 2,
+      }
+      const lastCenter = {
+        x: lastBox.x + lastBox.width / 2,
+        y: lastBox.y + lastBox.height / 2,
+      }
+
       // Quick click and drag (should not work due to delay)
-      await firstItem.hover()
+      await page.mouse.move(firstCenter.x, firstCenter.y)
       await page.mouse.down()
-      await page.waitForTimeout(100) // Less than 300ms delay
-      await lastItem.hover()
+      await page.clock.fastForward(100) // less than the 300ms delay
+      await page.mouse.move(lastCenter.x, lastCenter.y)
       await page.mouse.up()
 
       const orderAfterQuickDrag = await page
@@ -245,13 +265,11 @@ test.describe('Feature Demos', () => {
       expect(orderAfterQuickDrag).toEqual(initialOrder)
 
       // Hold and drag (should work)
-      await firstItem.hover()
+      await page.mouse.move(firstCenter.x, firstCenter.y)
       await page.mouse.down()
-      await page.waitForTimeout(350) // More than 300ms delay
-      await lastItem.hover()
+      await page.clock.fastForward(350) // more than the 300ms delay
+      await page.mouse.move(lastCenter.x, lastCenter.y)
       await page.mouse.up()
-
-      await page.waitForTimeout(200)
 
       const orderAfterDelayedDrag = await page
         .locator('#delay-list .delay-item')

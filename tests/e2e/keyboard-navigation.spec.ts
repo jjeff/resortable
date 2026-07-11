@@ -88,6 +88,37 @@ test.describe('Keyboard Navigation', () => {
     await expect(secondItem).toHaveAttribute('aria-selected', 'true')
   })
 
+  test('extends selection across items with Shift+ArrowDown', async ({
+    page,
+  }) => {
+    const container = page.locator('#basic-list')
+    const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const secondItem = page.locator('#basic-list [data-id="basic-2"]')
+    const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
+
+    // Wait for initialization
+    await page.waitForTimeout(100)
+
+    // Focus and select the first item
+    await firstItem.focus()
+    await container.press('Space')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+
+    // Extend the selection downward with Shift+ArrowDown
+    await container.press('Shift+ArrowDown')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveClass(/sortable-selected/)
+    await expect(secondItem).toBeFocused()
+
+    // Extend again - selection should now cover three items
+    await container.press('Shift+ArrowDown')
+    await expect(firstItem).toHaveAttribute('aria-selected', 'true')
+    await expect(secondItem).toHaveAttribute('aria-selected', 'true')
+    await expect(thirdItem).toHaveAttribute('aria-selected', 'true')
+    await expect(thirdItem).toBeFocused()
+  })
+
   test('performs keyboard drag and drop with Enter key', async ({ page }) => {
     const container = page.locator('#basic-list')
     const items = page.locator('#basic-list .sortable-item')
