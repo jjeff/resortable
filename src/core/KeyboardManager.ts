@@ -159,6 +159,14 @@ export class KeyboardManager {
   private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement
 
+    // Never hijack keys while the user is typing. A text field or
+    // contentEditable region (e.g. an inline-editable item title) can live
+    // INSIDE a sortable item; without this guard, Space/arrows/Escape were
+    // treated as keyboard-DnD commands and never reached the field.
+    if (target.isContentEditable || target.matches('input, textarea, select')) {
+      return
+    }
+
     // Handle events on sortable items or the container
     // When using container.press() in tests, the target is the container
     // When pressing keys normally, the target is the focused element
