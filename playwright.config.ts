@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Use a different port in CI to avoid conflicts with dev server on host
-const PORT = process.env.CI ? '4173' : '5173';
+// Use a different port in CI to avoid conflicts with dev server on host.
+// PW_PORT overrides both so parallel worktrees can each serve on their own port.
+const PORT = process.env.PW_PORT || (process.env.CI ? '4173' : '5173');
 
 /**
  * @see https://playwright.dev/docs/test-configuration
