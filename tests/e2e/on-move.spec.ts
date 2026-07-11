@@ -443,13 +443,19 @@ test.describe('onMove (#60) — cross-zone enter (pointer pipeline)', () => {
       ghostClass: 'sortable-ghost',
     })
 
-    // Drop a-1 onto the empty target container.
+    // Drop a-1 onto the empty target container. Scroll it into view and clamp
+    // the drop point to the viewport: the drag pipeline resolves the target via
+    // `document.elementFromPoint`, which returns null for coordinates below the
+    // fold. On taller layouts (macOS runners) the container's raw center falls
+    // ~20px past the 720px viewport, so onMove never fired. See CI regression.
     const from = await center(page, sharedItem('a-1'))
+    await page.locator(SHARED_A_2).scrollIntoViewIfNeeded()
     const targetBox = await page.locator(SHARED_A_2).boundingBox()
     if (!targetBox) throw new Error('no bounding box for target')
+    const innerHeight = await page.evaluate(() => window.innerHeight)
     const to = {
       x: targetBox.x + targetBox.width / 2,
-      y: targetBox.y + targetBox.height / 2,
+      y: Math.min(targetBox.y + targetBox.height / 2, innerHeight - 10),
     }
     await page.mouse.move(from.x, from.y)
     await page.mouse.down()
