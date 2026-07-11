@@ -1,3 +1,10 @@
+## <small>2.0.2 (2026-07-11)</small>
+
+* fix: ignore keys typed into editable elements inside sortable items (#118) ([98220a3](https://github.com/jjeff/resortable/commit/98220a3)), closes [#118](https://github.com/jjeff/resortable/issues/118)
+* Merge pull request #117 from jjeff/fix/onmove-macos-viewport-clamp ([d671af0](https://github.com/jjeff/resortable/commit/d671af0)), closes [#117](https://github.com/jjeff/resortable/issues/117)
+* test(e2e): clamp empty-target drop point to viewport (macOS onMove flake) ([50ce45f](https://github.com/jjeff/resortable/commit/50ce45f))
+* ci: stop attaching dist/** as GitHub release assets ([30b540b](https://github.com/jjeff/resortable/commit/30b540b))
+
 ## <small>2.0.1 (2026-07-11)</small>
 
 * fix: add repository field required for npm provenance ([07d8ec2](https://github.com/jjeff/resortable/commit/07d8ec2))
