@@ -1,3 +1,21 @@
+## <small>2.0.4 (2026-07-11)</small>
+
+* Merge pull request #120 from jjeff/chore/dependabot-dev-deps ([3aca705](https://github.com/jjeff/resortable/commit/3aca705)), closes [#120](https://github.com/jjeff/resortable/issues/120)
+* Merge pull request #122 from jjeff/fix/issue-75-sort-false ([bfac675](https://github.com/jjeff/resortable/commit/bfac675)), closes [#122](https://github.com/jjeff/resortable/issues/122)
+* Merge pull request #123 from jjeff/test/unskip-e2e-suites ([868f10c](https://github.com/jjeff/resortable/commit/868f10c)), closes [#123](https://github.com/jjeff/resortable/issues/123) [#36](https://github.com/jjeff/resortable/issues/36) [#73](https://github.com/jjeff/resortable/issues/73) [#74](https://github.com/jjeff/resortable/issues/74) [#76](https://github.com/jjeff/resortable/issues/76) [#77](https://github.com/jjeff/resortable/issues/77) [#79](https://github.com/jjeff/resortable/issues/79)
+* test(e2e): add CSS-positioned fixtures to un-skip swap-behavior suite (#77) ([95c1d46](https://github.com/jjeff/resortable/commit/95c1d46)), closes [#77](https://github.com/jjeff/resortable/issues/77)
+* test(e2e): fix firefox FLIP serialization + skip ghost drag-class on mobile ([c0c1559](https://github.com/jjeff/resortable/commit/c0c1559)), closes [#48](https://github.com/jjeff/resortable/issues/48) [#62](https://github.com/jjeff/resortable/issues/62)
+* test(e2e): make delay-options deterministic via clock API (#76) ([f38c7ce](https://github.com/jjeff/resortable/commit/f38c7ce)), closes [#76](https://github.com/jjeff/resortable/issues/76)
+* test(e2e): resolve basic-sortable hover + touch skips (#74) ([c959fb4](https://github.com/jjeff/resortable/commit/c959fb4)), closes [#74](https://github.com/jjeff/resortable/issues/74)
+* test(e2e): rewrite animation suite to pointer pipeline + deterministic timing (#79) ([752d786](https://github.com/jjeff/resortable/commit/752d786)), closes [#79](https://github.com/jjeff/resortable/issues/79) [#73](https://github.com/jjeff/resortable/issues/73)
+* test(e2e): rewrite atomic-drag event tests to pointer pipeline (#73) ([bc0d52c](https://github.com/jjeff/resortable/commit/bc0d52c)), closes [#73](https://github.com/jjeff/resortable/issues/73)
+* test(e2e): skip mouse-clone feature-demos tests on mobile emulation ([831496e](https://github.com/jjeff/resortable/commit/831496e)), closes [#48](https://github.com/jjeff/resortable/issues/48) [#62](https://github.com/jjeff/resortable/issues/62)
+* test(keyboard): un-skip Shift+Arrow selection tests + add e2e coverage (#36) ([607a5ac](https://github.com/jjeff/resortable/commit/607a5ac)), closes [#36](https://github.com/jjeff/resortable/issues/36)
+* fix(core): honor sort:false to block intra-list reorder (#75) ([a8b7265](https://github.com/jjeff/resortable/commit/a8b7265)), closes [#75](https://github.com/jjeff/resortable/issues/75) [#34](https://github.com/jjeff/resortable/issues/34)
+* chore(deps): patch dev-only Dependabot advisories ([119883e](https://github.com/jjeff/resortable/commit/119883e))
+* chore(test): allow PW_PORT to override e2e dev-server port ([7016174](https://github.com/jjeff/resortable/commit/7016174))
+* chore(test): wire PW_PORT through to vite dev-server port ([3bc4e75](https://github.com/jjeff/resortable/commit/3bc4e75))
+
 ## <small>2.0.3 (2026-07-11)</small>
 
 * fix(docs): link docs-folder index to a file, not the directory ([60cb9eb](https://github.com/jjeff/resortable/commit/60cb9eb))
