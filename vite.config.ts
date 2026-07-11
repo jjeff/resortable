@@ -43,7 +43,8 @@ export default defineConfig({
   },
   server: {
     open: !process.env.CI,
-    port: process.env.CI ? 4173 : 5173, // Standard Vite port for debugging
+    // PW_PORT lets parallel worktrees each serve on their own port (mirrors playwright.config.ts).
+    port: Number(process.env.PW_PORT) || (process.env.CI ? 4173 : 5173),
     strictPort: false, // Allow Vite to find another port if needed
     host: process.env.CI ? '0.0.0.0' : 'localhost',
   },
