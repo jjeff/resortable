@@ -15,7 +15,7 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
 ## Documentation
 
-Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortable/) · folder index: [`docs/`](./docs/)
+Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortable/) · folder index: [`docs/`](./docs/README.md)
 
 | Guide | What's inside |
 | --- | --- |
