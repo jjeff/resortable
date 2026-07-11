@@ -103,6 +103,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjeff/resortable.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jjeff/resortable/issues"
+  },
+  "homepage": "https://github.com/jjeff/resortable#readme",
   "engines": {
     "node": ">=18.0.0"
   },
