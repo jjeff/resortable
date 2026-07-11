@@ -386,8 +386,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
    * Selector for surfaces that BLOCK marquee-start / click-away-deselect.
    * An entry with a `hitSelector` only claims that sub-area (a song row
    * blocks on its drag handle, but its empty body is valid marquee-start
-   * space — legacy Visibox MultiSelect exceptions were `.clip, .handle`,
-   * never the whole `.song`).
+   * space — a typical consumer blocks on `.clip, .handle`, never the
+   * whole `.song` row).
    */
   private scopedBlockingSelector(sortable: SortableInstance): string {
     return this.scopeEntries(sortable)
@@ -676,7 +676,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
   /**
    * The scope kind of an existing selection (or null when empty) — an
    * additive/subtractive marquee stays locked to the kind already selected,
-   * matching the mode-locking in Visibox's legacy MultiSelect.
+   * matching classic multi-select mode-locking.
    */
   private kindOfSnapshot(
     sortable: SortableInstance,
@@ -766,8 +766,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
   /**
    * Convert a viewport point into the marquee's coordinate space:
    * content coordinates of the scroll container when scroll-anchored
-   * (clamped inside the scrollable content, like the legacy Visibox
-   * marquee), viewport coordinates otherwise.
+   * (clamped inside the scrollable content), viewport coordinates
+   * otherwise.
    */
   private toMarqueePoint(
     sortable: SortableInstance,
@@ -920,7 +920,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
   /**
    * Auto-scroll the anchored container while the pointer sits near its
    * top/bottom edge, stretching the marquee and re-hit-testing as content
-   * moves. Time-based speed (px/ms) like the legacy Visibox marquee.
+   * moves. Time-based speed (px/ms), not per-event steps.
    */
   private updateAutoScroll(
     sortable: SortableInstance,
