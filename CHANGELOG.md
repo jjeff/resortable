@@ -1,3 +1,12 @@
+## <small>2.0.3 (2026-07-11)</small>
+
+* fix(docs): link docs-folder index to a file, not the directory ([60cb9eb](https://github.com/jjeff/resortable/commit/60cb9eb))
+* docs: add badges, cross-doc navigation, and canonical-repo ribbon ([883af98](https://github.com/jjeff/resortable/commit/883af98))
+* docs: generalize consumer-app references in comments and design notes ([5415a5a](https://github.com/jjeff/resortable/commit/5415a5a))
+* docs: remove alpha banner from landing page, sync version to 2.0.2 ([8457c1d](https://github.com/jjeff/resortable/commit/8457c1d))
+* Merge pull request #119 from jjeff/chore/remove-consumer-app-references ([6e5727c](https://github.com/jjeff/resortable/commit/6e5727c)), closes [#119](https://github.com/jjeff/resortable/issues/119)
+* ci(docs): sync landing-page version badge from package.json ([a4d2ecd](https://github.com/jjeff/resortable/commit/a4d2ecd))
+
 ## <small>2.0.2 (2026-07-11)</small>
 
 * fix: ignore keys typed into editable elements inside sortable items (#118) ([98220a3](https://github.com/jjeff/resortable/commit/98220a3)), closes [#118](https://github.com/jjeff/resortable/issues/118)
