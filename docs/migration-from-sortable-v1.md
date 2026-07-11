@@ -1,5 +1,7 @@
 # Migrating from Sortable.js v1 to Resortable v2.0.0
 
+<sub>[← Home](../README.md) · [Docs hub](./README.md) · Related: [Plugin Development](./plugin-development.md) · [Accessibility](./accessibility.md) · [API Reference](https://jjeff.github.io/resortable/api/)</sub>
+
 This guide is for users with a working Sortable.js v1.x codebase porting to Resortable v2.
 
 Jump to:

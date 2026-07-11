@@ -2,7 +2,31 @@
 
 Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
+[![npm version](https://img.shields.io/npm/v/resortable?logo=npm&color=cb3837)](https://www.npmjs.com/package/resortable)
+[![npm downloads](https://img.shields.io/npm/dm/resortable?logo=npm&color=cb3837)](https://www.npmjs.com/package/resortable)
+[![CI](https://img.shields.io/github/actions/workflow/status/jjeff/resortable/ci.yml?branch=main&logo=github&label=CI)](https://github.com/jjeff/resortable/actions/workflows/ci.yml)
+[![gzip size](https://img.shields.io/bundlephobia/minzip/resortable?label=gzip)](https://bundlephobia.com/package/resortable)
+[![TypeScript](https://img.shields.io/npm/types/resortable?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/npm/l/resortable?color=blue)](./LICENSE)
+
 > **Migrating from Sortable.js?** See the [migration guide](./docs/migration-from-sortable-v1.md) for the option/plugin/breaking-change delta.
+
+**Contents:** [Features](#features) · [Install](#installation) · [Quick start](#quick-start) · [Options](#options) · [Methods](#methods) · [Static API](#static-api) · [Plugins](#plugins) · [Examples](#examples) · [Development](#development) · [Architecture](#architecture)
+
+## Documentation
+
+Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortable/) · folder index: [`docs/`](./docs/)
+
+| Guide | What's inside |
+| --- | --- |
+| [API Reference](https://jjeff.github.io/resortable/api/) | TypeDoc — every exported class, interface, option, and type |
+| [Migration from Sortable v1](./docs/migration-from-sortable-v1.md) | Option renames, plugin changes, and breaking-change delta |
+| [Plugin Development](./docs/plugin-development.md) | Plugin lifecycle, hook reference, and authoring patterns |
+| [Accessibility](./docs/accessibility.md) | Keyboard contract, ARIA attributes, and the WCAG 2.1 AA audit |
+
+**Live:** [Examples](https://jjeff.github.io/resortable/demo/examples/) · [Showcase](https://jjeff.github.io/resortable/demo/) · [Playground](https://jjeff.github.io/resortable/demo/playground.html)
+&nbsp;•&nbsp;
+**Project:** [Architecture](./ARCHITECTURE.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md)
 
 ## Features
 
@@ -29,11 +53,11 @@ npm install resortable
 The UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking changes:
 
 ```html
-<!-- unpkg -->
-<script src="https://unpkg.com/resortable@2.0.0/dist/sortable.umd.js"></script>
+<!-- unpkg — @2 tracks the latest 2.x (major-pinned, no surprise breaking changes) -->
+<script src="https://unpkg.com/resortable@2/dist/sortable.umd.js"></script>
 
 <!-- or jsDelivr -->
-<script src="https://cdn.jsdelivr.net/npm/resortable@2.0.0/dist/sortable.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/resortable@2/dist/sortable.umd.js"></script>
 
 <script>
   // The UMD build attaches the library as `window.Sortable`
@@ -199,6 +223,8 @@ npm run test:e2e     # Run E2E tests (Playwright)
 npm run type-check   # TypeScript strict check
 npm run lint         # ESLint
 ```
+
+Setup, conventions, and the PR checklist live in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Architecture
 

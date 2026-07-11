@@ -1,5 +1,7 @@
 # Plugin Development Guide
 
+<sub>[← Home](../README.md) · [Docs hub](./README.md) · Related: [Migration](./migration-from-sortable-v1.md) · [Accessibility](./accessibility.md) · [API Reference](https://jjeff.github.io/resortable/api/)</sub>
+
 This guide explains how to create custom plugins for the Resortable library.
 
 ## Overview

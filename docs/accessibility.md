@@ -1,5 +1,7 @@
 # Accessibility
 
+<sub>[← Home](../README.md) · [Docs hub](./README.md) · Related: [Migration](./migration-from-sortable-v1.md) · [Plugin Development](./plugin-development.md) · [API Reference](https://jjeff.github.io/resortable/api/)</sub>
+
 Resortable is designed to be usable by keyboard-only users and screen-reader
 users out of the box. This document is the canonical reference for the
 keyboard contract, the ARIA attributes the library emits, and the screen-reader
