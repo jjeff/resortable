@@ -29,8 +29,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Pin >= 22.14.0 to satisfy semantic-release@25 / @semantic-release/npm@13 engines
+          node-version: '22.14.0'
           cache: 'npm'
+
+      # npm >= 11.5.1 is required for OIDC trusted publishing. Pin to 11.x so a
+      # future npm major (which may require newer Node) can't break the job.
+      - name: Upgrade npm
+        run: npm install -g 'npm@^11.5.1'
 
       - name: Install dependencies
         run: npm ci
@@ -38,8 +44,9 @@ jobs:
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
 
-      - name: Run tests
-        run: npm test
+      # E2E is gated on PRs by ci.yml; release only needs unit tests
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Build library
         run: npm run build
@@ -47,8 +54,9 @@ jobs:
       - name: Build with Rollup
         run: npm run build:rollup
 
+      # No NPM_TOKEN: npm publish authenticates via OIDC trusted publishing.
+      # Provenance is generated automatically. Requires id-token: write (above).
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release

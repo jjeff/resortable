@@ -67,6 +67,7 @@ export default [
       'dist/**',
       'docs/**',
       'node_modules/**',
+      '.worktrees/**',
       'legacy-sortable/**',
       '.remember/**',
       '*.config.js',
