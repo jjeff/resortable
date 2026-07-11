@@ -40,6 +40,14 @@ jobs:
       - name: Build examples site
         run: npm run build:examples
 
+      # Keep the hand-authored landing-page version badge in sync with the
+      # published package version. Avoids the drift that left an old
+      # pre-release string on the live site.
+      - name: Sync version badge
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          sed -i "s|<span class=\"version\">v[^<]*</span>|<span class=\"version\">v${VERSION}</span>|" docs/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main'
