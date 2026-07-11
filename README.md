@@ -2,8 +2,6 @@
 
 Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 
-> **Alpha — Not ready for production use.** This library is under active development and has not been published to npm. APIs will change. If you need a drag-and-drop library today, use [SortableJS](https://github.com/SortableJS/Sortable).
-
 > **Migrating from Sortable.js?** See the [migration guide](./docs/migration-from-sortable-v1.md) for the option/plugin/breaking-change delta.
 
 ## Features
@@ -16,7 +14,7 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 - **Multi-Drag** — Ctrl+Click / Shift+Click selection, drag multiple items together
 - **Plugin System** — AutoScroll, Swap plugins (extensible architecture)
 - **TypeScript** — Strict types with full IntelliSense support
-- **Small** — ~17KB gzipped (ESM)
+- **Small** — ~19KB gzipped (ESM)
 
 ## Installation
 
@@ -26,18 +24,16 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 npm install resortable
 ```
 
-> Resortable is not yet published to npm (`2.0.0-alpha.1` is the current in-repo version). Until first publish, install from a Git ref: `npm install jjeff/resortable`.
-
 ### CDN (UMD)
 
-Once published, the UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking changes:
+The UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking changes:
 
 ```html
 <!-- unpkg -->
-<script src="https://unpkg.com/resortable@2.0.0-alpha.1/dist/sortable.umd.js"></script>
+<script src="https://unpkg.com/resortable@2.0.0/dist/sortable.umd.js"></script>
 
 <!-- or jsDelivr -->
-<script src="https://cdn.jsdelivr.net/npm/resortable@2.0.0-alpha.1/dist/sortable.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/resortable@2.0.0/dist/sortable.umd.js"></script>
 
 <script>
   // The UMD build attaches the library as `window.Sortable`
@@ -178,7 +174,7 @@ See the [Plugin Development Guide](./docs/plugin-development.md) for the plugin 
 
 ## API Reference
 
-Full TypeDoc-generated API reference: [jjeff.github.io/resortable/api/](https://jjeff.github.io/resortable/api/) *(coming soon — TypeDoc-generated, deployed via GitHub Pages)*.
+Full TypeDoc-generated API reference: [jjeff.github.io/resortable/api/](https://jjeff.github.io/resortable/api/).
 
 ## Framework wrappers
 

@@ -1,4 +1,4 @@
-# Migrating from Sortable.js v1 to Resortable v2.0.0-alpha.1
+# Migrating from Sortable.js v1 to Resortable v2.0.0
 
 This guide is for users with a working Sortable.js v1.x codebase porting to Resortable v2.
 
