@@ -338,8 +338,7 @@ describe('KeyboardManager', () => {
       keyboardManager.attach()
     })
 
-    // TODO: Implement Shift+Arrow for extending selection
-    it.skip('should extend selection with Shift+ArrowDown', () => {
+    it('should extend selection with Shift+ArrowDown', () => {
       selectionManager.select(items[1])
       selectionManager.setFocus(items[1])
 
@@ -355,7 +354,7 @@ describe('KeyboardManager', () => {
       expect(selectionManager.getFocused()).toBe(items[2])
     })
 
-    it.skip('should extend selection with Shift+ArrowUp', () => {
+    it('should extend selection with Shift+ArrowUp', () => {
       selectionManager.select(items[2])
       selectionManager.setFocus(items[2])
 
