@@ -29,12 +29,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Pin >= 22.14.0 to satisfy semantic-release@25 / @semantic-release/npm@13 engines
+          node-version: '22.14.0'
           cache: 'npm'
 
-      # npm >= 11.5.1 is required for OIDC trusted publishing
+      # npm >= 11.5.1 is required for OIDC trusted publishing. Pin to 11.x so a
+      # future npm major (which may require newer Node) can't break the job.
       - name: Upgrade npm
-        run: npm install -g npm@latest
+        run: npm install -g 'npm@^11.5.1'
 
       - name: Install dependencies
         run: npm ci
