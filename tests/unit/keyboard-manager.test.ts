@@ -478,4 +478,42 @@ describe('KeyboardManager', () => {
       })
     })
   })
+
+  describe('Editable targets', () => {
+    it('ignores keys typed into a contentEditable region inside an item', () => {
+      keyboardManager.attach()
+      const title = document.createElement('span')
+      title.contentEditable = 'true'
+      items[0].appendChild(title)
+      // jsdom doesn't implement isContentEditable; force the accessor.
+      Object.defineProperty(title, 'isContentEditable', { value: true })
+
+      const event = new KeyboardEvent('keydown', {
+        key: ' ',
+        bubbles: true,
+        cancelable: true,
+      })
+      title.dispatchEvent(event)
+
+      // Space while typing must NOT be treated as keyboard-DnD grab:
+      // no preventDefault, no selection change.
+      expect(event.defaultPrevented).toBe(false)
+      expect(selectionManager.getSelected()).toHaveLength(0)
+    })
+
+    it('ignores keys typed into an input inside an item', () => {
+      keyboardManager.attach()
+      const input = document.createElement('input')
+      items[0].appendChild(input)
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+      })
+      input.dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(false)
+    })
+  })
 })
