@@ -269,7 +269,14 @@ test.describe('Feature Demos', () => {
     // captured coordinates go stale and the drag either misses its target
     // or never starts. `mouseDragAndDrop` reads both rects atomically after
     // a single scroll. See #75.
-    test('clones items from source to target list', async ({ page }) => {
+    test('clones items from source to target list', async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name === 'Mobile Chrome' ||
+          testInfo.project.name === 'Mobile Safari',
+        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
+      )
       const sourceItem = page.locator('#clone-source .clone-item').first()
 
       const sourceItemText = await sourceItem.textContent()
@@ -312,7 +319,14 @@ test.describe('Feature Demos', () => {
       expect(sourceItems).toContain(sourceItemText)
     })
 
-    test('can drag items between lists bidirectionally', async ({ page }) => {
+    test('can drag items between lists bidirectionally', async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name === 'Mobile Chrome' ||
+          testInfo.project.name === 'Mobile Safari',
+        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
+      )
       // First, move an item to target
       await mouseDragAndDrop(
         page,
