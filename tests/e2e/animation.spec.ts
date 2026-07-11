@@ -145,10 +145,11 @@ test.describe('Animation System - Full Integration (#79)', () => {
     expect(flip).not.toBeNull()
     expect(flip?.duration).toBe(150)
     expect(flip?.from).not.toBe('translate(0px, 0px)')
-    // Chromium normalizes the authored `'translate(0, 0)'` keyframe value
-    // (src/animation/AnimationManager.ts) to `'translate(0px, 0px)'` when
-    // read back via `getKeyframes()`.
-    expect(flip?.to).toBe('translate(0px, 0px)')
+    // Chromium/WebKit normalize the authored `'translate(0, 0)'` keyframe
+    // value (src/animation/AnimationManager.ts) to `'translate(0px, 0px)'`
+    // when read back via `getKeyframes()`; Firefox collapses the neutral
+    // value to the single-arg shorthand `'translate(0px)'`. Accept both.
+    expect(flip?.to).toMatch(/^translate\(0px(, 0px)?\)$/)
 
     await waitForAnimations(page)
     expect(await idsIn(page, BASIC_LIST)).toEqual([

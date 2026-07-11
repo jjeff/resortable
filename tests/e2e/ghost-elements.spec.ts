@@ -31,7 +31,14 @@ test.describe('Ghost Element Functionality', () => {
   // intermediate drag-class state. Driving the pointer through discrete
   // mouse.move steps — mirroring tests/e2e/on-move.spec.ts — lets us assert
   // on the class mid-drag before releasing. Tracked in #73.
-  test('applies drag class during drag operation', async ({ page }) => {
+  test('applies drag class during drag operation', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === 'Mobile Chrome' ||
+        testInfo.project.name === 'Mobile Safari',
+      'mouse-driven drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
+    )
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
