@@ -478,6 +478,7 @@ export class Sortable {
       onMove: this.options.onMove,
       controlled: this.options.controlled,
       multiDragKey: this.options.multiDragKey,
+      sort: this.options.sort,
     }
   }
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dragAndDropWithAnimation } from './helpers/animations'
+import { mouseDragAndDrop } from './helpers/animations'
 
 test.describe('Feature Demos', () => {
   test.beforeEach(async ({ page }) => {
@@ -147,20 +147,19 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Nested Lists', () => {
-    // FIXME: Hover intercept by parent container — tracked in #75.
-    test.skip('can reorder folders using headers as handles', async ({
-      page,
-    }) => {
-      const firstHeader = page.locator('.nested-header').first()
-      const lastHeader = page.locator('.nested-header').last()
-
-      // Drag first folder to last position
-      await firstHeader.hover()
-      await page.mouse.down()
-      await lastHeader.hover()
-      await page.mouse.move(0, 20) // Move below the last header
-      await page.mouse.up()
-
+    test('can reorder folders using headers as handles', async ({ page }) => {
+      // Anchored on the stable `data-id` on `.nested-container`, not
+      // `.nested-header:first()/:last()`: those dynamic locators get
+      // re-resolved by `.hover()` mid-drag, and by then they can match the
+      // drag's own ghost/placeholder header (which carries the same class)
+      // instead of a real folder header — Playwright then waits forever for
+      // that transient element to be "stable" (was `#75`'s "hover intercept
+      // by parent container"). `page.dragAndDrop()` on fixed selectors
+      // drives proper multi-step native HTML5 DnD and isn't affected.
+      await page.dragAndDrop(
+        '.nested-container[data-id="folder-1"] .nested-header',
+        '.nested-container[data-id="folder-3"] .nested-header'
+      )
       await page.waitForTimeout(200)
 
       // Check new order
@@ -262,10 +261,22 @@ test.describe('Feature Demos', () => {
   })
 
   test.describe('Shared Lists (Clone Mode)', () => {
-    // FIXME: Clone-mode E2E needs rework — tracked in #75.
-    test.skip('clones items from source to target list (HTML5 drag integration issue)', async ({
+    // Uses `mouseDragAndDrop` (see helpers/animations.ts) rather than
+    // `page.dragAndDrop()` / `dragAndDropWithAnimation`: those resolve
+    // source and target coordinates via two sequential `boundingBox()`
+    // calls, each of which auto-scrolls its own element into view. On this
+    // page that scrolls between the two reads, so the first element's
+    // captured coordinates go stale and the drag either misses its target
+    // or never starts. `mouseDragAndDrop` reads both rects atomically after
+    // a single scroll. See #75.
+    test('clones items from source to target list', async ({
       page,
-    }) => {
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name === 'Mobile Chrome' ||
+          testInfo.project.name === 'Mobile Safari',
+        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
+      )
       const sourceItem = page.locator('#clone-source .clone-item').first()
 
       const sourceItemText = await sourceItem.textContent()
@@ -277,7 +288,7 @@ test.describe('Feature Demos', () => {
         .count()
 
       // Drag from source to target
-      await dragAndDropWithAnimation(
+      await mouseDragAndDrop(
         page,
         '#clone-source .clone-item:first-child',
         '#clone-target'
@@ -308,12 +319,16 @@ test.describe('Feature Demos', () => {
       expect(sourceItems).toContain(sourceItemText)
     })
 
-    // FIXME: Clone-mode bidirectional drag — tracked in #75.
-    test.skip('can drag items between lists bidirectionally', async ({
+    test('can drag items between lists bidirectionally', async ({
       page,
-    }) => {
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name === 'Mobile Chrome' ||
+          testInfo.project.name === 'Mobile Safari',
+        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
+      )
       // First, move an item to target
-      await dragAndDropWithAnimation(
+      await mouseDragAndDrop(
         page,
         '#clone-source .clone-item:first-child',
         '#clone-target'
@@ -324,7 +339,7 @@ test.describe('Feature Demos', () => {
         .locator('#clone-source .clone-item')
         .count()
 
-      await dragAndDropWithAnimation(
+      await mouseDragAndDrop(
         page,
         '#clone-target .clone-item:last-child',
         '#clone-source'
@@ -337,14 +352,13 @@ test.describe('Feature Demos', () => {
       expect(finalSourceCount).toBe(initialSourceCount + 1)
     })
 
-    // FIXME: `sort: false` regression suspected — tracked in #75.
-    test.skip('source list items cannot be reordered', async ({ page }) => {
+    test('source list items cannot be reordered', async ({ page }) => {
       const initialOrder = await page
         .locator('#clone-source .clone-item')
         .evaluateAll((els) => els.map((el) => el.dataset.id))
 
-      // Try to reorder within source - this should fail because sort: false
-      await dragAndDropWithAnimation(
+      // Try to reorder within source - this should fail because sort: false.
+      await mouseDragAndDrop(
         page,
         '#clone-source .clone-item:first-child',
         '#clone-source .clone-item:last-child'

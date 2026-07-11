@@ -105,6 +105,14 @@ export class DragManager implements DragManagerInterface {
   // attribute and avoid duplicate matches in DOM queries when the ghost
   // lives inside the zone (PR2 #29 — `fallbackOnBody: false` default).
   private _dataIdAttr: string
+  // `sort: false` disables reordering WITHIN this zone (legacy parity) —
+  // items can still be dragged OUT (via `group.pull`) or accepted IN (via
+  // `group.put`); only same-zone position changes are blocked. Checked at
+  // each pipeline's same-zone reorder branch (HTML5 `onDragOver`, pointer
+  // `onPointerMove`, and `handleControlledMove`) against the DragManager
+  // that owns the zone actually being reordered — NOT always `this`, since
+  // an item may have already moved into a different zone mid-drag. #75.
+  private sort: boolean
   private _setData?: (dataTransfer: DataTransfer, dragEl: HTMLElement) => void
   // `onMove` is invoked synchronously inside the dragover-driven reorder
   // path with `(MoveEvent, originalEvent)`. Its return value controls the
@@ -185,6 +193,7 @@ export class DragManager implements DragManagerInterface {
         originalEvent: Event
       ) => boolean | -1 | 1 | void
       controlled?: boolean
+      sort?: boolean
     }
   ) {
     // Initialize group manager
@@ -247,6 +256,7 @@ export class DragManager implements DragManagerInterface {
     this._setData = options?.setData
     this._onMove = options?.onMove
     this.controlled = options?.controlled ?? false
+    this.sort = options?.sort ?? true
 
     // Initialize ghost manager with classes
     this.ghostManager = new GhostManager(
@@ -665,6 +675,10 @@ export class DragManager implements DragManagerInterface {
     if (!overIsValid || !over || over.parentElement !== targetZoneElement) {
       return
     }
+    // `sort: false` on the zone the placeholder is CURRENTLY in blocks
+    // further repositioning inside it (#75) — it does not affect the entry
+    // above, which is a cross-zone `put`, not a same-zone sort.
+    if (!targetManager.sort) return
 
     const visible = targetZone.getVisibleItems(items)
     const overIdx = visible.indexOf(over)
@@ -905,6 +919,9 @@ export class DragManager implements DragManagerInterface {
     ) {
       return
     }
+    // `sort: false` blocks reordering WITHIN this zone (#75). The cross-zone
+    // insertion above (a `put`) already happened and is unaffected.
+    if (!this.sort) return
 
     const overIndex = this.zone.getIndex(over)
     const dragIndex = this.zone.getIndex(dragItem)
@@ -1652,6 +1669,12 @@ export class DragManager implements DragManagerInterface {
         // Skip move if FLIP animations are still in progress — prevents oscillation
         // caused by elementFromPoint detecting elements at their animated positions
         if (targetZone.isAnimating) return
+
+        // `sort: false` on the zone currently holding the item blocks further
+        // repositioning inside it (#75). Use the MANAGER THAT OWNS
+        // `targetZoneElement` — not always `this`, since the item may have
+        // already moved into a different zone earlier in this same drag.
+        if (!(targetDragManager ?? this).sort) return
 
         const currentItems = targetZone.getItems()
         const currentIndex = currentItems.indexOf(movingElement)
