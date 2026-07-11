@@ -27,57 +27,37 @@ test.describe('Ghost Element Functionality', () => {
     await page.mouse.up()
   })
 
-  // FIXME: Atomic dragAndDrop prevents observing intermediate drag class state.
-  // Tracked in #73.
-  test.skip('applies drag class during drag operation - TODO: Flaky due to atomic drag operations', async ({
-    page,
-  }) => {
-    // @todo: This test is flaky because dragAndDrop is atomic in some browsers,
-    // making it impossible to reliably check intermediate states during drag.
-    // The functionality works correctly, but the test timing is unreliable.
-    // This should be reimplemented with a more controllable drag simulation.
-
+  // Playwright's atomic dragAndDrop() completes too fast to observe
+  // intermediate drag-class state. Driving the pointer through discrete
+  // mouse.move steps — mirroring tests/e2e/on-move.spec.ts — lets us assert
+  // on the class mid-drag before releasing. Tracked in #73.
+  test('applies drag class during drag operation', async ({ page }) => {
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
+    const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
-    // Start drag using dragAndDrop to ensure proper event sequence
-    // but interrupt it to check classes during drag
-    const dragPromise = page.dragAndDrop(
-      '#basic-list [data-id="basic-1"]',
-      '#basic-list [data-id="basic-3"]',
-      {
-        // Use steps to slow down the drag so we can check classes
-        sourcePosition: { x: 10, y: 10 },
-        targetPosition: { x: 10, y: 10 },
-      }
-    )
-
-    // Wait a bit for drag to start
-    await page.waitForTimeout(100)
-
-    // Check classes are applied during drag
-    // Note: This might be flaky as dragAndDrop is atomic in some browsers
-    // If this continues to fail, we may need to skip this specific test
-    const hasChosenClass = await firstItem.evaluate((el) =>
-      el.classList.contains('sortable-chosen')
-    )
-    const hasDragClass = await firstItem.evaluate((el) =>
-      el.classList.contains('sortable-drag')
-    )
-
-    // Complete the drag
-    await dragPromise
-
-    // If classes weren't detected during drag (due to atomic operation),
-    // at least verify they're removed after
-    if (!hasChosenClass && !hasDragClass) {
-      // Skip the during-drag assertion if we couldn't catch it
-      // This can happen when dragAndDrop is atomic in some browsers
-    } else {
-      expect(hasChosenClass).toBeTruthy()
-      expect(hasDragClass).toBeTruthy()
+    const fromBox = await firstItem.boundingBox()
+    const toBox = await thirdItem.boundingBox()
+    if (!fromBox || !toBox) throw new Error('missing bounding box')
+    const from = {
+      x: fromBox.x + fromBox.width / 2,
+      y: fromBox.y + fromBox.height / 2,
     }
+    const to = { x: toBox.x + toBox.width / 2, y: toBox.y + toBox.height / 2 }
 
-    // Check classes are removed after drag
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x, from.y, { steps: 3 })
+
+    // Both classes are applied as soon as the ghost is created (commit
+    // phase), which happens immediately since basic-list uses the default
+    // (zero) fallbackTolerance.
+    await expect(firstItem).toHaveClass(/sortable-chosen/)
+    await expect(firstItem).toHaveClass(/sortable-drag/)
+
+    await page.mouse.move(to.x, to.y, { steps: 10 })
+    await page.mouse.up()
+
+    // Classes are removed after drag completes.
     await expect(firstItem).not.toHaveClass(/sortable-chosen/)
     await expect(firstItem).not.toHaveClass(/sortable-drag/)
   })
