@@ -1,3 +1,10 @@
+## <small>2.0.1 (2026-07-11)</small>
+
+* fix: add repository field required for npm provenance ([07d8ec2](https://github.com/jjeff/resortable/commit/07d8ec2))
+* fix: correct misleading alpha warnings in published README and docs ([d092d83](https://github.com/jjeff/resortable/commit/d092d83))
+* Merge pull request #115 from jjeff/ci/npm-trusted-publishing ([56108c8](https://github.com/jjeff/resortable/commit/56108c8)), closes [#115](https://github.com/jjeff/resortable/issues/115)
+* ci: pin Node and npm versions in release workflow ([c54f936](https://github.com/jjeff/resortable/commit/c54f936))
+
 # Changelog
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
