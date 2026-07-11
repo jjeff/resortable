@@ -3,7 +3,7 @@ import { AutoScrollPlugin } from '../../src/plugins/AutoScrollPlugin'
 import type { SortableInstance } from '../../src/types/index'
 
 /**
- * Unit coverage for the 2026-07 AutoScroll rewrite (Visibox QA findings):
+ * Unit coverage for the 2026-07 AutoScroll rewrite (downstream QA findings):
  *
  * 1. No scrolling before a real cursor position is observed —
  *    lastMousePosition starts at (0,0) and scrolling toward it on drag

@@ -3,7 +3,7 @@ import { Sortable } from '../../src/index'
 
 /**
  * Unit coverage for the 2026-07 SortableJS-parity fixes driven by the
- * Visibox design-system integration:
+ * first real-world controlled-mode integration:
  *
  * 1. The placeholder is a CLONE of the dragged item (not a bare gray box),
  *    marked with `data-resortable-placeholder` and excluded from item

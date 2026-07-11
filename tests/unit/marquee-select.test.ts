@@ -1030,7 +1030,7 @@ describe('MarqueeSelectPlugin', () => {
       ;(sortableB.options as { draggable?: string }).draggable = '.clip'
       ;(sortableSongs.options as { draggable?: string }).draggable = '.song'
 
-      // Song rows CONTAIN the clip grids (like the Visibox controller).
+      // Song rows CONTAIN the clip grids (nested-list layout).
       songs[0].appendChild(sortableA.element)
       songs[1].appendChild(sortableB.element)
       wrapper.appendChild(sortableSongs.element)

@@ -2,8 +2,8 @@ import { expect, test, Page } from '@playwright/test'
 
 /**
  * Controlled-mode POINTER-pipeline drags against items whose descendants
- * re-enable `pointer-events` — the structure that broke the Visibox
- * design-system integration.
+ * re-enable `pointer-events` — the structure that broke the first
+ * real-world controlled-mode integration.
  *
  * The cursor-following ghost is a clone positioned exactly under the
  * cursor. Its inline `pointer-events: none` is defeated by consumer CSS
