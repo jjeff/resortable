@@ -1934,7 +1934,11 @@ export class DragManager implements DragManagerInterface {
    *
    * 1. Walk up `el`'s ancestor chain looking for a registered sortable
    *    container (#32 — covers both populated containers and empties the
-   *    cursor is directly inside).
+   *    cursor is directly inside). When the nearest such container can't
+   *    accept THIS drag (group mismatch) but the hovered item nests a
+   *    container that CAN — the nested-sortables case, e.g. a clip dropped
+   *    on a song's header while the song's clip grid lives just below —
+   *    prefer that compatible nested container (#124).
    * 2. If no ancestor matches and cursor coordinates were supplied, scan
    *    registered *empty* sortables and pick the first one whose bounding
    *    rect — expanded by its `emptyInsertThreshold` — contains the
@@ -1948,6 +1952,15 @@ export class DragManager implements DragManagerInterface {
     let cur: Element | null = el
     while (cur) {
       if (cur instanceof HTMLElement && dragManagerRegistry.has(cur)) {
+        // A registered container the drag can't join (e.g. a clip over the
+        // outer song-list zone) may still enclose the pointer inside an
+        // item whose own subtree holds a group-compatible container — the
+        // song's clip grid. Resolve to that so a drop onto any part of the
+        // target item (header, padding) lands in its nested list (#124).
+        if (this.activePointerId !== null && !this.canDropInZone(cur)) {
+          const nested = this.findCompatibleNestedZone(cur, el, y)
+          if (nested) return nested
+        }
         return cur
       }
       cur = cur.parentElement
@@ -1972,6 +1985,45 @@ export class DragManager implements DragManagerInterface {
       }
     }
     return null
+  }
+
+  /**
+   * Nested-sortables fallback for {@link findSortableContainerUnder}: the
+   * ancestor walk landed on `outerZone`, a registered container this drag
+   * can't join. Find the item of `outerZone` the pointer is inside, then a
+   * group-compatible registered container nested in that item (a song's
+   * clip grid under its header). Returns the nested container nearest the
+   * pointer's `y`, or null when the item nests no compatible container.
+   */
+  private findCompatibleNestedZone(
+    outerZone: HTMLElement,
+    pointerEl: Element | null,
+    y?: number
+  ): HTMLElement | null {
+    // Direct child of `outerZone` that contains the pointer — the hovered
+    // item (e.g. the `.song`). Bail if the pointer isn't inside an item.
+    let item: Element | null = pointerEl
+    while (item && item.parentElement !== outerZone) {
+      item = item.parentElement
+    }
+    if (!item) return null
+
+    let best: HTMLElement | null = null
+    let bestDist = Infinity
+    for (const [zoneEl] of dragManagerRegistry) {
+      if (zoneEl === outerZone || !item.contains(zoneEl)) continue
+      if (!this.canDropInZone(zoneEl)) continue
+      if (y === undefined) return zoneEl
+      const rect = zoneEl.getBoundingClientRect()
+      // Distance from the pointer to the zone's vertical span (0 inside).
+      const dist =
+        y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0
+      if (dist < bestDist) {
+        bestDist = dist
+        best = zoneEl
+      }
+    }
+    return best
   }
 
   /** Get the selection manager for this drag manager */
