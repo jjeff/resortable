@@ -1367,7 +1367,15 @@ export class DragManager implements DragManagerInterface {
     // (click / modifier+click), not a side effect of dragging.
     this.draggedItems = [target]
     if (this._selectionManager.isSelected(target)) {
-      this.draggedItems = this._selectionManager.getSelected()
+      // Drag the selection in DOM order, not selection (click) order —
+      // `getSelected()` returns the Set's insertion order, so a block
+      // selected out of visual order (marquee, shift-range walked
+      // backward, scattered ctrl-clicks) would otherwise land scrambled
+      // at the drop site. Sort by index within the source zone so the
+      // moved run preserves visual order (Sortable.js multiDrag parity).
+      this.draggedItems = this._selectionManager
+        .getSelected()
+        .sort((a, b) => this.zone.getIndex(a) - this.zone.getIndex(b))
     }
 
     // Dim non-anchor selected items

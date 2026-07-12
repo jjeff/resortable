@@ -243,4 +243,54 @@ test.describe('multi-drag cross-zone in a nested scrolling list (#124 follow-up)
     expect(last.to).toBe(`zone-${TARGET_SONG}`)
     expect(last.itemCount).toBe(SELECT)
   })
+
+  test('a multi-selection built out of visual order drags as a DOM-ordered block', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      /Mobile/.test(testInfo.project.name),
+      'Desktop-only pointer pipeline'
+    )
+    await buildNestedSongs(page)
+
+    // Select five clips in SCRAMBLED order (not left-to-right). The drag
+    // must still move them as a contiguous run in visual/DOM order — a
+    // block selected via marquee/scattered clicks otherwise lands
+    // reordered at the drop site (Sortable.js multiDrag parity).
+    const clickOrder = [2, 0, 4, 1, 3]
+    for (const c of clickOrder) {
+      await page
+        .locator(`#s${SOURCE_SONG}c${c}`)
+        .click({ modifiers: ['ControlOrMeta'] })
+    }
+
+    const from = await center(page, `#s${SOURCE_SONG}c0`.slice(1))
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.waitForTimeout(200)
+    await page.evaluate((tid) => {
+      document.getElementById(tid)?.scrollIntoView({ block: 'center' })
+    }, `song-${TARGET_SONG}`)
+    const to = await center(page, `song-${TARGET_SONG}`)
+    await page.mouse.move(to.x, to.y, { steps: 20 })
+    await page.waitForTimeout(250)
+    await page.mouse.move(to.x + 1, to.y)
+    await page.waitForTimeout(100)
+    await page.mouse.up()
+
+    const intents = await page.evaluate(
+      () => (window as unknown as AsWindow).__intents ?? []
+    )
+    expect(intents.length).toBeGreaterThan(0)
+    const last = intents[intents.length - 1]
+    expect(last.itemCount).toBe(clickOrder.length)
+    // The block's source indices come out ascending (DOM order), NOT in
+    // the [2,0,4,1,3] click order — that is the multiDrag-order fix.
+    expect(last.oldIndexes).toEqual([0, 1, 2, 3, 4])
+    // ...and they land as a contiguous ascending run in the target.
+    const ni = last.newIndexes ?? []
+    for (let i = 1; i < ni.length; i++) {
+      expect(ni[i]).toBe(ni[i - 1] + 1)
+    }
+  })
 })
