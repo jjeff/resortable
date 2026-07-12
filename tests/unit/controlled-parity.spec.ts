@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
 
 /**
@@ -291,6 +291,140 @@ describe('controlled-mode parity fixes (2026-07)', () => {
         scrollSpeed: 15,
       })
       expect(() => sortable.destroy()).not.toThrow()
+    })
+  })
+
+  // Autoscroll under a stationary pointer must keep the drop target fresh
+  // (jjeff/resortable#124; downstream spaceagetv/missioncontrol#4566).
+  //
+  // The pointer pipeline resolves the drop target from
+  // `document.elementFromPoint(pointer.clientX, pointer.clientY)` on
+  // `pointermove`. When a long list autoscrolls under a HELD (non-moving)
+  // pointer, no `pointermove` fires, so the target was never recomputed and
+  // the drop fell back to the source index. The fix re-resolves on `scroll`.
+  describe('autoscroll keeps the drop target fresh (#124)', () => {
+    const ITEM_H = 40
+    const VIEWPORT_H = 200 // shows 5 rows at a time
+    let list: HTMLElement
+    let items: HTMLElement[]
+
+    // Build a tall list whose item rects and `elementFromPoint` both track
+    // `list.scrollTop`, so scrolling under a stationary pointer changes which
+    // row sits beneath a fixed viewport-Y — exactly the real-world geometry.
+    function makeScrollList(count: number): void {
+      document.body.innerHTML = ''
+      list = document.createElement('ul')
+      list.style.overflowY = 'auto'
+      for (let i = 0; i < count; i++) {
+        const li = document.createElement('li')
+        li.className = 'item'
+        li.id = `it-${i}`
+        li.dataset.id = `it-${i}`
+        li.textContent = `Item ${i}`
+        list.appendChild(li)
+      }
+      document.body.appendChild(list)
+      list.scrollTop = 0
+
+      items = Array.from(list.children) as HTMLElement[]
+      list.getBoundingClientRect = () =>
+        ({
+          top: 0,
+          bottom: VIEWPORT_H,
+          left: 0,
+          right: 200,
+          width: 200,
+          height: VIEWPORT_H,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect
+      items.forEach((li, i) => {
+        li.getBoundingClientRect = () => {
+          const top = i * ITEM_H - list.scrollTop
+          return {
+            top,
+            bottom: top + ITEM_H,
+            left: 0,
+            right: 200,
+            width: 200,
+            height: ITEM_H,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          } as DOMRect
+        }
+      })
+
+      // Hit-test that honours the current scroll offset.
+      document.elementFromPoint = (_x: number, y: number): Element | null => {
+        if (y < 0 || y >= VIEWPORT_H) return list
+        const row = Math.floor((y + list.scrollTop) / ITEM_H)
+        return items[row] ?? list
+      }
+    }
+
+    function pointer(type: string, y: number, id = 7): PointerEvent {
+      const e = mkPointer(type, id)
+      Object.defineProperties(e, {
+        clientX: { value: 100, configurable: true },
+        clientY: { value: y, configurable: true },
+      })
+      return e
+    }
+
+    // Drag item 0 downward: press, one move to `moveY`, optionally autoscroll
+    // to `scrollTo` WITHOUT another move, release. Returns onEnd's newIndex.
+    function dragWithOptionalScroll(
+      moveY: number,
+      scrollTo: number | null
+    ): number {
+      let ended = -1
+      sortable = new Sortable(list, {
+        controlled: true,
+        draggable: '.item',
+        animation: 0,
+        fallbackTolerance: 0,
+        onEnd: (evt) => {
+          ended = evt.newIndex ?? -1
+        },
+      })
+
+      const dragged = items[0]
+      dragged.dispatchEvent(pointer('pointerdown', 0))
+      document.dispatchEvent(pointer('pointermove', moveY))
+      if (scrollTo !== null) {
+        list.scrollTop = scrollTo
+        list.dispatchEvent(new Event('scroll', { bubbles: false }))
+      }
+      document.dispatchEvent(pointer('pointerup', moveY))
+
+      sortable.destroy()
+      return ended
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+      // Restore the real elementFromPoint the shared afterEach can't reach.
+      delete (document as unknown as { elementFromPoint?: unknown })
+        .elementFromPoint
+    })
+
+    it('recomputes the target after the list scrolls under a held pointer', () => {
+      // Control: hold the pointer near the bottom edge (row 4), no scroll.
+      makeScrollList(12)
+      const withoutScroll = dragWithOptionalScroll(180, null)
+
+      // Same held pointer, but the list autoscrolls two viewports down so a
+      // much later row (≈ row 9) now sits under the fixed Y. No pointermove.
+      makeScrollList(12)
+      const withScroll = dragWithOptionalScroll(180, 200)
+
+      // The scrolled drag must land LATER than the un-scrolled one — the
+      // target followed the scrolled content instead of freezing.
+      expect(withScroll).toBeGreaterThan(withoutScroll)
+      // And it must not collapse back to the source row (the #4566 symptom).
+      expect(withScroll).toBeGreaterThan(0)
     })
   })
 })

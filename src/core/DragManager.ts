@@ -137,6 +137,12 @@ export class DragManager implements DragManagerInterface {
   // pointer drag; null when nothing is hidden.
   private hiddenDisplays: Map<HTMLElement, string> | null = null
 
+  // Last pointer-move seen during an active pointer drag. When the list
+  // autoscrolls under a STATIONARY pointer no `pointermove` fires, so the
+  // scroll listener replays this event to re-resolve the drop target against
+  // the new scroll offset (#124). Null outside a pointer drag.
+  private lastPointerMoveEvent: PointerEvent | null = null
+
   private groupManager: GroupManager
 
   private originalTouchActions = new Map<HTMLElement, string>()
@@ -1387,6 +1393,9 @@ export class DragManager implements DragManagerInterface {
     document.addEventListener('pointermove', this.onPointerMove)
     document.addEventListener('pointerup', this.onPointerUp)
     document.addEventListener('pointercancel', this.onPointerCancel)
+    // Re-resolve the drop target when the list autoscrolls under a held
+    // pointer (#124). Capture phase — `scroll` doesn't bubble.
+    document.addEventListener('scroll', this.onDocumentScrollDuringDrag, true)
 
     // Register with global drag state using pointer ID
     const dragId = `pointer-${this.activePointerId}`
@@ -1468,6 +1477,10 @@ export class DragManager implements DragManagerInterface {
 
     // Only process primary pointer events during drag
     if (!e.isPrimary) return
+
+    // Remember the live pointer position so an autoscroll under a held
+    // pointer can replay this resolution against the new scroll offset (#124).
+    this.lastPointerMoveEvent = e
 
     e.preventDefault()
 
@@ -1743,6 +1756,17 @@ export class DragManager implements DragManagerInterface {
     }
   }
 
+  // Autoscroll (AutoScrollPlugin) moves the list under the pointer on its own
+  // rAF loop, firing no `pointermove`. Replay the last pointer position so the
+  // drop target follows the scrolled content instead of freezing at the
+  // pre-scroll row — otherwise a held-pointer edge drag drops at the source
+  // index (#124). Capture phase so it catches scroll on any ancestor, since
+  // `scroll` doesn't bubble.
+  private onDocumentScrollDuringDrag = (): void => {
+    if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
+    this.onPointerMove(this.lastPointerMoveEvent)
+  }
+
   private onPointerUp = (e: PointerEvent): void => {
     if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 
@@ -1769,6 +1793,12 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointermove', this.onPointerMove)
     document.removeEventListener('pointerup', this.onPointerUp)
     document.removeEventListener('pointercancel', this.onPointerCancel)
+    document.removeEventListener(
+      'scroll',
+      this.onDocumentScrollDuringDrag,
+      true
+    )
+    this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
     // intent events, so a synchronous state update in a handler re-renders
