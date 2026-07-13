@@ -501,6 +501,18 @@ export interface SortableOptions {
   emptyInsertThreshold?: number
 
   /**
+   * CSS selector for a surrounding region that also accepts drops for this
+   * zone. When a drop lands anywhere inside `zoneEl.closest(hitArea)` but
+   * outside the zone's own rect — and over no other zone/item — it resolves
+   * to this zone and inserts at the nearest end (index 0 when the pointer is
+   * before the zone's start edge, else append). Generalizes
+   * {@link emptyInsertThreshold} to a large, caller-defined region around a
+   * populated list (#126). Fallback only: a pointer directly over a zone or
+   * its items always wins, and group `put`/`pull` rules are still enforced.
+   */
+  hitArea?: string
+
+  /**
    * Call preventDefault when filter is triggered
    * @defaultValue true
    */

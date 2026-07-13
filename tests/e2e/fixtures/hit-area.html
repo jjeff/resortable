@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hitArea Test (#126)</title>
+    <style>
+      body {
+        margin: 20px;
+        font-family: sans-serif;
+      }
+      /* A song row: a wide body area on the left, a content-sized clip list
+         pinned to the far right. Most of the row is NOT a drop zone. */
+      .song {
+        display: flex;
+        align-items: center;
+        width: 600px;
+        margin: 12px 0;
+        border: 1px solid #ccc;
+        background: #fafafa;
+      }
+      .body {
+        flex: 1 1 auto;
+        padding: 16px;
+      }
+      .clips {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        min-width: 24px;
+        background: #eef;
+      }
+      .clip {
+        padding: 8px 12px;
+        background: #cce;
+        border: 1px solid #99c;
+        cursor: move;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>hitArea Test</h1>
+
+    <div class="song" id="song-a">
+      <div class="body">Song A body — drop clips here</div>
+      <ul class="clips" id="clips-a">
+        <li class="clip" data-id="a1">a1</li>
+        <li class="clip" data-id="a2">a2</li>
+      </ul>
+    </div>
+
+    <div class="song" id="song-b">
+      <div class="body">Song B body — drop clips here</div>
+      <ul class="clips" id="clips-b">
+        <li class="clip" data-id="b1">b1</li>
+      </ul>
+    </div>
+
+    <script type="module">
+      import { Sortable } from '/src/index.js'
+
+      const opts = {
+        group: 'clips',
+        draggable: '.clip',
+        direction: 'horizontal',
+        animation: 0,
+        hitArea: '.song',
+      }
+      new Sortable(document.getElementById('clips-a'), opts)
+      new Sortable(document.getElementById('clips-b'), opts)
+
+      window.resortableLoaded = true
+    </script>
+  </body>
+</html>
