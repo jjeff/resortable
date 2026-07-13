@@ -186,11 +186,14 @@ test.describe('multi-drag cross-zone in a nested scrolling list (#124 follow-up)
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
-  // Select the first N clips of the source song via Ctrl/Cmd+Click.
+  // Select the first N clips of the source song via the configured
+  // `multiDragKey: 'meta'` gesture. Use `Meta` explicitly (not
+  // `ControlOrMeta`, which resolves to Control off macOS and would not match
+  // metaKey) so the selection registers on every CI platform.
   async function selectSourceClips(page: Page, n: number): Promise<void> {
     for (let c = 0; c < n; c++) {
       const id = `s${SOURCE_SONG}c${c}`
-      await page.locator(`#${id}`).click({ modifiers: ['ControlOrMeta'] })
+      await page.locator(`#${id}`).click({ modifiers: ['Meta'] })
     }
   }
 
@@ -259,9 +262,9 @@ test.describe('multi-drag cross-zone in a nested scrolling list (#124 follow-up)
     // reordered at the drop site (Sortable.js multiDrag parity).
     const clickOrder = [2, 0, 4, 1, 3]
     for (const c of clickOrder) {
-      await page
-        .locator(`#s${SOURCE_SONG}c${c}`)
-        .click({ modifiers: ['ControlOrMeta'] })
+      // `Meta` explicitly — matches the configured `multiDragKey: 'meta'` on
+      // every platform (see selectSourceClips).
+      await page.locator(`#s${SOURCE_SONG}c${c}`).click({ modifiers: ['Meta'] })
     }
 
     const from = await center(page, `#s${SOURCE_SONG}c0`.slice(1))

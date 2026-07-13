@@ -1402,8 +1402,12 @@ export class DragManager implements DragManagerInterface {
     document.addEventListener('pointerup', this.onPointerUp)
     document.addEventListener('pointercancel', this.onPointerCancel)
     // Re-resolve the drop target when the list autoscrolls under a held
-    // pointer (#124). Capture phase — `scroll` doesn't bubble.
-    document.addEventListener('scroll', this.onDocumentScrollDuringDrag, true)
+    // pointer (#124). Capture phase — `scroll` doesn't bubble. Passive — the
+    // handler only reads geometry, never calls `preventDefault`.
+    document.addEventListener('scroll', this.onDocumentScrollDuringDrag, {
+      capture: true,
+      passive: true,
+    })
 
     // Register with global drag state using pointer ID
     const dragId = `pointer-${this.activePointerId}`
@@ -1801,11 +1805,9 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointermove', this.onPointerMove)
     document.removeEventListener('pointerup', this.onPointerUp)
     document.removeEventListener('pointercancel', this.onPointerCancel)
-    document.removeEventListener(
-      'scroll',
-      this.onDocumentScrollDuringDrag,
-      true
-    )
+    document.removeEventListener('scroll', this.onDocumentScrollDuringDrag, {
+      capture: true,
+    })
     this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
