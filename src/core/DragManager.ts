@@ -141,6 +141,12 @@ export class DragManager implements DragManagerInterface {
   // pointer drag; null when nothing is hidden.
   private hiddenDisplays: Map<HTMLElement, string> | null = null
 
+  // Last pointer-move seen during an active pointer drag. When the list
+  // autoscrolls under a STATIONARY pointer no `pointermove` fires, so the
+  // scroll listener replays this event to re-resolve the drop target against
+  // the new scroll offset (#124). Null outside a pointer drag.
+  private lastPointerMoveEvent: PointerEvent | null = null
+
   private groupManager: GroupManager
 
   private originalTouchActions = new Map<HTMLElement, string>()
@@ -1405,7 +1411,15 @@ export class DragManager implements DragManagerInterface {
     // (click / modifier+click), not a side effect of dragging.
     this.draggedItems = [target]
     if (this._selectionManager.isSelected(target)) {
-      this.draggedItems = this._selectionManager.getSelected()
+      // Drag the selection in DOM order, not selection (click) order —
+      // `getSelected()` returns the Set's insertion order, so a block
+      // selected out of visual order (marquee, shift-range walked
+      // backward, scattered ctrl-clicks) would otherwise land scrambled
+      // at the drop site. Sort by index within the source zone so the
+      // moved run preserves visual order (Sortable.js multiDrag parity).
+      this.draggedItems = this._selectionManager
+        .getSelected()
+        .sort((a, b) => this.zone.getIndex(a) - this.zone.getIndex(b))
     }
 
     // Dim non-anchor selected items
@@ -1431,6 +1445,13 @@ export class DragManager implements DragManagerInterface {
     document.addEventListener('pointermove', this.onPointerMove)
     document.addEventListener('pointerup', this.onPointerUp)
     document.addEventListener('pointercancel', this.onPointerCancel)
+    // Re-resolve the drop target when the list autoscrolls under a held
+    // pointer (#124). Capture phase — `scroll` doesn't bubble. Passive — the
+    // handler only reads geometry, never calls `preventDefault`.
+    document.addEventListener('scroll', this.onDocumentScrollDuringDrag, {
+      capture: true,
+      passive: true,
+    })
 
     // Register with global drag state using pointer ID
     const dragId = `pointer-${this.activePointerId}`
@@ -1512,6 +1533,10 @@ export class DragManager implements DragManagerInterface {
 
     // Only process primary pointer events during drag
     if (!e.isPrimary) return
+
+    // Remember the live pointer position so an autoscroll under a held
+    // pointer can replay this resolution against the new scroll offset (#124).
+    this.lastPointerMoveEvent = e
 
     e.preventDefault()
 
@@ -1795,6 +1820,17 @@ export class DragManager implements DragManagerInterface {
     }
   }
 
+  // Autoscroll (AutoScrollPlugin) moves the list under the pointer on its own
+  // rAF loop, firing no `pointermove`. Replay the last pointer position so the
+  // drop target follows the scrolled content instead of freezing at the
+  // pre-scroll row — otherwise a held-pointer edge drag drops at the source
+  // index (#124). Capture phase so it catches scroll on any ancestor, since
+  // `scroll` doesn't bubble.
+  private onDocumentScrollDuringDrag = (): void => {
+    if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
+    this.onPointerMove(this.lastPointerMoveEvent)
+  }
+
   private onPointerUp = (e: PointerEvent): void => {
     if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 
@@ -1821,6 +1857,10 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('pointermove', this.onPointerMove)
     document.removeEventListener('pointerup', this.onPointerUp)
     document.removeEventListener('pointercancel', this.onPointerCancel)
+    document.removeEventListener('scroll', this.onDocumentScrollDuringDrag, {
+      capture: true,
+    })
+    this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
     // intent events, so a synchronous state update in a handler re-renders
@@ -1956,7 +1996,11 @@ export class DragManager implements DragManagerInterface {
    *
    * 1. Walk up `el`'s ancestor chain looking for a registered sortable
    *    container (#32 — covers both populated containers and empties the
-   *    cursor is directly inside).
+   *    cursor is directly inside). When the nearest such container can't
+   *    accept THIS drag (group mismatch) but the hovered item nests a
+   *    container that CAN — the nested-sortables case, e.g. a clip dropped
+   *    on a song's header while the song's clip grid lives just below —
+   *    prefer that compatible nested container (#124).
    * 2. If no ancestor matches and cursor coordinates were supplied, scan
    *    registered *empty* sortables and pick the first one whose bounding
    *    rect — expanded by its `emptyInsertThreshold` — contains the
@@ -1970,6 +2014,15 @@ export class DragManager implements DragManagerInterface {
     let cur: Element | null = el
     while (cur) {
       if (cur instanceof HTMLElement && dragManagerRegistry.has(cur)) {
+        // A registered container the drag can't join (e.g. a clip over the
+        // outer song-list zone) may still enclose the pointer inside an
+        // item whose own subtree holds a group-compatible container — the
+        // song's clip grid. Resolve to that so a drop onto any part of the
+        // target item (header, padding) lands in its nested list (#124).
+        if (this.activePointerId !== null && !this.canDropInZone(cur)) {
+          const nested = this.findCompatibleNestedZone(cur, el, y)
+          if (nested) return nested
+        }
         return cur
       }
       cur = cur.parentElement
@@ -2013,6 +2066,45 @@ export class DragManager implements DragManagerInterface {
       }
     }
     return null
+  }
+
+  /**
+   * Nested-sortables fallback for {@link findSortableContainerUnder}: the
+   * ancestor walk landed on `outerZone`, a registered container this drag
+   * can't join. Find the item of `outerZone` the pointer is inside, then a
+   * group-compatible registered container nested in that item (a song's
+   * clip grid under its header). Returns the nested container nearest the
+   * pointer's `y`, or null when the item nests no compatible container.
+   */
+  private findCompatibleNestedZone(
+    outerZone: HTMLElement,
+    pointerEl: Element | null,
+    y?: number
+  ): HTMLElement | null {
+    // Direct child of `outerZone` that contains the pointer — the hovered
+    // item (e.g. the `.song`). Bail if the pointer isn't inside an item.
+    let item: Element | null = pointerEl
+    while (item && item.parentElement !== outerZone) {
+      item = item.parentElement
+    }
+    if (!item) return null
+
+    let best: HTMLElement | null = null
+    let bestDist = Infinity
+    for (const [zoneEl] of dragManagerRegistry) {
+      if (zoneEl === outerZone || !item.contains(zoneEl)) continue
+      if (!this.canDropInZone(zoneEl)) continue
+      if (y === undefined) return zoneEl
+      const rect = zoneEl.getBoundingClientRect()
+      // Distance from the pointer to the zone's vertical span (0 inside).
+      const dist =
+        y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0
+      if (dist < bestDist) {
+        bestDist = dist
+        best = zoneEl
+      }
+    }
+    return best
   }
 
   /** Get the selection manager for this drag manager */

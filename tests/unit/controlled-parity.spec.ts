@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
 
 /**
@@ -291,6 +291,278 @@ describe('controlled-mode parity fixes (2026-07)', () => {
         scrollSpeed: 15,
       })
       expect(() => sortable.destroy()).not.toThrow()
+    })
+  })
+
+  // Autoscroll under a stationary pointer must keep the drop target fresh
+  // (jjeff/resortable#124; downstream spaceagetv/missioncontrol#4566).
+  //
+  // The pointer pipeline resolves the drop target from
+  // `document.elementFromPoint(pointer.clientX, pointer.clientY)` on
+  // `pointermove`. When a long list autoscrolls under a HELD (non-moving)
+  // pointer, no `pointermove` fires, so the target was never recomputed and
+  // the drop fell back to the source index. The fix re-resolves on `scroll`.
+  describe('autoscroll keeps the drop target fresh (#124)', () => {
+    const ITEM_H = 40
+    const VIEWPORT_H = 200 // shows 5 rows at a time
+    let list: HTMLElement
+    let items: HTMLElement[]
+
+    // Build a tall list whose item rects and `elementFromPoint` both track
+    // `list.scrollTop`, so scrolling under a stationary pointer changes which
+    // row sits beneath a fixed viewport-Y — exactly the real-world geometry.
+    function makeScrollList(count: number): void {
+      document.body.innerHTML = ''
+      list = document.createElement('ul')
+      list.style.overflowY = 'auto'
+      for (let i = 0; i < count; i++) {
+        const li = document.createElement('li')
+        li.className = 'item'
+        li.id = `it-${i}`
+        li.dataset.id = `it-${i}`
+        li.textContent = `Item ${i}`
+        list.appendChild(li)
+      }
+      document.body.appendChild(list)
+      list.scrollTop = 0
+
+      items = Array.from(list.children) as HTMLElement[]
+      list.getBoundingClientRect = () =>
+        ({
+          top: 0,
+          bottom: VIEWPORT_H,
+          left: 0,
+          right: 200,
+          width: 200,
+          height: VIEWPORT_H,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect
+      items.forEach((li, i) => {
+        li.getBoundingClientRect = () => {
+          const top = i * ITEM_H - list.scrollTop
+          return {
+            top,
+            bottom: top + ITEM_H,
+            left: 0,
+            right: 200,
+            width: 200,
+            height: ITEM_H,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          } as DOMRect
+        }
+      })
+
+      // Hit-test that honours the current scroll offset.
+      document.elementFromPoint = (_x: number, y: number): Element | null => {
+        if (y < 0 || y >= VIEWPORT_H) return list
+        const row = Math.floor((y + list.scrollTop) / ITEM_H)
+        return items[row] ?? list
+      }
+    }
+
+    function pointer(type: string, y: number, id = 7): PointerEvent {
+      const e = mkPointer(type, id)
+      Object.defineProperties(e, {
+        clientX: { value: 100, configurable: true },
+        clientY: { value: y, configurable: true },
+      })
+      return e
+    }
+
+    // Drag item 0 downward: press, one move to `moveY`, optionally autoscroll
+    // to `scrollTo` WITHOUT another move, release. Returns onEnd's newIndex.
+    function dragWithOptionalScroll(
+      moveY: number,
+      scrollTo: number | null
+    ): number {
+      let ended = -1
+      sortable = new Sortable(list, {
+        controlled: true,
+        draggable: '.item',
+        animation: 0,
+        fallbackTolerance: 0,
+        onEnd: (evt) => {
+          ended = evt.newIndex ?? -1
+        },
+      })
+
+      const dragged = items[0]
+      dragged.dispatchEvent(pointer('pointerdown', 0))
+      document.dispatchEvent(pointer('pointermove', moveY))
+      if (scrollTo !== null) {
+        list.scrollTop = scrollTo
+        list.dispatchEvent(new Event('scroll', { bubbles: false }))
+      }
+      document.dispatchEvent(pointer('pointerup', moveY))
+
+      sortable.destroy()
+      return ended
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+      // Restore the real elementFromPoint the shared afterEach can't reach.
+      delete (document as unknown as { elementFromPoint?: unknown })
+        .elementFromPoint
+    })
+
+    it('recomputes the target after the list scrolls under a held pointer', () => {
+      // Control: hold the pointer near the bottom edge (row 4), no scroll.
+      makeScrollList(12)
+      const withoutScroll = dragWithOptionalScroll(180, null)
+
+      // Same held pointer, but the list autoscrolls two viewports down so a
+      // much later row (≈ row 9) now sits under the fixed Y. No pointermove.
+      makeScrollList(12)
+      const withScroll = dragWithOptionalScroll(180, 200)
+
+      // The scrolled drag must land LATER than the un-scrolled one — the
+      // target followed the scrolled content instead of freezing.
+      expect(withScroll).toBeGreaterThan(withoutScroll)
+      // And it must not collapse back to the source row (the #4566 symptom).
+      expect(withScroll).toBeGreaterThan(0)
+    })
+  })
+
+  // Nested sortables: an outer song-list zone (group 'songs') whose items
+  // each nest a clip-grid zone (group 'clips'). Dropping a clip onto a
+  // song's HEADER resolves to the outer, group-incompatible song zone —
+  // resolution must fall through to that song's nested clip grid instead of
+  // collapsing to a no-op back at the source (#124; downstream #4566).
+  describe('nested-zone resolution falls through to a compatible child (#124)', () => {
+    // Vertical layout: song 0 spans y 0–70 (header 0–40, clips 40–70),
+    // song 1 spans y 70–140 (header 70–110, clips 110–140). A drop at y=90
+    // lands on song 1's HEADER — outside every clip grid.
+    function rect(top: number, bottom: number): DOMRect {
+      return {
+        top,
+        bottom,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: bottom - top,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      } as DOMRect
+    }
+
+    function stubRect(el: HTMLElement, top: number, bottom: number): void {
+      el.getBoundingClientRect = () => rect(top, bottom)
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+      delete (document as unknown as { elementFromPoint?: unknown })
+        .elementFromPoint
+    })
+
+    it('drops a clip onto a song header into that song’s clip grid', () => {
+      document.body.innerHTML = ''
+      const songs = document.createElement('ol')
+      const built: Record<string, HTMLElement> = { songs }
+      for (let s = 0; s < 2; s++) {
+        const song = document.createElement('li')
+        song.className = 'song'
+        song.id = `song-${s}`
+        const header = document.createElement('div')
+        header.className = 'song-handle'
+        header.id = `head-${s}`
+        song.appendChild(header)
+        const zone = document.createElement('ul')
+        zone.className = 'clip-zone'
+        zone.id = `zone-${s}`
+        for (let c = 0; c < 2; c++) {
+          const clip = document.createElement('li')
+          clip.className = 'clip'
+          clip.id = `s${s}c${c}`
+          clip.dataset.id = clip.id
+          zone.appendChild(clip)
+          built[clip.id] = clip
+        }
+        song.appendChild(zone)
+        songs.appendChild(song)
+        built[`song-${s}`] = song
+        built[`head-${s}`] = header
+        built[`zone-${s}`] = zone
+      }
+      document.body.appendChild(songs)
+
+      // Geometry — see layout note above.
+      stubRect(songs, 0, 140)
+      stubRect(built['song-0'], 0, 70)
+      stubRect(built['head-0'], 0, 40)
+      stubRect(built['zone-0'], 40, 70)
+      stubRect(built['s0c0'], 40, 55)
+      stubRect(built['s0c1'], 55, 70)
+      stubRect(built['song-1'], 70, 140)
+      stubRect(built['head-1'], 70, 110)
+      stubRect(built['zone-1'], 110, 140)
+      stubRect(built['s1c0'], 110, 125)
+      stubRect(built['s1c1'], 125, 140)
+
+      // Hit-test: the drop Y (90) is over song 1's header.
+      document.elementFromPoint = (_x: number, y: number): Element | null => {
+        if (y >= 70 && y < 110) return built['head-1']
+        if (y >= 40 && y < 55) return built['s0c0']
+        return songs
+      }
+
+      const outer = new Sortable(songs, {
+        group: 'songs',
+        controlled: true,
+        draggable: '.song',
+        handle: '.song-handle',
+        animation: 0,
+      })
+      let endedTo = ''
+      const zone0 = new Sortable(built['zone-0'], {
+        group: 'clips',
+        controlled: true,
+        draggable: '.clip',
+        animation: 0,
+        fallbackTolerance: 0,
+        onEnd: (evt) => {
+          endedTo = evt.to.id
+        },
+      })
+      const zone1 = new Sortable(built['zone-1'], {
+        group: 'clips',
+        controlled: true,
+        draggable: '.clip',
+        animation: 0,
+      })
+
+      const dragged = built['s0c0']
+      const press = mkPointer('pointerdown', 9)
+      Object.defineProperties(press, {
+        clientX: { value: 100, configurable: true },
+        clientY: { value: 48, configurable: true },
+      })
+      dragged.dispatchEvent(press)
+      const move = mkPointer('pointermove', 9)
+      Object.defineProperties(move, {
+        clientX: { value: 100, configurable: true },
+        clientY: { value: 90, configurable: true },
+      })
+      document.dispatchEvent(move)
+      const up = mkPointer('pointerup', 9)
+      Object.defineProperties(up, {
+        clientX: { value: 100, configurable: true },
+        clientY: { value: 90, configurable: true },
+      })
+      document.dispatchEvent(up)
+
+      // Resolution fell through the incompatible song zone to song 1's grid.
+      expect(endedTo).toBe('zone-1')
+
+      zone0.destroy()
+      zone1.destroy()
+      outer.destroy()
     })
   })
 })
