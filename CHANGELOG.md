@@ -1,3 +1,7 @@
+## 2.1.0 (2026-07-13)
+
+* feat(core): add `hitArea` option to claim drops in a surrounding region (#127) ([15e0863](https://github.com/jjeff/resortable/commit/15e0863)), closes [#127](https://github.com/jjeff/resortable/issues/127) [#126](https://github.com/jjeff/resortable/issues/126)
+
 ## <small>2.0.4 (2026-07-11)</small>
 
 * Merge pull request #120 from jjeff/chore/dependabot-dev-deps ([3aca705](https://github.com/jjeff/resortable/commit/3aca705)), closes [#120](https://github.com/jjeff/resortable/issues/120)
