@@ -462,6 +462,7 @@ export class Sortable {
       dropBubble: this.options.dropBubble,
       removeCloneOnHide: this.options.removeCloneOnHide,
       emptyInsertThreshold: this.options.emptyInsertThreshold,
+      hitArea: this.options.hitArea,
       preventOnFilter: this.options.preventOnFilter,
       dataIdAttr: this.options.dataIdAttr,
       ghostClass: this.options.ghostClass,

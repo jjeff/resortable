@@ -98,6 +98,10 @@ export class DragManager implements DragManagerInterface {
   // @ts-expect-error - kept on the instance so hide/show flow can read it later
   private _removeCloneOnHide: boolean
   private _emptyInsertThreshold: number
+  // CSS selector for a surrounding region whose drops this zone also claims,
+  // inserting at the nearest end (#126). Read cross-instance in
+  // `findSortableContainerUnder`, like `_emptyInsertThreshold`.
+  private _hitArea?: string
   private preventOnFilter: boolean
   // `_dataIdAttr` is the configured `data-*` attribute name used as the
   // identity column by toArray() / sort(). It is also forwarded to
@@ -181,6 +185,7 @@ export class DragManager implements DragManagerInterface {
       dropBubble?: boolean
       removeCloneOnHide?: boolean
       emptyInsertThreshold?: number
+      hitArea?: string
       preventOnFilter?: boolean
       dataIdAttr?: string
       ghostClass?: string
@@ -249,6 +254,7 @@ export class DragManager implements DragManagerInterface {
     this._dropBubble = options?.dropBubble ?? false
     this._removeCloneOnHide = options?.removeCloneOnHide ?? true
     this._emptyInsertThreshold = options?.emptyInsertThreshold ?? 5
+    this._hitArea = options?.hitArea
 
     // Initialize other options
     this.preventOnFilter = options?.preventOnFilter ?? true
@@ -585,6 +591,34 @@ export class DragManager implements DragManagerInterface {
     return this.direction === 'horizontal'
   }
 
+  /**
+   * Nearest-end anchor for a no-sibling zone entry (#126): true when the
+   * pointer sits before the zone's start edge (left for a row, top for a
+   * column) → insert at index 0; false → append. Only differs from a plain
+   * append when the pointer is OUTSIDE the zone's own rect, which is exactly
+   * the `hitArea`-resolved case — for an empty zone or a pointer inside the
+   * zone's own area both branches collapse to the same position.
+   */
+  private insertAtStartOfZone(
+    e: Event,
+    zoneEl: HTMLElement,
+    visible: HTMLElement[]
+  ): boolean {
+    const pt = e as MouseEvent
+    // Same coordinate gate as `controlledInsertAfter`: need real coords, and
+    // treat (0,0) as "no usable coords" (synthetic events) — otherwise a
+    // vertical zone would read an undefined/0 `clientY` and misplace.
+    const hasCoords =
+      typeof pt.clientX === 'number' &&
+      typeof pt.clientY === 'number' &&
+      (pt.clientX !== 0 || pt.clientY !== 0)
+    if (!hasCoords) return false
+    const rect = zoneEl.getBoundingClientRect()
+    return this.detectHorizontalLayout(visible)
+      ? pt.clientX < rect.left
+      : pt.clientY < rect.top
+  }
+
   private handleControlledMove(
     e: Event,
     over: HTMLElement | null,
@@ -625,6 +659,12 @@ export class DragManager implements DragManagerInterface {
       const hasSibling = overIsValid && over.parentElement === targetZoneElement
       const related: HTMLElement = hasSibling && over ? over : targetZoneElement
       const visible = targetZone.getVisibleItems(items)
+      // No hovered sibling: the pointer is in the zone's own empty area or was
+      // routed here from a surrounding `hitArea` region (#126). Insert at the
+      // nearest end — index 0 when the pointer is before the zone's start
+      // edge, else append (unchanged for the in-zone/empty cases).
+      const atStart =
+        !hasSibling && this.insertAtStartOfZone(e, targetZoneElement, visible)
       // Which side of the hovered sibling the cursor is on decides the
       // insert side; hovering empty container space appends at the end.
       const enterAfter =
@@ -632,7 +672,11 @@ export class DragManager implements DragManagerInterface {
           ? this.controlledInsertAfter(e, over, placeholder, visible)
           : false
       const overIdx =
-        hasSibling && over ? visible.indexOf(over) : visible.length
+        hasSibling && over
+          ? visible.indexOf(over)
+          : atStart
+            ? 0
+            : visible.length
       if (overIdx === -1) return
       const newIndex = overIdx + (enterAfter ? 1 : 0)
 
@@ -655,8 +699,8 @@ export class DragManager implements DragManagerInterface {
       // contract: 1 forces after, -1 forces before).
       const insertAfter =
         moveResult === 1 ? true : moveResult === -1 ? false : enterAfter
-      let insertRef: Node | null = null
-      let index = visible.length
+      let insertRef: Node | null = atStart && visible.length ? visible[0] : null
+      let index = atStart ? 0 : visible.length
       if (hasSibling && over) {
         insertRef = insertAfter ? over.nextSibling : over
         index = visible.indexOf(over) + (insertAfter ? 1 : 0)
@@ -1591,9 +1635,16 @@ export class DragManager implements DragManagerInterface {
 
           const targetZone = targetDragManager?.zone ?? this.zone
           const targetDraggables = targetZone.getItems()
+          // No sibling under the pointer: append, unless a `hitArea` region
+          // routed the drop here from before the zone's start edge (#126).
+          const atStart =
+            !hasSibling &&
+            this.insertAtStartOfZone(e, targetZoneElement, targetDraggables)
           const newIndex = hasSibling
             ? targetDraggables.indexOf(over)
-            : targetDraggables.length
+            : atStart
+              ? 0
+              : targetDraggables.length
           const oldIndex = Array.from(sourceParent.children).indexOf(
             this.dragElement
           )
@@ -1635,7 +1686,8 @@ export class DragManager implements DragManagerInterface {
           // one exists. With no sibling (related === container) the override
           // has no meaningful side, so we fall through to the natural
           // `insertBefore(item, null)` (≡ appendChild).
-          let insertReference: Node | null = over
+          let insertReference: Node | null =
+            over ?? (atStart ? (targetDraggables[0] ?? null) : null)
           if (hasSibling && moveResult === 1) {
             insertReference = over.nextSibling
           } else if (hasSibling && moveResult === -1) {
@@ -1939,6 +1991,25 @@ export class DragManager implements DragManagerInterface {
         y <= rect.bottom + threshold
       ) {
         return zoneEl
+      }
+    }
+
+    // Third pass, lowest priority (#126): a zone can opt into claiming drops
+    // that land anywhere inside a surrounding `hitArea` region but over no
+    // zone/item directly. Each zone's `closest(hitArea)` is its own region
+    // (e.g. the song row around a clip list), so a DOM `contains` test picks
+    // the right zone even with many rows. Skip regions whose group won't
+    // accept this drag so an incompatible region can't shadow a compatible
+    // one; final acceptance is still enforced in `handleControlledMove`.
+    for (const [zoneEl, manager] of dragManagerRegistry) {
+      if (!manager._hitArea) continue
+      if (this.activePointerId !== null && !this.canDropInZone(zoneEl)) continue
+      try {
+        const region = zoneEl.closest(manager._hitArea)
+        if (region && el && region.contains(el)) return zoneEl
+      } catch {
+        // Invalid `hitArea` selector — fail closed (skip this zone) so a
+        // malformed selector can't abort drop-target resolution mid-drag.
       }
     }
     return null
