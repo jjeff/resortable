@@ -605,7 +605,14 @@ export class DragManager implements DragManagerInterface {
     visible: HTMLElement[]
   ): boolean {
     const pt = e as MouseEvent
-    if (typeof pt.clientX !== 'number') return false
+    // Same coordinate gate as `controlledInsertAfter`: need real coords, and
+    // treat (0,0) as "no usable coords" (synthetic events) — otherwise a
+    // vertical zone would read an undefined/0 `clientY` and misplace.
+    const hasCoords =
+      typeof pt.clientX === 'number' &&
+      typeof pt.clientY === 'number' &&
+      (pt.clientX !== 0 || pt.clientY !== 0)
+    if (!hasCoords) return false
     const rect = zoneEl.getBoundingClientRect()
     return this.detectHorizontalLayout(visible)
       ? pt.clientX < rect.left
@@ -1997,8 +2004,13 @@ export class DragManager implements DragManagerInterface {
     for (const [zoneEl, manager] of dragManagerRegistry) {
       if (!manager._hitArea) continue
       if (this.activePointerId !== null && !this.canDropInZone(zoneEl)) continue
-      const region = zoneEl.closest(manager._hitArea)
-      if (region && el && region.contains(el)) return zoneEl
+      try {
+        const region = zoneEl.closest(manager._hitArea)
+        if (region && el && region.contains(el)) return zoneEl
+      } catch {
+        // Invalid `hitArea` selector — fail closed (skip this zone) so a
+        // malformed selector can't abort drop-target resolution mid-drag.
+      }
     }
     return null
   }

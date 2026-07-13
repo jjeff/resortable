@@ -182,4 +182,71 @@ describe('hitArea option (#126)', () => {
     expect(end?.to).toBe(clipsA)
     expect(end?.newIndex).toBe(0)
   })
+
+  it('fails closed on a malformed hitArea selector (no throw, drag reverts)', () => {
+    const { clipsA, clipsB, bodyB } = buildSongs()
+    const opts = {
+      controlled: true,
+      draggable: '.clip',
+      direction: 'horizontal' as const,
+      animation: 0,
+      fallbackTolerance: 0,
+      group: 'clips',
+    }
+    let end: SortableEvent | undefined
+    const srcA = new Sortable(clipsA, {
+      ...opts,
+      hitArea: '.song',
+      onEnd: (e) => (end = e),
+    })
+    // `:::bad:::` throws in `closest()` — the pass must catch and skip it.
+    const srcB = new Sortable(clipsB, { ...opts, hitArea: ':::bad:::' })
+    srcs.push(srcA, srcB)
+
+    document.elementFromPoint = () => bodyB
+    const dragged = clipsA.querySelector<HTMLElement>('.clip')!
+    expect(() => {
+      dragged.dispatchEvent(mkPointer('pointerdown', 10))
+      document.dispatchEvent(mkPointer('pointermove', 10))
+      document.dispatchEvent(mkPointer('pointerup', 10))
+    }).not.toThrow()
+    // clipsB's bad selector is skipped → no resolution → reverts to source.
+    expect(end?.to).toBe(clipsA)
+  })
+
+  it('ignores (0,0) synthetic coords instead of forcing index 0', () => {
+    const { clipsA, clipsB, bodyB } = buildSongs()
+    // Vertical zone whose top edge is BELOW 0. Without the (0,0) coord gate,
+    // `clientY(0) < rect.top(50)` would wrongly route to index 0.
+    clipsB.getBoundingClientRect = () =>
+      ({ ...CLIPS_RECT, top: 50, bottom: 90, y: 50 }) as DOMRect
+    const opts = {
+      controlled: true,
+      draggable: '.clip',
+      direction: 'vertical' as const,
+      animation: 0,
+      fallbackTolerance: 0,
+      group: 'clips',
+      hitArea: '.song',
+    }
+    let end: SortableEvent | undefined
+    const srcA = new Sortable(clipsA, { ...opts, onEnd: (e) => (end = e) })
+    const srcB = new Sortable(clipsB, opts)
+    srcs.push(srcA, srcB)
+
+    // Events at true (0,0) — "no usable coords", must append not prepend.
+    const at00 = (type: string): PointerEvent => {
+      const e = mkPointer(type, 0)
+      Object.defineProperty(e, 'clientY', { value: 0, configurable: true })
+      return e
+    }
+    document.elementFromPoint = () => bodyB
+    const dragged = clipsA.querySelector<HTMLElement>('.clip')!
+    dragged.dispatchEvent(at00('pointerdown'))
+    document.dispatchEvent(at00('pointermove'))
+    document.dispatchEvent(at00('pointerup'))
+
+    expect(end?.to).toBe(clipsB)
+    expect(end?.newIndex).toBe(1)
+  })
 })
