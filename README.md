@@ -36,9 +36,13 @@ Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortab
 - **Animations** — FLIP-based 60fps reorder animations
 - **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support. WCAG 2.1 AA verified via an automated axe-core audit in CI; see [docs/accessibility.md](./docs/accessibility.md) for the keyboard contract and ARIA reference.
 - **Multi-Drag** — Ctrl+Click / Shift+Click selection, drag multiple items together
+- **Controlled mode** — `controlled: true` reports the drop as intent (`newIndex`/`newIndexes` + target zone) and never mutates your DOM, so React/Vue/state-owned lists stay the single source of truth
+- **React hook** — `resortable/react` ships a `useSortable` hook (1.4 kB, built on controlled mode); Vue/Svelte wrappers are on the roadmap
+- **Flexible drop targeting** — `emptyInsertThreshold` and `hitArea` let a list accept drops thrown at the empty space or surrounding region around it, not just its own box
 - **Plugin System** — AutoScroll, Swap plugins (extensible architecture)
-- **TypeScript** — Strict types with full IntelliSense support
-- **Small** — ~19KB gzipped (ESM)
+- **TypeScript** — Strict types with full IntelliSense support, zero runtime dependencies
+- **Small** — ~20 kB gzipped (19.8 kB ESM)
+- **Cross-browser tested** — 299 unit tests (Vitest) + 182 end-to-end tests (Playwright) exercised across Chromium, Firefox, WebKit, and mobile emulation (iOS Safari + Android Chrome), run on Linux, Windows, and macOS in CI
 
 ## Installation
 
@@ -98,6 +102,13 @@ new Sortable(element, {
   delay: 0,                          // Delay in ms before drag starts
   delayOnTouchOnly: 0,              // Touch-specific delay
   touchStartThreshold: 5,            // Pixels of movement before cancelling delay
+  direction: 'vertical',             // 'vertical' | 'horizontal' list axis
+  swapThreshold: 1,                  // Overlap fraction before an item swaps
+
+  // Drop targeting
+  emptyInsertThreshold: 5,           // Px around an empty list that still counts as a drop
+  hitArea: '.row',                   // Selector for a surrounding region whose drops this
+                                     // list also claims, inserting at the nearest end
 
   // Visual
   animation: 150,                    // Animation duration in ms
@@ -109,6 +120,9 @@ new Sortable(element, {
   // Multi-drag
   multiDrag: false,                  // Enable multi-selection
   selectedClass: 'sortable-selected', // Class on selected items
+
+  // State ownership
+  controlled: false,                 // Report intent via events, never mutate the DOM
 
   // Accessibility
   enableAccessibility: true,         // Keyboard nav + ARIA
@@ -202,7 +216,25 @@ Full TypeDoc-generated API reference: [jjeff.github.io/resortable/api/](https://
 
 ## Framework wrappers
 
-First-class wrappers for React, Vue, and Svelte are on the roadmap but not yet shipped. Resortable works today with any framework via the imperative `new Sortable(element, options)` API on a ref/`useEffect`-mounted element. See [#44](https://github.com/jjeff/resortable/issues/44) for the v2.0 master roadmap, where framework-wrapper packages are tracked.
+**React** ships today as a first-class hook: `import { useSortable } from 'resortable/react'`. It is built on [controlled mode](#options), so your component state stays the source of truth — the hook reports reorders as intent and never mutates React-owned DOM:
+
+```tsx
+import { useSortable } from 'resortable/react';
+
+function List({ items, setItems }) {
+  const { ref } = useSortable<HTMLUListElement>({
+    animation: 150,
+    onSort: (intent) => setItems(reorder(items, intent)),
+  });
+  return (
+    <ul ref={ref}>
+      {items.map((i) => <li key={i.id} data-id={i.id}>{i.label}</li>)}
+    </ul>
+  );
+}
+```
+
+Vue and Svelte wrappers are on the roadmap. Any other framework works today via the imperative `new Sortable(element, options)` API on a ref/`useEffect`-mounted element. See [#44](https://github.com/jjeff/resortable/issues/44) for the v2.0 master roadmap, where the remaining framework-wrapper packages are tracked.
 
 ## Examples
 
