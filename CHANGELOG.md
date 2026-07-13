@@ -1,3 +1,8 @@
+## <small>2.1.1 (2026-07-13)</small>
+
+* fix(core): recompute drop target as autoscroll moves the list under the pointer (#125) ([06e87d1](https://github.com/jjeff/resortable/commit/06e87d1)), closes [#125](https://github.com/jjeff/resortable/issues/125)
+* docs(readme): refresh Features/Options, document React hook & new options (#128) ([3b8bc14](https://github.com/jjeff/resortable/commit/3b8bc14)), closes [#128](https://github.com/jjeff/resortable/issues/128)
+
 ## 2.1.0 (2026-07-13)
 
 * feat(core): add `hitArea` option to claim drops in a surrounding region (#127) ([15e0863](https://github.com/jjeff/resortable/commit/15e0863)), closes [#127](https://github.com/jjeff/resortable/issues/127) [#126](https://github.com/jjeff/resortable/issues/126)
