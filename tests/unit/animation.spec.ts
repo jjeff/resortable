@@ -1,6 +1,39 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { AnimationManager } from '../../src/animation/AnimationManager.js'
 
+/**
+ * Give each element a distinct initial vs. final rect so animateReorder
+ * treats all of them as "moved" and calls element.animate() on each — used
+ * to prove updateOptions() actually changed the duration/easing that reach
+ * the Web Animations API call, since AnimationManager exposes no getter for
+ * either.
+ */
+function mockMovedPositions(elements: HTMLElement[]): void {
+  elements.forEach((el, i) => {
+    const spy = vi.spyOn(el, 'getBoundingClientRect')
+    spy.mockReturnValueOnce({
+      top: i * 100,
+      left: i * 50,
+      width: 100,
+      height: 50,
+      right: i * 50 + 100,
+      bottom: i * 100 + 50,
+      x: i * 50,
+      y: i * 100,
+    } as DOMRect)
+    spy.mockReturnValueOnce({
+      top: (2 - i) * 100,
+      left: (2 - i) * 50,
+      width: 100,
+      height: 50,
+      right: (2 - i) * 50 + 100,
+      bottom: (2 - i) * 100 + 50,
+      x: (2 - i) * 50,
+      y: (2 - i) * 100,
+    } as DOMRect)
+  })
+}
+
 describe('AnimationManager', () => {
   let manager: AnimationManager
   let mockElement: HTMLElement
@@ -272,29 +305,50 @@ describe('AnimationManager', () => {
 
   describe('updateOptions', () => {
     it('should update animation duration', () => {
-      const callback = vi.fn()
-      manager.updateOptions({ animation: 300 })
-
-      // Test with new duration (we'd need to expose duration to properly test this)
+      // animation: 0 skips animating entirely, so turning it on via
+      // updateOptions is only provable by forcing a real animate() call
+      // afterward and inspecting the duration actually passed to it.
       const zeroManager = new AnimationManager({ animation: 0 })
       zeroManager.updateOptions({ animation: 300 })
-      zeroManager.animateReorder(mockElements, callback)
+      mockMovedPositions(mockElements)
 
-      // Since we changed from 0 to 300, animation should now happen
-      // (This is a simplified test - in reality we'd need to expose internal state)
+      zeroManager.animateReorder(mockElements, vi.fn())
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockElements[0].animate).toHaveBeenCalled()
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const options = vi.mocked(mockElements[0].animate).mock.calls[0][1]
+      expect(options).toMatchObject({ duration: 300 })
     })
 
     it('should update easing function', () => {
       manager.updateOptions({ easing: 'linear' })
-      // Similarly, we'd need to expose easing to properly test this
+      mockMovedPositions(mockElements)
+
+      manager.animateReorder(mockElements, vi.fn())
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockElements[0].animate).toHaveBeenCalled()
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const options = vi.mocked(mockElements[0].animate).mock.calls[0][1]
+      expect(options).toMatchObject({ easing: 'linear' })
     })
 
     it('should update both options simultaneously', () => {
-      manager.updateOptions({
+      const zeroManager = new AnimationManager({ animation: 0 })
+      zeroManager.updateOptions({
         animation: 500,
         easing: 'ease-out',
       })
-      // Test that both are updated
+      mockMovedPositions(mockElements)
+
+      zeroManager.animateReorder(mockElements, vi.fn())
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockElements[0].animate).toHaveBeenCalled()
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const options = vi.mocked(mockElements[0].animate).mock.calls[0][1]
+      expect(options).toMatchObject({ duration: 500, easing: 'ease-out' })
     })
   })
 

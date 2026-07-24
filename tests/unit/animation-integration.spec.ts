@@ -99,18 +99,20 @@ describe('AnimationManager Integration Tests', () => {
     expect(reorderCallbackCalled).toBe(true)
 
     // Check that animate was called on elements that moved
-    // All items except middle one should have moved
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(HTMLElement.prototype.animate).toHaveBeenCalled()
 
-    // Elements should have had transforms applied initially (before animation)
-    const elementsWithTransform = items.filter(() => {
-      // The animation manager sets transform initially then clears it
-      // So we check if animate was called on them
-      return true // Since we mocked animate, we just verify it was called
+    // Every item's mocked initial/final rect differs (see initialPositions/
+    // finalPositions above), so animate() must fire on each of the 5 real
+    // elements, in order — not just "on something, somewhere" (the
+    // tautological `.filter(() => true)` this replaced).
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const animateContexts = vi.mocked(HTMLElement.prototype.animate).mock
+      .contexts
+    expect(animateContexts).toHaveLength(items.length)
+    animateContexts.forEach((ctx, i) => {
+      expect(ctx).toBe(items[i])
     })
-
-    expect(elementsWithTransform.length).toBeGreaterThan(0)
   })
 
   it('should apply insert animation to new elements', () => {
@@ -219,20 +221,56 @@ describe('AnimationManager Integration Tests', () => {
   })
 
   it('should update animation options at runtime', () => {
-    // Update to longer duration
-    animationManager.updateOptions({ animation: 200 })
+    // AnimationManager exposes no getter for duration/easing, so the only
+    // way to prove updateOptions() actually mutated them is to force a real
+    // animate() call afterward and inspect what reached it. Start at
+    // animation: 0 (skips animating) so a later animate() call can only be
+    // explained by the updateOptions() calls below having taken effect.
+    const rtManager = new AnimationManager({ animation: 0 })
 
-    // Update to different easing
-    animationManager.updateOptions({ easing: 'linear' })
-
-    // Update both
-    animationManager.updateOptions({
+    rtManager.updateOptions({ animation: 200 })
+    rtManager.updateOptions({ easing: 'linear' })
+    rtManager.updateOptions({
       animation: 300,
       easing: 'ease-in-out',
     })
 
-    // The manager should accept updates without error
-    // (actual behavior verification would require accessing private properties)
-    expect(animationManager).toBeDefined()
+    const testItems = [
+      document.createElement('li'),
+      document.createElement('li'),
+    ]
+    testItems.forEach((item) => container.appendChild(item))
+
+    // Give each item a distinct initial vs. final rect so animateReorder
+    // treats them as moved.
+    const positions = [0, 100]
+    testItems.forEach((item, i) => {
+      let callCount = 0
+      Object.defineProperty(item, 'getBoundingClientRect', {
+        value: () => {
+          const top = callCount === 0 ? positions[i] : positions[1 - i]
+          callCount++
+          return {
+            top,
+            left: 0,
+            width: 100,
+            height: 40,
+            bottom: top + 40,
+            right: 100,
+            x: 0,
+            y: top,
+          }
+        },
+        configurable: true,
+      })
+    })
+
+    rtManager.animateReorder(testItems, () => {})
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(HTMLElement.prototype.animate).toHaveBeenCalled()
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const [, options] = vi.mocked(HTMLElement.prototype.animate).mock.calls[0]
+    expect(options).toMatchObject({ duration: 300, easing: 'ease-in-out' })
   })
 })

@@ -52,6 +52,16 @@ export interface SwapOptions {
 }
 
 /**
+ * Shape of the patched `DropZone.move`. `DropZone.move` itself takes a single
+ * element — that is how `DragManager` calls it — while the array form exists
+ * only for this plugin's own multi-item paths.
+ */
+type SwapMoveOverride = (
+  item: HTMLElement | HTMLElement[],
+  targetIndex: number
+) => void
+
+/**
  * Swap plugin for swap-based sorting instead of insertion-based sorting
  *
  * @remarks
@@ -94,7 +104,8 @@ export class SwapPlugin implements SortablePlugin {
   private draggedItems = new WeakMap<SortableInstance, HTMLElement>()
   private originalMoveMethod = new WeakMap<
     SortableInstance,
-    (items: HTMLElement[], targetIndex: number) => void
+    // Matches the real `DropZone.move(item: HTMLElement, toIndex: number)`.
+    (item: HTMLElement, targetIndex: number) => void
   >()
 
   /**
@@ -158,7 +169,7 @@ export class SwapPlugin implements SortablePlugin {
       sortable as SortableInstance & {
         dropZone?: {
           element: HTMLElement
-          move: (items: HTMLElement[], targetIndex: number) => void
+          move: SwapMoveOverride
         }
       }
     ).dropZone
@@ -166,22 +177,44 @@ export class SwapPlugin implements SortablePlugin {
       return
     }
 
+    // Installing twice must not capture our own wrapper as "the original".
+    // It used to: install/install/uninstall/uninstall left the wrapper bound
+    // forever, because the second install stored W1 over the true original and
+    // the second uninstall had nothing left to restore. Make install idempotent.
+    if (this.originalMoveMethod.has(sortable)) {
+      return
+    }
+
     // Store original method
     this.originalMoveMethod.set(sortable, dropZone.move.bind(dropZone))
 
-    // Override with swap behavior
-    dropZone.move = (items: HTMLElement[], targetIndex: number) => {
-      if (items.length === 0) {
+    // Override with swap behavior.
+    //
+    // `DropZone.move`'s real signature is (item: HTMLElement, toIndex: number)
+    // and DragManager calls it that way for every single-item drag. This
+    // override used to declare its first parameter as `HTMLElement[]` and index
+    // straight into it: `items.length` on an element is `undefined` (so the
+    // empty guard passed), `items[0]` was `undefined`, and `performSwap` then
+    // dereferenced it — every real single-item swap threw. Accept both shapes
+    // and normalize.
+    dropZone.move = (
+      item: HTMLElement | HTMLElement[],
+      targetIndex: number
+    ) => {
+      const items = Array.isArray(item) ? item : [item]
+      if (items.length === 0 || !items[0]) {
         return
       }
 
       const targetElement = this.getElementAtIndex(
         { element: dropZone.element },
-        targetIndex
+        targetIndex,
+        this.draggableSelectorFor(sortable, dropZone.element)
       )
       if (!targetElement) {
-        // No target to swap with, fall back to original behavior
-        return this.originalMoveMethod.get(sortable)?.(items, targetIndex)
+        // No target to swap with, fall back to original behavior. The original
+        // takes a single element, so unwrap rather than handing it the array.
+        return this.originalMoveMethod.get(sortable)?.(items[0], targetIndex)
       }
 
       // Check if swap is allowed
@@ -195,6 +228,28 @@ export class SwapPlugin implements SortablePlugin {
   }
 
   /**
+   * Resolve which selector identifies sortable items in this zone.
+   *
+   * Prefers the instance's configured `draggable` option; the `data-draggable`
+   * attribute is only a fallback. Reading the attribute alone meant a consumer
+   * who set `options.draggable` (the documented way) got no swap at all — the
+   * lookup found nothing and the move silently fell through.
+   */
+  private draggableSelectorFor(
+    sortable: SortableInstance,
+    element: HTMLElement
+  ): string {
+    const configured = (
+      sortable as SortableInstance & {
+        options?: { draggable?: string }
+      }
+    ).options?.draggable
+    return (
+      configured ?? element.getAttribute('data-draggable') ?? '.sortable-item'
+    )
+  }
+
+  /**
    * Restore original DropZone move method
    */
   private restoreDropZoneMove(sortable: SortableInstance): void {
@@ -202,14 +257,16 @@ export class SwapPlugin implements SortablePlugin {
       sortable as SortableInstance & {
         dropZone?: {
           element: HTMLElement
-          move: (items: HTMLElement[], targetIndex: number) => void
+          move: SwapMoveOverride
         }
       }
     ).dropZone
     const originalMethod = this.originalMoveMethod.get(sortable)
 
     if (dropZone && originalMethod) {
-      dropZone.move = originalMethod
+      // Putting back DropZone's own narrower (item: HTMLElement, …) method —
+      // the widened override type only ever applied while we were patched in.
+      dropZone.move = originalMethod as SwapMoveOverride
     }
   }
 
@@ -514,13 +571,14 @@ export class SwapPlugin implements SortablePlugin {
    */
   private getElementAtIndex(
     dropZone: { element: HTMLElement },
-    index: number
+    index: number,
+    draggableSelector?: string
   ): HTMLElement | null {
-    const draggableSelector =
-      dropZone.element.getAttribute('data-draggable') || '.sortable-item'
-    const children = Array.from(
-      dropZone.element.querySelectorAll(draggableSelector)
-    )
+    const selector =
+      draggableSelector ??
+      dropZone.element.getAttribute('data-draggable') ??
+      '.sortable-item'
+    const children = Array.from(dropZone.element.querySelectorAll(selector))
     return (children[index] as HTMLElement) || null
   }
 }

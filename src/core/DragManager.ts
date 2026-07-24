@@ -358,7 +358,19 @@ export class DragManager implements DragManagerInterface {
 
     // Remove pointer events
     el.removeEventListener('pointerdown', this.onPointerDown)
-    // Document listeners are removed in onPointerUp
+
+    // A pointer drag in flight registers pointermove/pointerup/pointercancel/
+    // scroll on `document`, and those are normally unbound by onPointerUp. If
+    // we are detached mid-drag — a React unmount, or `option()` rebuilding the
+    // DragManager — that handler never runs for this instance, leaving an
+    // orphan bound to `document` that goes on reordering lists (including
+    // newly created ones) on every subsequent pointermove.
+    //
+    // Cleanup is non-reverting on purpose: it unbinds and clears state without
+    // moving DOM, so teardown stays behaviourally neutral.
+    if (this.isPointerDragging) {
+      this.cleanupPointerDrag()
+    }
 
     // Cancel any pending drag delay
     this.cancelDragDelay()

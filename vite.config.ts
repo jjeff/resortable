@@ -45,7 +45,12 @@ export default defineConfig({
     open: !process.env.CI,
     // PW_PORT lets parallel worktrees each serve on their own port (mirrors playwright.config.ts).
     port: Number(process.env.PW_PORT) || (process.env.CI ? 4173 : 5173),
-    strictPort: false, // Allow Vite to find another port if needed
+    // Fail loudly instead of drifting to the next free port. Playwright pins
+    // `baseURL` to this exact port, so a silent shift meant the suite kept
+    // testing whatever was already on the original port — in a multi-worktree
+    // checkout, that is another branch's dev server, and the run goes green
+    // against the wrong source.
+    strictPort: true,
     host: process.env.CI ? '0.0.0.0' : 'localhost',
   },
 });
