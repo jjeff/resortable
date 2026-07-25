@@ -1,3 +1,7 @@
+## <small>2.1.2 (2026-07-25)</small>
+
+* fix(core): give the pointer pipeline event/behavior parity with HTML5 (#121) (#129) ([a22edd6](https://github.com/jjeff/resortable/commit/a22edd6)), closes [#121](https://github.com/jjeff/resortable/issues/121) [#129](https://github.com/jjeff/resortable/issues/129)
+
 ## <small>2.1.1 (2026-07-13)</small>
 
 * fix(core): recompute drop target as autoscroll moves the list under the pointer (#125) ([06e87d1](https://github.com/jjeff/resortable/commit/06e87d1)), closes [#125](https://github.com/jjeff/resortable/issues/125)
