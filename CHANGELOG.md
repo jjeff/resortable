@@ -1,3 +1,7 @@
+## <small>2.1.3 (2026-07-25)</small>
+
+* fix(core): repair the DragManager listener leak and SwapPlugin; harden tests (#133) ([8f97ef5](https://github.com/jjeff/resortable/commit/8f97ef5)), closes [#133](https://github.com/jjeff/resortable/issues/133)
+
 ## <small>2.1.2 (2026-07-25)</small>
 
 * fix(core): give the pointer pipeline event/behavior parity with HTML5 (#121) (#129) ([a22edd6](https://github.com/jjeff/resortable/commit/a22edd6)), closes [#121](https://github.com/jjeff/resortable/issues/121) [#129](https://github.com/jjeff/resortable/issues/129)
