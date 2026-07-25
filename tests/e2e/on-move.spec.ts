@@ -129,15 +129,9 @@ test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop
   // Mobile Chrome's touch emulation has separate timing/geometry semantics
   // and is known to flake on `page.dragAndDrop` (mirrors existing skips
   // throughout the suite, e.g. event-callbacks.spec.ts).
-  function skipMobile(testInfo: { project: { name: string } }): boolean {
-    return /Mobile/.test(testInfo.project.name)
-  }
-
   test('returning false cancels reorder — no DOM mutation, no sort/update/change', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     await replaceSortable(page, 'basic-list', {
       animation: 0,
       ghostClass: 'sortable-ghost',
@@ -160,9 +154,7 @@ test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop
 
   test('callback receives (MoveEvent, originalEvent: Event)', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     await replaceSortable(page, 'basic-list', {
       animation: 0,
       ghostClass: 'sortable-ghost',
@@ -195,9 +187,7 @@ test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop
 
   test('returning -1 forces insert-BEFORE related (overrides natural drag-down)', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     await replaceSortable(page, 'basic-list', {
       animation: 0,
       ghostClass: 'sortable-ghost',
@@ -217,9 +207,7 @@ test.describe('onMove (#33) — default config (pointer pipeline via dragAndDrop
 
   test('returning 1 forces insert-AFTER related (overrides natural drag-up)', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     await replaceSortable(page, 'basic-list', {
       animation: 0,
       ghostClass: 'sortable-ghost',
@@ -251,15 +239,9 @@ test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners
   // Fallback mode is a desktop-precision drag concern — mobile emulation
   // has separate timing/geometry semantics (mirrors existing fallback
   // tests; tracked in #48).
-  function skipMobile(testInfo: { project: { name: string } }): boolean {
-    return /Mobile/.test(testInfo.project.name)
-  }
-
   test('returning false cancels reorder — pointer pipeline honors cancellation', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Desktop-only — touch emulation differs')
-
+  }) => {
     await replaceSortable(page, 'fallback-list', {
       animation: 0,
       forceFallback: true,
@@ -287,9 +269,7 @@ test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners
 
   test('callback receives a live PointerEvent as originalEvent', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Desktop-only — touch emulation differs')
-
+  }) => {
     await replaceSortable(page, 'fallback-list', {
       animation: 0,
       forceFallback: true,
@@ -319,9 +299,7 @@ test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners
 
   test('returning -1 forces insert-BEFORE related (pointer pipeline)', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Desktop-only — touch emulation differs')
-
+  }) => {
     await replaceSortable(page, 'fallback-list', {
       animation: 0,
       forceFallback: true,
@@ -376,15 +354,9 @@ test.describe('onMove (#60) — cross-zone enter (pointer pipeline)', () => {
     ).toHaveCount(4)
   })
 
-  function skipMobile(testInfo: { project: { name: string } }): boolean {
-    return /Mobile/.test(testInfo.project.name)
-  }
-
   test('returning false leaves item in source list (no cross-zone enter)', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     await replaceSortable(page, 'shared-a-1', {
       animation: 0,
       group: 'shared-test',
@@ -415,9 +387,7 @@ test.describe('onMove (#60) — cross-zone enter (pointer pipeline)', () => {
 
   test('dropping into an empty target zone — related is the container itself', async ({
     page,
-  }, testInfo) => {
-    test.skip(skipMobile(testInfo), 'Mobile dragAndDrop is unreliable')
-
+  }) => {
     // Empty the target list so the cross-zone enter has no sibling under
     // the pointer — exercises the `related === targetZoneElement` branch
     // (legacy parity).

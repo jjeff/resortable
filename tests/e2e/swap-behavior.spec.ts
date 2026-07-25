@@ -192,12 +192,7 @@ test.describe('Swap Behavior Options (#77)', () => {
     await page.mouse.up()
   })
 
-  test('should handle invertSwap option', async ({ page }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('should handle invertSwap option', async ({ page }) => {
     const LIST = '#swap-invert-list'
     const ITEM_HEIGHT = 60
 
@@ -283,12 +278,7 @@ test.describe('Swap Behavior Options (#77)', () => {
 
   test('should respect direction option for horizontal sorting', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const LIST = '#swap-direction-list'
     const ITEM_WIDTH = 100
 
@@ -376,12 +366,7 @@ test.describe('Swap Behavior Options (#77)', () => {
 
   test('should use invertedSwapThreshold when invertSwap is true', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const LIST = '#swap-inverted-threshold-list'
     const ITEM_HEIGHT = 60
 

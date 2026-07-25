@@ -64,12 +64,7 @@ test.describe('controlled pointer drags with pointer-events:auto descendants', (
 
   test('placeholder tracks the cursor mid-list and the intent lands there', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildControlledList(page)
 
     const from = await page.locator('#cp-0').boundingBox()
