@@ -704,14 +704,16 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
     expect(finalOrder).toContain('pr4-1')
     expect(finalOrder).toHaveLength(4)
 
-    // Lifecycle events fired in order. We don't lock down the exact set —
-    // animation timing and pointer pipeline both vary across runs — but at
-    // minimum `choose` + `start` must precede `end`.
+    // Lifecycle events fired in order. `choose` + `start` + `sort` must all
+    // precede `end` — `sort` fires on every same-zone reorder through the
+    // pointer pipeline as of #121, and the drag above (asserted via
+    // `finalOrder` above) is a genuine reorder, so it's no longer loose here.
     const finalEvents = await page.evaluate(() =>
       (window as unknown as { __pr4Events: string[] }).__pr4Events.slice()
     )
     expect(finalEvents).toContain('choose')
     expect(finalEvents).toContain('start')
+    expect(finalEvents).toContain('sort')
     expect(finalEvents).toContain('end')
     expect(finalEvents.indexOf('choose')).toBeLessThan(
       finalEvents.indexOf('end')
@@ -719,5 +721,6 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
     expect(finalEvents.indexOf('start')).toBeLessThan(
       finalEvents.indexOf('end')
     )
+    expect(finalEvents.indexOf('sort')).toBeLessThan(finalEvents.indexOf('end'))
   })
 })

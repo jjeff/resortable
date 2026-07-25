@@ -2,31 +2,32 @@ import { test, expect, Page } from '@playwright/test'
 
 /**
  * Coverage for `swapThreshold` / `invertSwap` / `invertedSwapThreshold` /
- * `direction` (#77). Previously skipped: the inline fixtures built plain
- * `document.createElement` markup with no explicit sizing, so
- * `getBoundingClientRect()` overlap math (the whole point of these options)
- * was unpredictable.
+ * `direction` (#77). The inline fixtures build `position: absolute`
+ * markup with explicit item width/height (mirrors `fallback-mode.spec.ts`)
+ * so every rect is known in advance and overlap fractions are computable
+ * exactly.
  *
- * Two things had to be fixed, not just fixture CSS:
+ * **Two pipelines reach `shouldSwap()`, historically via one entry point
+ * each; now the pointer path has two.** Before #121, the *uncontrolled*
+ * pointer path's same-zone branch reordered immediately on
+ * `over !== movingElement` — it never consulted `swapThreshold` at all —
+ * so `controlled: true` (routing through `handleControlledMove`, the same
+ * gate the native HTML5 `dragover` handler uses) was the only way to
+ * exercise the threshold gate via `page.mouse` (native HTML5
+ * `dragstart`/`dragover` can't be triggered by Playwright's synthetic mouse
+ * input either — same constraint documented in `on-move.spec.ts`). The
+ * fixtures below still use `controlled: true` and still read the
+ * placeholder's position (`data-resortable-placeholder`, same signal
+ * `controlled-pointer.spec.ts` uses) instead of real DOM item order, since
+ * controlled mode never structurally moves the real items mid-drag — that
+ * coverage remains valid on its own terms and stays as-is.
  *
- * 1. **Geometry** — mirrors `fallback-mode.spec.ts`: `position: absolute`
- *    fixtures with explicit item width/height so every rect is known in
- *    advance and overlap fractions are computable exactly.
- *
- * 2. **Which pipeline `shouldSwap()` is even wired into.** `DragManager`
- *    has exactly two call sites for the threshold gate: the native HTML5
- *    `dragover` handler, and `handleControlledMove` (shared by both
- *    pipelines when `controlled: true`). The *uncontrolled* pointer path
- *    that `page.mouse` normally drives (see `on-move.spec.ts`) reorders
- *    immediately on `over !== movingElement` — it never consults
- *    `swapThreshold` at all. Native HTML5 `dragstart`/`dragover` can't be
- *    triggered by Playwright's synthetic mouse input here either (same
- *    constraint documented in `on-move.spec.ts`). So `controlled: true` is
- *    the only way to exercise the threshold gate via `page.mouse` — the
- *    fixtures below all use it, and assertions read the placeholder's
- *    position (`data-resortable-placeholder`, same signal
- *    `controlled-pointer.spec.ts` uses) instead of real DOM item order,
- *    since controlled mode never structurally moves the real items mid-drag.
+ * #121 wired `shouldSwap()` into the uncontrolled path too, so as of this
+ * PR `controlled: true` is no longer required to reach the gate — see the
+ * 'uncontrolled pointer pipeline (#121)' describe block below, which drives
+ * the same options through plain `page.mouse` with no `controlled` option
+ * set and asserts real DOM reordering directly (see the comment on that
+ * block for why the gate measures the ghost's rect, not the parked item's).
  */
 
 /**
@@ -87,15 +88,16 @@ async function childLabels(page: Page, containerId: string): Promise<string[]> {
   }, containerId)
 }
 
+/** Shared by both describe blocks below. */
+function skipMobile(testInfo: { project: { name: string } }): boolean {
+  return /Mobile/.test(testInfo.project.name)
+}
+
 test.describe('Swap Behavior Options (#77)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
-
-  function skipMobile(testInfo: { project: { name: string } }): boolean {
-    return /Mobile/.test(testInfo.project.name)
-  }
 
   test('should respect swapThreshold option', async ({ page }, testInfo) => {
     test.skip(
@@ -460,6 +462,199 @@ test.describe('Swap Behavior Options (#77)', () => {
       'ivt-2',
       'PH',
       'ivt-3',
+      'GHOST',
+    ])
+
+    await page.mouse.up()
+  })
+})
+
+/**
+ * Uncontrolled pointer pipeline coverage for #121: `shouldSwap()` is now
+ * reachable from `page.mouse` with no `controlled` option set (previously
+ * only `controlled: true` reached it — see the file header). Unlike the
+ * controlled-mode fixtures above, the dragged item is never hidden or
+ * replaced by a placeholder here — it's the real DOM node, so assertions
+ * read real item order via `childLabels()` (no `'PH'` ever appears).
+ *
+ * The gate is fed the GHOST's rect, not `movingElement`'s: nothing moves
+ * the real dragged item until a swap actually commits, so its rect stays
+ * parked in its original slot for the whole hover — measuring it would make
+ * overlap compute to 0 no matter how far the cursor has traveled into the
+ * target (any `swapThreshold > 0` would freeze the drag outright, and
+ * `invertSwap` would fire unconditionally, since 0 overlap is always below
+ * any positive threshold — this was caught by an earlier `test.fail()` pin
+ * on these two cases before the ghost-rect fix landed). The cursor-following
+ * ghost is the actual moving visual, which is why `handleControlledMove`
+ * measures it too (`sourceManager.ghostManager.getGhostElement() ??
+ * placeholder`, DragManager.ts:737-739) — the uncontrolled branch now does
+ * the same (DragManager.ts, `onPointerMove`'s same-zone branch).
+ */
+test.describe('Swap Behavior Options (#77) — uncontrolled pointer pipeline (#121)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/playground.html')
+    await page.waitForFunction(() => window.resortableLoaded === true)
+  })
+
+  test('should respect swapThreshold option', async ({ page }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-threshold-list-uncontrolled'
+    const ITEM_HEIGHT = 60
+
+    await page.evaluate(() => {
+      document.getElementById('swap-threshold-list-uncontrolled')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-threshold-list-uncontrolled'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:220px;background:#eef'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="st-1" style="width:220px;height:60px;background:#ccc;">Item 1</div>
+        <div class="sortable-item" data-id="st-2" style="width:220px;height:60px;background:#ddd;">Item 2</div>
+        <div class="sortable-item" data-id="st-3" style="width:220px;height:60px;background:#ccc;">Item 3</div>
+        <div class="sortable-item" data-id="st-4" style="width:220px;height:60px;background:#ddd;">Item 4</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        swapThreshold: 0.5,
+        animation: 0,
+      })
+    })
+
+    const item1Box = await page
+      .locator(`${LIST} [data-id="st-1"]`)
+      .boundingBox()
+    const item2Box = await page
+      .locator(`${LIST} [data-id="st-2"]`)
+      .boundingBox()
+    if (!item1Box || !item2Box) throw new Error('missing item boxes')
+
+    // Same GRAB_OFFSET / overlap math as the controlled-mode
+    // swapThreshold test above — see {@link overlapY}.
+    const GRAB_OFFSET = 15
+    const grabX = item1Box.x + item1Box.width / 2
+    const grabY = item1Box.y + GRAB_OFFSET
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 30% overlap — below the 0.5 threshold, must NOT swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.3, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-threshold-list-uncontrolled')).toEqual(
+      ['st-1', 'st-2', 'st-3', 'st-4', 'GHOST']
+    )
+
+    // 60% overlap — above the 0.5 threshold, must swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(item2Box.y, ITEM_HEIGHT, 0.6, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-threshold-list-uncontrolled')).toEqual(
+      ['st-2', 'st-1', 'st-3', 'st-4', 'GHOST']
+    )
+
+    await page.mouse.up()
+  })
+
+  test('should handle invertSwap option', async ({ page }, testInfo) => {
+    test.skip(
+      skipMobile(testInfo),
+      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
+    )
+
+    const LIST = '#swap-invert-list-uncontrolled'
+    const ITEM_HEIGHT = 60
+
+    await page.evaluate(() => {
+      document.getElementById('swap-invert-list-uncontrolled')?.remove()
+      const container = document.createElement('div')
+      container.id = 'swap-invert-list-uncontrolled'
+      container.style.cssText =
+        'position:absolute;top:40px;left:40px;width:220px;background:#efe'
+      container.innerHTML = `
+        <div class="sortable-item" data-id="iv-a" style="width:220px;height:60px;background:#cdc;">Item A</div>
+        <div class="sortable-item" data-id="iv-b" style="width:220px;height:60px;background:#dcd;">Item B</div>
+        <div class="sortable-item" data-id="iv-c" style="width:220px;height:60px;background:#cdc;">Item C</div>
+      `
+      document.body.appendChild(container)
+
+      interface WindowWithSortable extends Window {
+        Sortable?: typeof import('../../src/index.js').Sortable
+      }
+      const win = window as WindowWithSortable
+      const Sortable = win.Sortable
+      if (!Sortable) throw new Error('Sortable not loaded on window')
+      new Sortable(container, {
+        invertSwap: true,
+        swapThreshold: 0.5,
+        animation: 0,
+      })
+    })
+
+    const itemABox = await page
+      .locator(`${LIST} [data-id="iv-a"]`)
+      .boundingBox()
+    const itemBBox = await page
+      .locator(`${LIST} [data-id="iv-b"]`)
+      .boundingBox()
+    if (!itemABox || !itemBBox) throw new Error('missing item boxes')
+
+    // Same GRAB_OFFSET / overlap math as the controlled-mode invertSwap
+    // test above — see {@link overlapY}.
+    const GRAB_OFFSET = 5
+    const grabX = itemABox.x + itemABox.width / 2
+    const grabY = itemABox.y + GRAB_OFFSET
+
+    await page.mouse.move(grabX, grabY)
+    await page.mouse.down()
+
+    // 80% overlap — inverted rule swaps only when overlap < threshold, so
+    // a LARGE overlap must NOT swap.
+    await page.mouse.move(
+      grabX,
+      overlapY(itemBBox.y, ITEM_HEIGHT, 0.8, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-invert-list-uncontrolled')).toEqual([
+      'iv-a',
+      'iv-b',
+      'iv-c',
+      'GHOST',
+    ])
+
+    // 20% overlap — below the 0.5 threshold, inverted rule swaps.
+    await page.mouse.move(
+      grabX,
+      overlapY(itemBBox.y, ITEM_HEIGHT, 0.2, GRAB_OFFSET),
+      {
+        steps: 1,
+      }
+    )
+    expect(await childLabels(page, 'swap-invert-list-uncontrolled')).toEqual([
+      'iv-b',
+      'iv-a',
+      'iv-c',
       'GHOST',
     ])
 
