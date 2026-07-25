@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { mouseDragAndDrop } from './helpers/animations'
+import { mouseDragAndDrop, waitForAnimations } from './helpers/animations'
 
 test.describe('Feature Demos', () => {
   test.beforeEach(async ({ page }) => {
@@ -287,14 +287,7 @@ test.describe('Feature Demos', () => {
     // captured coordinates go stale and the drag either misses its target
     // or never starts. `mouseDragAndDrop` reads both rects atomically after
     // a single scroll. See #75.
-    test('clones items from source to target list', async ({
-      page,
-    }, testInfo) => {
-      test.skip(
-        testInfo.project.name === 'Mobile Chrome' ||
-          testInfo.project.name === 'Mobile Safari',
-        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
-      )
+    test('clones items from source to target list', async ({ page }) => {
       const sourceItem = page.locator('#clone-source .clone-item').first()
 
       const sourceItemText = await sourceItem.textContent()
@@ -305,12 +298,47 @@ test.describe('Feature Demos', () => {
         .locator('#clone-target .clone-item')
         .count()
 
-      // Drag from source to target
-      await mouseDragAndDrop(
-        page,
-        '#clone-source .clone-item:first-child',
-        '#clone-target'
-      )
+      // Drag from source to target. Unlike `mouseDragAndDrop`, scroll the
+      // TARGET into view mid-drag (pointer already down) instead of
+      // up front: on short mobile viewports #clone-source (4 stacked items)
+      // and #clone-target don't both fit on screen at once once the source
+      // item is scrolled into view, so #clone-target's pre-scroll center
+      // lands below the viewport's bottom edge. `elementFromPoint()` returns
+      // null for coordinates outside the viewport, so the library's hit-test
+      // at that point resolves no drop zone and the drop silently never
+      // registers — this is the same scroll-boundary shape
+      // `multidrag-crosszone-scroll.spec.ts` handles by scrolling the target
+      // into view after `mousedown`, before moving the pointer there.
+      await sourceItem.scrollIntoViewIfNeeded()
+      const fromBox = await sourceItem.boundingBox()
+      if (!fromBox)
+        throw new Error('could not resolve #clone-source item bounding box')
+      const from = {
+        x: fromBox.x + fromBox.width / 2,
+        y: fromBox.y + fromBox.height / 2,
+      }
+
+      await page.mouse.move(from.x, from.y)
+      await page.mouse.down()
+      await page.mouse.move(from.x, from.y, { steps: 5 })
+
+      await page.evaluate(() => {
+        document
+          .querySelector('#clone-target')
+          ?.scrollIntoView({ block: 'center' })
+      })
+
+      const targetBox = await page.locator('#clone-target').boundingBox()
+      if (!targetBox)
+        throw new Error('could not resolve #clone-target bounding box')
+      const to = {
+        x: targetBox.x + targetBox.width / 2,
+        y: targetBox.y + targetBox.height / 2,
+      }
+
+      await page.mouse.move(to.x, to.y, { steps: 10 })
+      await page.mouse.up()
+      await waitForAnimations(page)
 
       // Source should have the same number of items (cloned, not moved)
       const finalSourceCount = await page
@@ -337,14 +365,7 @@ test.describe('Feature Demos', () => {
       expect(sourceItems).toContain(sourceItemText)
     })
 
-    test('can drag items between lists bidirectionally', async ({
-      page,
-    }, testInfo) => {
-      test.skip(
-        testInfo.project.name === 'Mobile Chrome' ||
-          testInfo.project.name === 'Mobile Safari',
-        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
-      )
+    test('can drag items between lists bidirectionally', async ({ page }) => {
       // First, move an item to target
       await mouseDragAndDrop(
         page,
