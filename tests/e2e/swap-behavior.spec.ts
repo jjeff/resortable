@@ -88,23 +88,13 @@ async function childLabels(page: Page, containerId: string): Promise<string[]> {
   }, containerId)
 }
 
-/** Shared by both describe blocks below. */
-function skipMobile(testInfo: { project: { name: string } }): boolean {
-  return /Mobile/.test(testInfo.project.name)
-}
-
 test.describe('Swap Behavior Options (#77)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
-  test('should respect swapThreshold option', async ({ page }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('should respect swapThreshold option', async ({ page }) => {
     const LIST = '#swap-threshold-list'
     const ITEM_HEIGHT = 60
 
@@ -481,12 +471,7 @@ test.describe('Swap Behavior Options (#77) — uncontrolled pointer pipeline (#1
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
-  test('should respect swapThreshold option', async ({ page }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('should respect swapThreshold option', async ({ page }) => {
     const LIST = '#swap-threshold-list-uncontrolled'
     const ITEM_HEIGHT = 60
 
@@ -560,12 +545,7 @@ test.describe('Swap Behavior Options (#77) — uncontrolled pointer pipeline (#1
     await page.mouse.up()
   })
 
-  test('should handle invertSwap option', async ({ page }, testInfo) => {
-    test.skip(
-      skipMobile(testInfo),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('should handle invertSwap option', async ({ page }) => {
     const LIST = '#swap-invert-list-uncontrolled'
     const ITEM_HEIGHT = 60
 

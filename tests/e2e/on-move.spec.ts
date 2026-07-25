@@ -236,9 +236,6 @@ test.describe('onMove (#33) — forceFallback (pointer pipeline, HTML5 listeners
     ).toHaveCount(4)
   })
 
-  // Fallback mode is a desktop-precision drag concern — mobile emulation
-  // has separate timing/geometry semantics (mirrors existing fallback
-  // tests; tracked in #48).
   test('returning false cancels reorder — pointer pipeline honors cancellation', async ({
     page,
   }) => {

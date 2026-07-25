@@ -270,6 +270,15 @@ test.describe('Animation System - Full Integration (#79)', () => {
   })
 
   test('should animate items affected by reordering', async ({ page }) => {
+    // `animatingCount` samples `getAnimations()` AFTER the drag returns, so it
+    // races the animations it is counting: at the default ~150ms every FLIP
+    // can finish before the `page.evaluate` round-trip lands, and the count
+    // comes back 0 — all four at once, never a partial number. Widen the
+    // window the same way 'should respect animation duration option' above
+    // does; 500ms is slack, not a behavior change, since this test asserts
+    // WHICH items animate, not for how long.
+    await setOption(page, 'basic-list', 'animation', 500)
+
     // Drag basic-1 (index 0) to the last slot — basic-2/3/4 all shift up
     // one row, so all four items should receive a FLIP animation, not just
     // the dragged one.

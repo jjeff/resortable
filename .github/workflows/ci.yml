@@ -54,11 +54,17 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:unit:coverage
 
+      # The real coverage gate is the step above: vitest.config.ts thresholds
+      # now fail `test:unit:coverage` on their own. Codecov is reporting on
+      # top of that, so it must not be able to redden a build the code passed.
+      # `fail_ci_if_error` is therefore tied to the token actually existing —
+      # loud when the upload can work, skipped when it can't. (This repo has
+      # no CODECOV_TOKEN today; hardcoding `true` fails every run.)
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage/lcov.info
-          fail_ci_if_error: true
+          fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

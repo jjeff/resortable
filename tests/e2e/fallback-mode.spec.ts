@@ -45,9 +45,6 @@ test.describe('forceFallback (#29 PR1)', () => {
   test('ghost has both ghostClass and fallbackClass during drag', async ({
     page,
   }) => {
-    // Fallback mode is a desktop-precision drag concern. Mobile projects use
-    // touch emulation with separate timing/geometry semantics — out of scope
-    // here (mirrors the empty-insert-threshold skip; Mobile Chrome #48).
     const from = await center(page, FALLBACK_ITEM('fb-1'))
     const to = await center(page, FALLBACK_ITEM('fb-3'))
 
@@ -452,11 +449,6 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
  *   2. Full happy-path with every fallback option set at once: pointerdown,
  *      sub-tolerance capture (no commit), past-tolerance commit, continued
  *      movement, reorder, pointerup.
- *
- * Mobile projects continue to skip — fallback mode is a desktop-precision
- * drag concern and touch emulation has different timing/geometry semantics
- * (Mobile Chrome tracked in #48). This mirrors the skip pattern used by every
- * preceding describe block in this file.
  */
 test.describe('fallback cross-option sweep (#29 PR4)', () => {
   const PR4_LIST = '#pr4-fallback-list'
