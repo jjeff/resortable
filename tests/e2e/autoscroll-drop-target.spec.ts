@@ -94,13 +94,18 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
 
     // Hold the pointer still and let autoscroll drive the list to the bottom.
     // No further pointermove fires — this is the stationary-pointer scenario.
+    //
+    // Generous timeout: every `scroll` event replays a full `onPointerMove`
+    // (hit test + placeholder move), so ~50 autoscroll frames are expensive.
+    // WebKit on hosted Windows needs 7-9s where Chromium needs <2s. Throttling
+    // that replay to one per animation frame is tracked in #134.
     await page.waitForFunction(
       () => {
         const ul = (window as unknown as AsWindow).__asList
         return !!ul && ul.scrollTop + ul.clientHeight >= ul.scrollHeight - 2
       },
       undefined,
-      { timeout: 5000 }
+      { timeout: 20000 }
     )
 
     await page.mouse.up()
