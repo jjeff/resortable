@@ -85,24 +85,7 @@ test.describe('Advanced Event Callbacks', () => {
     await page.mouse.up()
   })
 
-  // Not a test-timing issue: the pointer pipeline's same-zone reorder branch
-  // (DragManager.onPointerMove, ~line 1635) only emits `'update'` — `'sort'`
-  // and `'change'` are only emitted by the HTML5-native `onDragOver` handler
-  // (DragManager.ts:970 and :991). No amount of stepped page.mouse.move
-  // driving will make onSort fire through this pipeline; it's a real gap
-  // between the two drag pipelines, not exercised by this rewrite's mandate
-  // (pure test-infra). tests/e2e/fallback-mode.spec.ts's pointer-driven
-  // `onSort` wiring hits the same gap — see its comment around line 707
-  // ("we don't lock down the exact set"), which deliberately avoids
-  // asserting `sort` fires. Confirmed via direct instrumentation of
-  // DragManager.onPointerMove: with the correct `Sortable.get()` teardown
-  // (see below), `dispatchMove` and `onMove` both fire correctly, but
-  // `'sort'` is never emitted for this same-zone pointer drag. Tracked
-  // under #73 as a follow-up (DragManager pointer/HTML5 parity), not fixed
-  // here.
-  test.skip('should fire onSort event when sorting changes', async ({
-    page,
-  }) => {
+  test('should fire onSort event when sorting changes', async ({ page }) => {
     await page.evaluate(() => {
       const basicList = document.getElementById('basic-list')
       if (!basicList || !window.Sortable) return
@@ -141,13 +124,7 @@ test.describe('Advanced Event Callbacks', () => {
     expect(eventLog.some((e: any) => e.type === 'sort')).toBeTruthy()
   })
 
-  // Same root cause as onSort above: DragManager.onPointerMove's same-zone
-  // branch only emits `'update'` (DragManager.ts:1706) — `'change'` is only
-  // emitted by the HTML5-native `onDragOver` handler (DragManager.ts:991).
-  // The pointer pipeline structurally never fires `'change'`; this isn't
-  // fixable by adjusting how the mouse is driven. Tracked under #73 as a
-  // follow-up (DragManager pointer/HTML5 parity), not fixed here.
-  test.skip('should fire onChange event when order changes within same list', async ({
+  test('should fire onChange event when order changes within same list', async ({
     page,
   }) => {
     await page.evaluate(() => {

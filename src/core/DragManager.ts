@@ -472,26 +472,42 @@ export class DragManager implements DragManagerInterface {
   }
 
   /**
-   * Calculate if swap should occur based on overlap (only if threshold is set)
+   * Calculate if swap should occur based on overlap (only if threshold is set).
+   *
+   * `visible` is the item list used to MEASURE the layout axis. Trusting the
+   * `direction` option alone doesn't work: it defaults to `'vertical'` and is
+   * never auto-detected, so on a row or grid every item shares the same
+   * top/bottom and vertical overlap is always ~1.0 — which makes
+   * `swapThreshold` a no-op and, with `invertSwap`, blocks every reorder for
+   * the whole drag. `detectHorizontalLayout` measures the real axis and falls
+   * back to the `direction` option only when it can't (zero-size rects).
+   *
+   * Returns `true` (fail OPEN) when the target has no measurable extent along
+   * the axis — a threshold that can't be evaluated must not silently behave
+   * like a threshold that wasn't met, which would freeze the drag with no
+   * signal. Reachable with unlaid-out or `display: none` elements, and in
+   * jsdom, where every rect is zero-size.
    */
   private shouldSwap(
     dragRect: DOMRect,
     targetRect: DOMRect,
-    _dragDirection: 'forward' | 'backward'
+    visible: HTMLElement[]
   ): boolean {
     // If no threshold is set, always allow swap (legacy behavior)
     if (this.swapThreshold === undefined) {
       return true
     }
 
-    // Calculate overlap percentage based on direction
+    // Calculate overlap percentage along the measured layout axis
     let overlap: number
-    if (this.direction === 'vertical') {
+    if (!this.detectHorizontalLayout(visible)) {
+      if (targetRect.height <= 0) return true
       const overlapHeight =
         Math.min(dragRect.bottom, targetRect.bottom) -
         Math.max(dragRect.top, targetRect.top)
       overlap = Math.max(0, overlapHeight) / targetRect.height
     } else {
+      if (targetRect.width <= 0) return true
       const overlapWidth =
         Math.min(dragRect.right, targetRect.right) -
         Math.max(dragRect.left, targetRect.left)
@@ -532,11 +548,9 @@ export class DragManager implements DragManagerInterface {
    * and pointer move). Only the placeholder travels; consumer-owned nodes
    * are never structurally moved. `onMove` cancellation/override semantics
    * are preserved (dispatched on the SOURCE sortable's options, legacy
-   * parity). Per-pipeline differences:
+   * parity). Both pipelines emit the same sort/update/change set (#121).
+   * The one remaining per-pipeline difference:
    *
-   * - `emitHtml5Events` — the HTML5 pipeline emits sort/update/change on
-   *   same-list reorders; the pointer pipeline only emits update (parity
-   *   with the uncontrolled paths).
    * - `commitPending`  — the pointer pipeline commits pending live
    *   (pointerup IS the drop); the HTML5 pipeline commits only in onDrop
    *   so a cancelled drag (dragend without drop) reports a no-op.
@@ -630,7 +644,7 @@ export class DragManager implements DragManagerInterface {
     over: HTMLElement | null,
     targetManager: DragManager,
     activeDrag: ActiveDrag,
-    opts: { emitHtml5Events: boolean; commitPending: boolean }
+    opts: { commitPending: boolean }
   ): void {
     const sourceManager = activeDrag.fromDragManager as DragManager
     const placeholder = sourceManager.ghostManager.getPlaceholderElement()
@@ -746,13 +760,7 @@ export class DragManager implements DragManagerInterface {
       placeholder,
       visible
     )
-    if (
-      !this.shouldSwap(
-        movingRect,
-        overRect,
-        naturalAfter ? 'forward' : 'backward'
-      )
-    ) {
+    if (!this.shouldSwap(movingRect, overRect, visible)) {
       return
     }
 
@@ -795,17 +803,11 @@ export class DragManager implements DragManagerInterface {
       oldIndex: oldIdx,
       newIndex,
     }
-    const isSourceList = activeDrag.fromZone === targetZoneElement
-    if (opts.emitHtml5Events) {
-      // HTML5-pipeline parity: sort always, update/change on the source list.
-      targetManager.events.emit('sort', evt)
-      if (isSourceList) {
-        targetManager.events.emit('update', evt)
-        targetManager.events.emit('change', evt)
-      }
-    } else if (isSourceList) {
-      // Pointer-pipeline parity: update only.
+    // Both pipelines: sort always, update/change on the source list (#121).
+    targetManager.events.emit('sort', evt)
+    if (activeDrag.fromZone === targetZoneElement) {
       targetManager.events.emit('update', evt)
+      targetManager.events.emit('change', evt)
     }
   }
 
@@ -853,10 +855,9 @@ export class DragManager implements DragManagerInterface {
 
     if (this.controlled) {
       // Controlled mode: only the placeholder travels. Mid-drag events fire
-      // (HTML5 parity: sort/update/change) but pending is only committed in
-      // onDrop — a dragend without a drop must not commit intent.
+      // (sort/update/change) but pending is only committed in onDrop — a
+      // dragend without a drop must not commit intent.
       this.handleControlledMove(e, over, this, activeDrag, {
-        emitHtml5Events: true,
         commitPending: false,
       })
       return
@@ -977,12 +978,31 @@ export class DragManager implements DragManagerInterface {
     const dragIndex = this.zone.getIndex(dragItem)
     if (overIndex === dragIndex) return
 
-    // Check swap threshold if configured
+    // Check swap threshold if configured.
+    //
+    // KNOWN GAP — `swapThreshold` does not merely misbehave here, it disables
+    // same-zone sorting outright. Within a zone `dragItem` keeps its original
+    // slot for the whole drag (the reorder is committed on drop — see the
+    // commented-out `zone.move` below), so against a sibling `over` the
+    // overlap is 0: adjacent rects touch, non-adjacent ones clamp to 0. Every
+    // `swapThreshold > 0` therefore fails this gate on every dragover, the
+    // placeholder never moves, and sort/update/change never fire. `invertSwap`
+    // has the mirror bug — `0 < threshold` is always true, so the threshold is
+    // bypassed entirely. (`dragItem` IS moved on cross-zone entry above, but
+    // it lands as a parked sibling in the new zone, so the overlap is still 0.)
+    //
+    // The pointer pipeline had the same bug and fixed it by measuring the
+    // cursor-following ghost (#121). That is NOT available here: `onDragStart`
+    // sets the ghost to `display: none` because the browser draws its own drag
+    // image, and `updateGhostPosition` is only ever called from the pointer
+    // path — so its rect is both zero-size and frozen. The placeholder is no
+    // use either; it is only repositioned AFTER this gate passes. A real fix
+    // needs a rect synthesized from the DragEvent's clientX/clientY. Do NOT
+    // "restore parity" by copying the pointer pipeline's ghost lookup here.
     const dragRect = dragItem.getBoundingClientRect()
     const targetRect = over.getBoundingClientRect()
-    const dragDirection = dragIndex < overIndex ? 'forward' : 'backward'
 
-    if (!this.shouldSwap(dragRect, targetRect, dragDirection)) {
+    if (!this.shouldSwap(dragRect, targetRect, this.zone.getItems())) {
       return // Don't swap if threshold not met
     }
 
@@ -1586,10 +1606,9 @@ export class DragManager implements DragManagerInterface {
     if (this.controlled) {
       const targetManager = this.findDragManagerForZone(targetZoneElement)
       if (targetManager) {
-        // Pointer parity: only `update` fires mid-drag (gated on the source
-        // list); pending updates live because pointerup IS the commit.
+        // Same mid-drag event set as HTML5 (#121); pending updates live
+        // because pointerup IS the commit.
         this.handleControlledMove(e, over, targetManager, activeDrag, {
-          emitHtml5Events: false,
           commitPending: true,
         })
       }
@@ -1762,10 +1781,47 @@ export class DragManager implements DragManagerInterface {
           overIndex !== -1 &&
           currentIndex !== overIndex
         ) {
+          const naturalAfter = currentIndex < overIndex
+          const draggedRect = movingElement.getBoundingClientRect()
+          const targetRect = over.getBoundingClientRect()
+
+          // Swap-threshold gate — `swapThreshold` / `invertSwap` used to be
+          // ignored entirely on this path, so touch and fallback mode
+          // reordered on any hover (#121).
+          //
+          // Measure the GHOST, not `movingElement`: nothing moves the real
+          // item until a swap actually commits, so its rect stays parked in
+          // its original slot for the whole hover. Adjacent items touch with
+          // zero gap, so `movingElement` vs `over` overlaps by exactly 0 no
+          // matter how far the cursor travels — any threshold > 0 would
+          // freeze the drag outright, and `invertSwap` would fire
+          // unconditionally. The cursor-following ghost is the moving visual,
+          // which is why `handleControlledMove` measures it too.
+          //
+          // No ghost means nothing tracks the cursor, so there is no honest
+          // rect to gate on: skip the gate rather than substitute
+          // `movingElement`, whose rect is exactly the "no overlap" value
+          // described above and would silently freeze the drag. Failing open
+          // degrades to pre-#121 behavior (reorder on hover) instead.
+          //
+          // The threshold config is read from the manager owning the zone
+          // being reordered — not always `this` — matching the `sort: false`
+          // check above.
+          const ghostForSwap = this.ghostManager.getGhostElement()
+          if (
+            ghostForSwap &&
+            !(targetDragManager ?? this).shouldSwap(
+              ghostForSwap.getBoundingClientRect(),
+              targetRect,
+              currentItems
+            )
+          ) {
+            return
+          }
+
           // Dispatch move BEFORE mutating the DOM so cancellation is a true
           // no-op for this tick (#33). Pointer pipeline uses the live
           // `PointerEvent` as `originalEvent`.
-          const naturalAfter = currentIndex < overIndex
           const moveEvent: MoveEvent = {
             item: this.dragElement,
             items:
@@ -1778,8 +1834,8 @@ export class DragManager implements DragManagerInterface {
             newIndex: overIndex,
             related: over,
             willInsertAfter: naturalAfter,
-            draggedRect: movingElement.getBoundingClientRect(),
-            targetRect: over.getBoundingClientRect(),
+            draggedRect,
+            targetRect,
           }
           const moveResult = this.dispatchMove(moveEvent, e)
           if (moveResult === false) {
@@ -1794,6 +1850,12 @@ export class DragManager implements DragManagerInterface {
           else if (moveResult === -1 && naturalAfter)
             targetIndex = overIndex - 1
 
+          // An `onMove` override can collapse the target back onto the
+          // current index, leaving nothing to do. `handleControlledMove`
+          // guards the same case — without this, a no-op move would still
+          // emit a full sort/update/change round.
+          if (targetIndex === currentIndex) return
+
           // Use the DropZone's move method to get animations
           if (this.draggedItems.length > 1) {
             targetZone.moveMultiple(this.draggedItems, targetIndex)
@@ -1801,19 +1863,40 @@ export class DragManager implements DragManagerInterface {
             targetZone.move(movingElement, targetIndex)
           }
 
-          // Only emit update if it's within the original zone
-          if (activeDrag.fromZone === targetZoneElement) {
-            this.events.emit('update', {
-              item: this.dragElement,
-              items:
-                this.draggedItems.length > 0
-                  ? this.draggedItems
-                  : [this.dragElement],
-              from: targetZoneElement,
-              to: targetZoneElement,
-              oldIndex: this.startIndex,
-              newIndex: targetIndex,
-            })
+          const isSourceList = activeDrag.fromZone === targetZoneElement
+
+          // HTML5-pipeline parity (#121): `sort` fires on every reorder,
+          // `update` + `change` only when reordering the list the drag
+          // started in.
+          //
+          // `oldIndex` must index the list named by `from`/`to`. Once the
+          // item has been dragged into another zone, `startIndex` is an index
+          // into the ORIGINAL zone and is meaningless for a reorder happening
+          // inside the destination — use the live index there. (Same-zone
+          // keeps `startIndex`: the item never left, so it matches what the
+          // HTML5 path reports.)
+          const evt = {
+            item: this.dragElement,
+            items:
+              this.draggedItems.length > 0
+                ? this.draggedItems
+                : [this.dragElement],
+            from: targetZoneElement,
+            to: targetZoneElement,
+            oldIndex: isSourceList ? this.startIndex : currentIndex,
+            newIndex: targetIndex,
+          }
+
+          // Each emit gets its own copy — the payload is handed to consumer
+          // code, and a handler that mutates it must not corrupt the events
+          // that follow. `sort` goes to the manager owning the reordered
+          // zone (the HTML5 path gets that for free from its per-zone
+          // `dragover` listener); `update`/`change` stay on the drag owner,
+          // which is where they have always been emitted.
+          ;(targetDragManager ?? this).events.emit('sort', { ...evt })
+          if (isSourceList) {
+            this.events.emit('update', { ...evt })
+            this.events.emit('change', { ...evt })
           }
         }
       }
