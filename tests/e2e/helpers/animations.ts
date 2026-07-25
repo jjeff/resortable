@@ -26,7 +26,20 @@ export async function waitForAnimations(page: Page): Promise<void> {
 }
 
 /**
- * Perform drag and drop with animation wait
+ * Perform drag and drop with animation wait.
+ *
+ * Uses `page.dragAndDrop`, which drives the native HTML5 pipeline on desktop.
+ * On touch-capable projects DragManager sets `draggable = false` and uses its
+ * pointer pipeline instead, so no native drag occurs; Playwright's mouse
+ * events still reach it via engine-synthesized `pointer*` events.
+ *
+ * ponytail: routing touch projects through `mouseDragAndDrop` instead was
+ * tried and is WORSE — its straight-line stepped path transits the
+ * intermediate container on stacked mobile layouts and lands items at the
+ * wrong index (10 deterministic failures in shared-groups vs. occasional
+ * load-induced flakes). Left as-is deliberately. If the residual mobile
+ * flakiness here is worth chasing, the fix is a path that routes around
+ * other drop zones, not a different drag primitive.
  */
 export async function dragAndDropWithAnimation(
   page: Page,
@@ -42,13 +55,21 @@ export async function dragAndDropWithAnimation(
  * `page.dragAndDrop()` / native HTML5 drag simulation doesn't reliably
  * reach this library's dual HTML5/pointer pipeline (see #75).
  *
- * Reads both elements' `getBoundingClientRect()` in a SINGLE `page.evaluate`
- * call rather than two sequential `locator.boundingBox()` calls. Each
- * `boundingBox()` call auto-scrolls its element into view; calling it twice
- * for two different elements can scroll the page between the two reads, so
- * the first element's captured coordinates go stale relative to the second
- * scroll position — the mouse then lands on the wrong spot (or nothing) and
- * the drag never starts. A single atomic read after one settle avoids that.
+ * The source rect is read after scrolling the source into view. The TARGET
+ * rect is deliberately read later — after `mousedown`, once the target has
+ * been scrolled into view with the pointer already held down.
+ *
+ * Resolving the target up front is what breaks on short viewports: if source
+ * and target don't both fit on screen at once, the target's center can sit
+ * below the viewport's bottom edge. `document.elementFromPoint()` returns
+ * null outside the viewport, so the library's hit-test resolves no drop zone
+ * and the drop is a silent no-op — the drag "succeeds" while doing nothing.
+ * Scrolling mid-drag keeps the gesture continuous (no pointer release) while
+ * bringing the target into hit-testable space.
+ *
+ * Each rect is read in a single `page.evaluate` rather than via
+ * `locator.boundingBox()`, which auto-scrolls its element into view and would
+ * silently invalidate coordinates captured before it.
  */
 export async function mouseDragAndDrop(
   page: Page,
@@ -57,36 +78,29 @@ export async function mouseDragAndDrop(
 ): Promise<void> {
   await page.locator(sourceSelector).first().scrollIntoViewIfNeeded()
 
-  const rects = await page.evaluate(
-    ({ sourceSelector, targetSelector }) => {
-      const s = document.querySelector(sourceSelector)?.getBoundingClientRect()
-      const t = document.querySelector(targetSelector)?.getBoundingClientRect()
-      if (!s || !t) return null
-      return {
-        source: { x: s.x, y: s.y, width: s.width, height: s.height },
-        target: { x: t.x, y: t.y, width: t.width, height: t.height },
-      }
-    },
-    { sourceSelector, targetSelector }
-  )
-  if (!rects) {
-    throw new Error(
-      `mouseDragAndDrop: could not resolve "${sourceSelector}" or "${targetSelector}"`
-    )
+  const centerOf = async (selector: string) => {
+    const rect = await page.evaluate((sel) => {
+      const r = document.querySelector(sel)?.getBoundingClientRect()
+      return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null
+    }, selector)
+    if (!rect) {
+      throw new Error(`mouseDragAndDrop: could not resolve "${selector}"`)
+    }
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
   }
 
-  const from = {
-    x: rects.source.x + rects.source.width / 2,
-    y: rects.source.y + rects.source.height / 2,
-  }
-  const to = {
-    x: rects.target.x + rects.target.width / 2,
-    y: rects.target.y + rects.target.height / 2,
-  }
+  const from = await centerOf(sourceSelector)
 
   await page.mouse.move(from.x, from.y)
   await page.mouse.down()
   await page.mouse.move(from.x, from.y, { steps: 3 })
+
+  // Bring the target into view mid-drag, then read its post-scroll rect.
+  await page.evaluate((sel) => {
+    document.querySelector(sel)?.scrollIntoView({ block: 'center' })
+  }, targetSelector)
+  const to = await centerOf(targetSelector)
+
   await page.mouse.move(to.x, to.y, { steps: 10 })
   await page.mouse.up()
   await waitForAnimations(page)

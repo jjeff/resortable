@@ -15,6 +15,10 @@
         display: flex;
         align-items: center;
         width: 600px;
+        /* Leave a strip to the RIGHT of the clip list that is still inside
+           the `hitArea` region (.song) but outside the zone's own rect, so
+           "drop past the list appends" has somewhere to actually drop. */
+        padding-right: 40px;
         margin: 12px 0;
         border: 1px solid #ccc;
         background: #fafafa;
