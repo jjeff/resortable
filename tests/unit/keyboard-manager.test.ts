@@ -322,6 +322,161 @@ describe('KeyboardManager', () => {
     })
   })
 
+  describe('Arrow Key Reordering (grabbed item)', () => {
+    beforeEach(() => {
+      keyboardManager.attach()
+    })
+
+    function domOrder(): (string | undefined)[] {
+      return dropZone.getItems().map((el) => el.dataset.id)
+    }
+
+    function pressEnter(): void {
+      container.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    }
+
+    function pressArrow(key: 'ArrowUp' | 'ArrowDown'): void {
+      container.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      )
+    }
+
+    /** Select (additively, in order) and grab one or more items. */
+    function grab(...selected: HTMLElement[]): void {
+      selected.forEach((item, i) => selectionManager.select(item, i > 0))
+      selectionManager.setFocus(selected[selected.length - 1])
+      pressEnter()
+    }
+
+    it('moves the grabbed item down one position with ArrowDown', () => {
+      grab(items[1]) // item-1
+      pressArrow('ArrowDown')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-2',
+        'item-1',
+        'item-3',
+        'item-4',
+      ])
+      // Still grabbed after the move — arrow keys don't drop.
+      expect(items[1].getAttribute('aria-grabbed')).toBe('true')
+    })
+
+    it('moves the grabbed item up one position with ArrowUp', () => {
+      grab(items[3]) // item-3
+      pressArrow('ArrowUp')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-1',
+        'item-3',
+        'item-2',
+        'item-4',
+      ])
+      expect(items[3].getAttribute('aria-grabbed')).toBe('true')
+    })
+
+    it('does not move or corrupt the list when ArrowUp is pressed on the first grabbed item', () => {
+      grab(items[0])
+      pressArrow('ArrowUp')
+
+      // No wrap-around, no duplication, no dropped nodes.
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-1',
+        'item-2',
+        'item-3',
+        'item-4',
+      ])
+      expect(items[0].getAttribute('aria-grabbed')).toBe('true')
+    })
+
+    it('does not move or wrap the list when ArrowDown is pressed on the last grabbed item', () => {
+      grab(items[4])
+      pressArrow('ArrowDown')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-1',
+        'item-2',
+        'item-3',
+        'item-4',
+      ])
+      expect(items[4].getAttribute('aria-grabbed')).toBe('true')
+    })
+
+    it('moves multiple grabbed items down together, preserving their relative order', () => {
+      grab(items[1], items[2])
+      pressArrow('ArrowDown')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-3',
+        'item-1',
+        'item-2',
+        'item-4',
+      ])
+    })
+
+    it('moves multiple grabbed items up together, preserving their relative order', () => {
+      grab(items[2], items[3])
+      pressArrow('ArrowUp')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-2',
+        'item-3',
+        'item-1',
+        'item-4',
+      ])
+    })
+
+    it('does not move multiple grabbed items past the end of the list', () => {
+      grab(items[3], items[4]) // last two items already at the bottom
+      pressArrow('ArrowDown')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-1',
+        'item-2',
+        'item-3',
+        'item-4',
+      ])
+    })
+
+    it('does not move multiple grabbed items before the start of the list', () => {
+      grab(items[0], items[1]) // first two items already at the top
+      pressArrow('ArrowUp')
+
+      expect(domOrder()).toEqual([
+        'item-0',
+        'item-1',
+        'item-2',
+        'item-3',
+        'item-4',
+      ])
+    })
+
+    it('announces the new position after a move', () => {
+      grab(items[1])
+      const announceSpy = vi.spyOn(keyboardManager, 'announce')
+
+      pressArrow('ArrowDown')
+
+      expect(announceSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Moved to position')
+      )
+      announceSpy.mockRestore()
+    })
+  })
+
   describe('Multi-Selection Keyboard Shortcuts', () => {
     beforeEach(() => {
       keyboardManager.detach()
@@ -452,20 +607,42 @@ describe('KeyboardManager', () => {
   describe('Cleanup', () => {
     it('should remove event listeners on detach', () => {
       keyboardManager.attach()
-      keyboardManager.detach()
+      selectionManager.select(items[1])
+      selectionManager.setFocus(items[1])
 
       const handler = vi.fn()
       eventSystem.on('start', handler)
 
-      // Try keyboard operation after detach
-      const event = new KeyboardEvent('keydown', {
-        key: 'Enter',
-        bubbles: true,
-      })
-      container.dispatchEvent(event)
+      const enterEvent = (): KeyboardEvent =>
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        })
 
-      // Should not trigger any events
-      expect(handler).not.toHaveBeenCalled()
+      // Sanity check: Enter grabs the focused item while attached — this is
+      // the behavior detach() is supposed to disable below. Without this,
+      // the test below would pass even if detach() were a complete no-op,
+      // because nothing was ever selected/focused to make grab() do anything.
+      container.dispatchEvent(enterEvent())
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(items[1].getAttribute('aria-grabbed')).toBe('true')
+
+      // Drop before detaching so grab state doesn't leak into the assertion.
+      container.dispatchEvent(enterEvent())
+      expect(items[1].getAttribute('aria-grabbed')).toBe('false')
+
+      keyboardManager.detach()
+
+      // Re-select/focus and press Enter again post-detach: if the listener
+      // was actually removed, this must be a no-op — no new 'start' emission
+      // and no grab.
+      selectionManager.select(items[1])
+      selectionManager.setFocus(items[1])
+      container.dispatchEvent(enterEvent())
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(items[1].getAttribute('aria-grabbed')).toBe('false')
     })
 
     it('should reset tabindex values on detach', () => {

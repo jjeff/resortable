@@ -46,13 +46,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test:unit
+      # Runs WITH coverage so the thresholds in vitest.config.ts actually gate
+      # the build. This job previously ran `test:unit` (no coverage) and then
+      # uploaded ./coverage/lcov.info — a file nothing ever generated. Codecov
+      # defaults `fail_ci_if_error` to false, so the upload of a missing file
+      # logged an error and still exited 0: green CI, zero coverage signal.
+      - name: Run unit tests with coverage
+        run: npm run test:unit:coverage
 
+      # The real coverage gate is the step above: vitest.config.ts thresholds
+      # now fail `test:unit:coverage` on their own. Codecov is reporting on
+      # top of that, so it must not be able to redden a build the code passed.
+      # `fail_ci_if_error` is therefore tied to the token actually existing —
+      # loud when the upload can work, skipped when it can't. (This repo has
+      # no CODECOV_TOKEN today; hardcoding `true` fails every run.)
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage/lcov.info
+          fail_ci_if_error: ${{ secrets.CODECOV_TOKEN != '' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -236,18 +248,16 @@ jobs:
       - name: Check bundle size against budget
         run: npm run size
 
-  cross-platform-test:
+  # Node-version compatibility, not OS coverage — the name is historical.
+  # Cross-OS browser testing lives in the e2e-tests-hosted-* jobs above.
+  # (Dropped an `exclude:` block here that filtered on `self-hosted-macos` /
+  # `self-hosted-windows`; neither value has ever been in the `os` matrix, so
+  # both entries were no-ops implying coverage that wasn't happening.)
+  node-version-test:
     strategy:
       matrix:
-        # Using GitHub-hosted
         os: [ubuntu-latest]
         node-version: [18, 20]
-        exclude:
-          # Skip Node 18 on self-hosted runners to reduce job count
-          - os: self-hosted-macos
-            node-version: 18
-          - os: self-hosted-windows
-            node-version: 18
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code

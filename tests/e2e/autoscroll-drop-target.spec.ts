@@ -73,12 +73,7 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
 
   test('a held-pointer edge drag lands near the scrolled end, not the source', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildScrollingList(page)
 
     const list = await page.locator('#as-list').boundingBox()

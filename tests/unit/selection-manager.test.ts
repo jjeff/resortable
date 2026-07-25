@@ -238,18 +238,18 @@ describe('SelectionManager', () => {
   // These tests have been moved to the integration tests
 
   describe('Cleanup', () => {
-    it('should clean up event listeners on destroy', () => {
-      const clickHandler = vi.fn()
-      container.addEventListener('click', clickHandler)
+    // Note: SelectionManager itself never attaches DOM listeners — click
+    // handling lives in KeyboardManager (see comment above). destroy()'s
+    // real, testable contract here is clearing out whatever was selected.
+    it('clears an existing selection when destroyed', () => {
+      selectionManager.select(items[0])
+      expect(selectionManager.getSelected()).toHaveLength(1)
 
       selectionManager.destroy()
 
-      // Try to click after destroy
-      const clickEvent = new MouseEvent('click', { bubbles: true })
-      items[0].dispatchEvent(clickEvent)
-
-      // The selection manager should not respond
       expect(selectionManager.getSelected()).toHaveLength(0)
+      expect(items[0].getAttribute('aria-selected')).toBe('false')
+      expect(items[0].classList.contains('sortable-selected')).toBe(false)
     })
 
     it('should clear all selections on destroy', () => {

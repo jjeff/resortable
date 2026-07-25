@@ -44,15 +44,7 @@ test.describe('forceFallback (#29 PR1)', () => {
 
   test('ghost has both ghostClass and fallbackClass during drag', async ({
     page,
-  }, testInfo) => {
-    // Fallback mode is a desktop-precision drag concern. Mobile projects use
-    // touch emulation with separate timing/geometry semantics — out of scope
-    // here (mirrors the empty-insert-threshold skip; Mobile Chrome #48).
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const from = await center(page, FALLBACK_ITEM('fb-1'))
     const to = await center(page, FALLBACK_ITEM('fb-3'))
 
@@ -77,12 +69,7 @@ test.describe('forceFallback (#29 PR1)', () => {
 
   test('drag reorders items without HTML5 listeners attached', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     // Sanity check the starting order.
     const initialOrder = await page
       .locator(FALLBACK_REAL_ITEMS)
@@ -185,12 +172,7 @@ test.describe('fallback positioning (#29 PR2)', () => {
 
   test('fallbackOnBody: false appends ghost as child of sortable zone', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildList(page, { fallbackOnBody: false })
 
     const from = await center(page, PR2_ITEM('pr2-1'))
@@ -213,12 +195,7 @@ test.describe('fallback positioning (#29 PR2)', () => {
 
   test('fallbackOnBody: true appends ghost to document.body', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildList(page, { fallbackOnBody: true })
 
     const from = await center(page, PR2_ITEM('pr2-1'))
@@ -238,12 +215,7 @@ test.describe('fallback positioning (#29 PR2)', () => {
 
   test('fallbackOffsetX shifts ghost X position by configured pixels', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const OFFSET = 40
     // Use fallbackOnBody:true so the ghost lives at a predictable parent
     // (document.body); its `left` style is then absolute viewport pixels.
@@ -282,12 +254,7 @@ test.describe('fallback positioning (#29 PR2)', () => {
 
   test('fallbackOffsetY shifts ghost Y position by configured pixels', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const OFFSET = -25 // shift up
     await buildList(page, { fallbackOffsetY: OFFSET, fallbackOnBody: true })
 
@@ -391,12 +358,7 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
     await page.waitForFunction(() => window.resortableLoaded === true)
   })
 
-  test('small pointer move does not start drag', async ({ page }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('small pointer move does not start drag', async ({ page }) => {
     await buildList(page, { fallbackTolerance: 10 })
 
     const initial = await page
@@ -420,14 +382,7 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
     await page.mouse.up()
   })
 
-  test('movement past threshold starts drag normally', async ({
-    page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  test('movement past threshold starts drag normally', async ({ page }) => {
     await buildList(page, { fallbackTolerance: 10 })
 
     const from = await center(page, PR3_ITEM('pr3-1'))
@@ -456,12 +411,7 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
 
   test('pointerup during capture phase fires no drag events', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildList(page, { fallbackTolerance: 10 })
 
     const from = await center(page, PR3_ITEM('pr3-1'))
@@ -499,11 +449,6 @@ test.describe('fallbackTolerance (#29 PR3)', () => {
  *   2. Full happy-path with every fallback option set at once: pointerdown,
  *      sub-tolerance capture (no commit), past-tolerance commit, continued
  *      movement, reorder, pointerup.
- *
- * Mobile projects continue to skip — fallback mode is a desktop-precision
- * drag concern and touch emulation has different timing/geometry semantics
- * (Mobile Chrome tracked in #48). This mirrors the skip pattern used by every
- * preceding describe block in this file.
  */
 test.describe('fallback cross-option sweep (#29 PR4)', () => {
   const PR4_LIST = '#pr4-fallback-list'
@@ -573,12 +518,7 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
 
   test('fallbackOnBody:false combined with fallbackOffsetX/Y still shifts ghost', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     const OFFSET_X = 30
     const OFFSET_Y = -15
     await buildList(page, {
@@ -648,12 +588,7 @@ test.describe('fallback cross-option sweep (#29 PR4)', () => {
 
   test('end-to-end happy path with all fallback options set', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch emulation differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
     await buildList(page, {
       fallbackOnBody: false,
       fallbackOffsetX: 8,

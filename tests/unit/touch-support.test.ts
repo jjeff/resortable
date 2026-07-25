@@ -316,7 +316,14 @@ describe('Touch Support', () => {
       })
       document.dispatchEvent(pointerMove)
 
-      // Verify plugin installed and doesn't error on touch pointermove
+      // The plugin must have recorded the coordinates from the event.
+      const internals = plugin as unknown as {
+        lastMousePosition: { x: number; y: number }
+        cursorSeen: boolean
+      }
+      expect(internals.lastMousePosition).toEqual({ x: 100, y: 200 })
+      expect(internals.cursorSeen).toBe(true)
+
       plugin.uninstall(mockSortable)
     })
 

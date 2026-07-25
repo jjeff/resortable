@@ -199,11 +199,7 @@ test.describe('multi-drag cross-zone in a nested scrolling list (#124 follow-up)
 
   test('dropping multi-selection on a song header lands in its nested clip grid', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only pointer pipeline'
-    )
+  }) => {
     await buildNestedSongs(page)
 
     const SELECT = 5
@@ -249,11 +245,7 @@ test.describe('multi-drag cross-zone in a nested scrolling list (#124 follow-up)
 
   test('a multi-selection built out of visual order drags as a DOM-ordered block', async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only pointer pipeline'
-    )
+  }) => {
     await buildNestedSongs(page)
 
     // Select five clips in SCRAMBLED order (not left-to-right). The drag

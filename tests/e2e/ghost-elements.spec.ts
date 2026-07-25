@@ -2,11 +2,6 @@ import { expect, test } from '@playwright/test'
 import { dragAndDropWithAnimation } from './helpers/animations'
 
 // Helper to skip tests on Mobile Chrome due to dragAndDrop timeout issues
-const shouldSkipMobileChrome = (
-  browserName: string,
-  isMobile: boolean
-): boolean => browserName === 'chromium' && isMobile === true
-
 test.describe('Ghost Element Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html')
@@ -31,14 +26,7 @@ test.describe('Ghost Element Functionality', () => {
   // intermediate drag-class state. Driving the pointer through discrete
   // mouse.move steps — mirroring tests/e2e/on-move.spec.ts — lets us assert
   // on the class mid-drag before releasing. Tracked in #73.
-  test('applies drag class during drag operation', async ({
-    page,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name === 'Mobile Chrome' ||
-        testInfo.project.name === 'Mobile Safari',
-      'mouse-driven drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
-    )
+  test('applies drag class during drag operation', async ({ page }) => {
     const firstItem = page.locator('#basic-list [data-id="basic-1"]')
     const thirdItem = page.locator('#basic-list [data-id="basic-3"]')
 
@@ -69,11 +57,7 @@ test.describe('Ghost Element Functionality', () => {
     await expect(firstItem).not.toHaveClass(/sortable-drag/)
   })
 
-  test('shows placeholder element during drag', async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name === 'Mobile Safari',
-      'Cross-list dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
-    )
+  test('shows placeholder element during drag', async ({ page }) => {
     // This test would check for the placeholder element, but since it's created
     // dynamically and may be difficult to test reliably with HTML5 drag API,
     // we'll focus on the visual classes
@@ -135,19 +119,7 @@ test.describe('Ghost Element Functionality', () => {
     await expect(item).not.toHaveClass(/sortable-ghost/)
   })
 
-  test('handles cross-list drag with ghost elements', async ({
-    page,
-    browserName,
-    isMobile,
-  }, testInfo) => {
-    test.skip(
-      shouldSkipMobileChrome(browserName, isMobile),
-      'Mobile Chrome dragAndDrop timeout — tracked in #48'
-    )
-    test.skip(
-      testInfo.project.name === 'Mobile Safari',
-      'Cross-list dragAndDrop non-deterministic on Mobile Safari/WebKit emulation — tracked in #62'
-    )
+  test('handles cross-list drag with ghost elements', async ({ page }) => {
     // Test dragging between lists with proper ghost handling
 
     // Drag from list1 to list2

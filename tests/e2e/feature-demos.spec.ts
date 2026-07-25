@@ -287,14 +287,7 @@ test.describe('Feature Demos', () => {
     // captured coordinates go stale and the drag either misses its target
     // or never starts. `mouseDragAndDrop` reads both rects atomically after
     // a single scroll. See #75.
-    test('clones items from source to target list', async ({
-      page,
-    }, testInfo) => {
-      test.skip(
-        testInfo.project.name === 'Mobile Chrome' ||
-          testInfo.project.name === 'Mobile Safari',
-        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
-      )
+    test('clones items from source to target list', async ({ page }) => {
       const sourceItem = page.locator('#clone-source .clone-item').first()
 
       const sourceItemText = await sourceItem.textContent()
@@ -305,7 +298,9 @@ test.describe('Feature Demos', () => {
         .locator('#clone-target .clone-item')
         .count()
 
-      // Drag from source to target
+      // On short mobile viewports #clone-source and #clone-target don't both
+      // fit on screen at once, so the target must be scrolled into view
+      // mid-drag — `mouseDragAndDrop` does that.
       await mouseDragAndDrop(
         page,
         '#clone-source .clone-item:first-child',
@@ -337,14 +332,7 @@ test.describe('Feature Demos', () => {
       expect(sourceItems).toContain(sourceItemText)
     })
 
-    test('can drag items between lists bidirectionally', async ({
-      page,
-    }, testInfo) => {
-      test.skip(
-        testInfo.project.name === 'Mobile Chrome' ||
-          testInfo.project.name === 'Mobile Safari',
-        'mouse-driven clone drag is non-deterministic on mobile touch emulation — tracked in #48/#62'
-      )
+    test('can drag items between lists bidirectionally', async ({ page }) => {
       // First, move an item to target
       await mouseDragAndDrop(
         page,
@@ -387,84 +375,6 @@ test.describe('Feature Demos', () => {
         .locator('#clone-source .clone-item')
         .evaluateAll((els) => els.map((el) => el.dataset.id))
       expect(finalOrder).toEqual(initialOrder)
-    })
-  })
-
-  test.describe('Multi-Drag Selection (Visual Demo Only)', () => {
-    // FIXME: Multi-drag demo flow — tracked in #34 (multi-drag reconciliation).
-    test.skip('can select items by clicking with Shift key', async ({
-      page,
-    }) => {
-      // Skip this test as multi-drag is not yet fully implemented
-      const firstItem = page.locator('#multidrag-list .filter-item').first()
-      const secondItem = page.locator('#multidrag-list .filter-item').nth(1)
-
-      // Click first item
-      await firstItem.click()
-      await page.waitForTimeout(100) // Wait for click handler
-      let bgColor = await firstItem.evaluate(
-        (el) => window.getComputedStyle(el).backgroundColor
-      )
-      expect(bgColor).toBe('rgb(231, 245, 255)') // #e7f5ff
-
-      // Shift+Click second item
-      await secondItem.click({ modifiers: ['Shift'] })
-      await page.waitForTimeout(100) // Wait for click handler
-      bgColor = await secondItem.evaluate(
-        (el) => window.getComputedStyle(el).backgroundColor
-      )
-      expect(bgColor).toBe('rgb(231, 245, 255)')
-
-      // Both should be selected - check inline styles
-      const firstItemStyle = await firstItem.evaluate(
-        (el) => el.style.background
-      )
-      const secondItemStyle = await secondItem.evaluate(
-        (el) => el.style.background
-      )
-
-      // Check both items have the selected background style
-      expect(firstItemStyle).toContain('231') // rgb(231, 245, 255)
-      expect(secondItemStyle).toContain('231')
-
-      const selectedCount = await page
-        .locator('#multidrag-list .filter-item')
-        .evaluateAll(
-          (els) =>
-            els.filter((el) => el.style.background.includes('231')).length
-        )
-      expect(selectedCount).toBe(2)
-    })
-
-    // FIXME: Multi-drag demo flow — tracked in #34.
-    test.skip('selection is cleared after drag', async ({ page }) => {
-      // Skip this test as multi-drag is not yet fully implemented
-      const firstItem = page.locator('#multidrag-list .filter-item').first()
-      const lastItem = page.locator('#multidrag-list .filter-item').last()
-
-      // Select an item
-      await firstItem.click()
-
-      // Drag it
-      await firstItem.hover()
-      await page.mouse.down()
-      await lastItem.hover()
-      await page.mouse.up()
-
-      await page.waitForTimeout(200)
-
-      // Selection should be cleared
-      const selectedCount = await page
-        .locator('#multidrag-list .filter-item')
-        .evaluateAll(
-          (els) =>
-            els.filter(
-              (el) =>
-                window.getComputedStyle(el).backgroundColor ===
-                'rgb(231, 245, 255)'
-            ).length
-        )
-      expect(selectedCount).toBe(0)
     })
   })
 })

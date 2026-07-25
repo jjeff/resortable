@@ -81,4 +81,99 @@ describe('DropZone', () => {
       expect(getOrder(zone)).toEqual(['1', '2', '3', '4', '5'])
     })
   })
+
+  describe('getVisibleItems', () => {
+    it('returns all items when nothing is excluded or hidden', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      expect(zone.getVisibleItems().map((el) => el.dataset.id)).toEqual([
+        '1',
+        '2',
+        '3',
+      ])
+    })
+
+    it('excludes elements passed via the exclude list', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const items = zone.getItems()
+      expect(
+        zone.getVisibleItems([items[1]]).map((el) => el.dataset.id)
+      ).toEqual(['1', '3'])
+    })
+
+    it('excludes elements marked sortable-controlled-hidden', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const items = zone.getItems()
+      items[0].classList.add('sortable-controlled-hidden')
+      expect(zone.getVisibleItems().map((el) => el.dataset.id)).toEqual([
+        '2',
+        '3',
+      ])
+    })
+
+    it('applies both the exclude list and the hidden class together', () => {
+      const container = createContainer(4)
+      const zone = new DropZone(container)
+      const items = zone.getItems()
+      items[0].classList.add('sortable-controlled-hidden')
+      expect(
+        zone.getVisibleItems([items[2]]).map((el) => el.dataset.id)
+      ).toEqual(['2', '4'])
+    })
+  })
+
+  describe('getControlledIndex', () => {
+    function createPlaceholder(): HTMLElement {
+      const el = document.createElement('div')
+      el.className = 'sortable-item'
+      el.setAttribute('data-resortable-placeholder', '')
+      return el
+    }
+
+    it('counts only visible siblings before the placeholder', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const placeholder = createPlaceholder()
+      // DOM order becomes: 1, 2, [placeholder], 3
+      container.insertBefore(placeholder, container.children[2])
+
+      expect(zone.getControlledIndex(placeholder)).toBe(2)
+    })
+
+    it('does not count a hidden (dragged) sibling before the placeholder', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const items = zone.getItems()
+      items[1].classList.add('sortable-controlled-hidden') // item '2' hidden
+      const placeholder = createPlaceholder()
+      // DOM order: 1, 2 (hidden), [placeholder], 3
+      container.insertBefore(placeholder, container.children[2])
+
+      // Only item '1' still counts as visible before the placeholder.
+      expect(zone.getControlledIndex(placeholder)).toBe(1)
+    })
+
+    it('does not count an explicitly excluded sibling before the placeholder', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const items = zone.getItems()
+      const placeholder = createPlaceholder()
+      // DOM order: 1, [placeholder], 2, 3 — exclude item '1' (e.g. the
+      // HTML5 pipeline's still-visible dragged source item).
+      container.insertBefore(placeholder, container.children[1])
+
+      expect(zone.getControlledIndex(placeholder, [items[0]])).toBe(0)
+    })
+
+    it('counts the full visible length when the placeholder is last', () => {
+      const container = createContainer(3)
+      const zone = new DropZone(container)
+      const placeholder = createPlaceholder()
+      container.appendChild(placeholder)
+
+      expect(zone.getControlledIndex(placeholder)).toBe(3)
+    })
+  })
 })

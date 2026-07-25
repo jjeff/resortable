@@ -58,11 +58,7 @@ test.describe('Empty Container Drop Target (#32)', () => {
     await expect(page.locator('#shared-a-2 .sortable-item')).toHaveCount(4)
   })
 
-  test('drops item from non-empty list into empty list', async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
-
+  test('drops item from non-empty list into empty list', async ({ page }) => {
     await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', '#shared-a-1')
 
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(1)
@@ -74,9 +70,7 @@ test.describe('Empty Container Drop Target (#32)', () => {
 
   test('can drop multiple items into a previously-empty list sequentially', async ({
     page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name === 'Mobile Chrome', 'Tracked in #48')
-
+  }) => {
     await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', '#shared-a-1')
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(1)
 

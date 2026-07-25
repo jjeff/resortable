@@ -4,6 +4,8 @@ dist/
 /docs/demo/
 build/
 test-results/
+test-results.json
+coverage/
 playwright-report/
 
 # Playwright

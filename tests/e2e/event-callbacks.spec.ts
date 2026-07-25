@@ -2,11 +2,6 @@ import { dragAndDropWithAnimation } from './helpers/animations'
 import { expect, test } from '@playwright/test'
 
 // Helper to skip tests on Mobile Chrome due to dragAndDrop timeout issues
-const shouldSkipMobileChrome = (
-  browserName: string,
-  isMobile: boolean
-): boolean => browserName === 'chromium' && isMobile === true
-
 test.describe('Event Callbacks and Logging', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html')
@@ -47,15 +42,7 @@ test.describe('Event Callbacks and Logging', () => {
     expect(endMessage).toBeTruthy()
   })
 
-  test('displays status updates in the status div', async ({
-    page,
-    browserName,
-    isMobile,
-  }) => {
-    test.skip(
-      shouldSkipMobileChrome(browserName, isMobile),
-      'Mobile Chrome dragAndDrop timeout — tracked in #48'
-    )
+  test('displays status updates in the status div', async ({ page }) => {
     // Perform drag operation
     await dragAndDropWithAnimation(
       page,
@@ -78,13 +65,7 @@ test.describe('Event Callbacks and Logging', () => {
 
   test('logs add and remove events for cross-list operations', async ({
     page,
-    browserName,
-    isMobile,
   }) => {
-    test.skip(
-      shouldSkipMobileChrome(browserName, isMobile),
-      'Mobile Chrome dragAndDrop timeout — tracked in #48'
-    )
     const consoleMessages: string[] = []
     page.on('console', (msg) => {
       if (msg.type() === 'log') {
@@ -215,15 +196,7 @@ test.describe('Event Callbacks and Logging', () => {
     await expect(libraryStatus).toContainText('Resortable loaded')
   })
 
-  test('captures event object properties in console logs', async ({
-    page,
-    browserName,
-    isMobile,
-  }) => {
-    test.skip(
-      shouldSkipMobileChrome(browserName, isMobile),
-      'Mobile Chrome dragAndDrop timeout — tracked in #48'
-    )
+  test('captures event object properties in console logs', async ({ page }) => {
     // This test verifies that drag operations work and events are triggered
     // Since we can't reliably capture console logs in this environment,
     // we'll just verify the drag operation works and status is updated

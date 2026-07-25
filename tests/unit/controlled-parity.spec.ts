@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
+import { AutoScrollPlugin } from '../../src/plugins/AutoScrollPlugin'
 
 /**
  * Unit coverage for the 2026-07 SortableJS-parity fixes driven by the
@@ -283,14 +284,27 @@ describe('controlled-mode parity fixes (2026-07)', () => {
   })
 
   describe('scroll option', () => {
-    it('accepts scroll options without error and cleans up on destroy', () => {
+    it('passes scrollSensitivity/scrollSpeed through to AutoScrollPlugin and uninstalls it on destroy', () => {
+      const createSpy = vi.spyOn(AutoScrollPlugin, 'create')
+      const uninstallSpy = vi.spyOn(AutoScrollPlugin.prototype, 'uninstall')
+
       sortable = new Sortable(ul, {
         draggable: '.item',
         scroll: true,
         scrollSensitivity: 200,
         scrollSpeed: 15,
       })
-      expect(() => sortable.destroy()).not.toThrow()
+
+      expect(createSpy).toHaveBeenCalledWith({
+        sensitivity: 200,
+        speed: 15,
+      })
+
+      sortable.destroy()
+      expect(uninstallSpy).toHaveBeenCalledTimes(1)
+
+      createSpy.mockRestore()
+      uninstallSpy.mockRestore()
     })
   })
 
