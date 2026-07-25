@@ -42,15 +42,12 @@ test.describe('emptyInsertThreshold (#31)', () => {
 
   test('cursor just outside empty container still drops inside (default 5px threshold)', async ({
     page,
-  }, testInfo) => {
-    // emptyInsertThreshold is a desktop-precision-drag refinement. Mobile
-    // projects use touch emulation with different geometry semantics and
-    // stacked layouts; threshold behaviour there is out of scope here.
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch geometry differs (Mobile Chrome tracked in #48)'
-    )
-
+  }) => {
+    // This is the positive control for the negative test below: that one only
+    // asserts a-5 does NOT reach #shared-a-1, which would also hold if the
+    // drag never started at all. This test asserts a-5 DOES land there, so
+    // between them a broken drag cannot pass both.
+    //
     // Scroll the empty container into view, then aim 3 px PAST its right edge.
     // 3 < default 5 — should still resolve to the container as drop target.
     await page.locator('#shared-a-1').scrollIntoViewIfNeeded()
@@ -74,21 +71,37 @@ test.describe('emptyInsertThreshold (#31)', () => {
 
   test('cursor far outside empty container does NOT drop inside', async ({
     page,
-  }, testInfo) => {
-    // emptyInsertThreshold is a desktop-precision-drag refinement. Mobile
-    // projects use touch emulation with different geometry semantics and
-    // stacked layouts; threshold behaviour there is out of scope here.
-    test.skip(
-      /Mobile/.test(testInfo.project.name),
-      'Desktop-only — touch geometry differs (Mobile Chrome tracked in #48)'
-    )
+  }) => {
+    // A hardcoded viewport point like (5, 5) is not layout-safe: on the
+    // mobile projects `.test-grid` collapses to a single column (#31/#48
+    // follow-up), stacking #shared-a-1 directly above #shared-a-2. A
+    // straight-line pointer path from a2 up to a fixed top-left point then
+    // physically transits a1's rect — a dead-center hit, not a threshold
+    // graze — so the item lives there for the rest of the drag (there's no
+    // "snap back" once the pointer later moves over no container). That's
+    // a bug in this test's geometry, not in `emptyInsertThreshold`.
+    //
+    // Fix: derive the destination from the containers' actual bounding
+    // boxes and travel straight down, away from both. Neither the desktop
+    // side-by-side layout nor the mobile stacked layout ever puts a1 below
+    // a2, so a vertical path (fixed x, increasing y) can't cross either
+    // container's rect en route — only the final point needs checking.
+    const source = page.locator('#shared-a-2 [data-id="a-5"]')
+    await source.scrollIntoViewIfNeeded()
+    const [sourceBox, box1, box2] = await Promise.all([
+      source.boundingBox(),
+      page.locator('#shared-a-1').boundingBox(),
+      page.locator('#shared-a-2').boundingBox(),
+    ])
+    if (!sourceBox || !box1 || !box2) throw new Error('missing box')
 
-    // Aim at the very top-left of the viewport, well outside any sortable
-    // container regardless of layout (desktop side-by-side, mobile stacked,
-    // narrow viewport, etc.). The threshold is a few px — (5, 5) is
-    // guaranteed not to be inside or "close to" any of our test sortables.
-    await page.locator('#shared-a-2 [data-id="a-5"]').scrollIntoViewIfNeeded()
-    await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', 5, 5)
+    const farX = sourceBox.x + sourceBox.width / 2
+    const margin = 100 // well beyond the default 5px emptyInsertThreshold
+    const maxBottom = Math.max(box1.y + box1.height, box2.y + box2.height)
+    const viewportHeight = page.viewportSize()?.height ?? maxBottom + margin
+    const farY = Math.min(maxBottom + margin, viewportHeight - 1)
+
+    await pointerDrag(page, '#shared-a-2 [data-id="a-5"]', farX, farY)
 
     // a-1 stays empty; a-2 unchanged.
     await expect(page.locator('#shared-a-1 .sortable-item')).toHaveCount(0)
