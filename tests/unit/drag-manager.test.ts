@@ -606,3 +606,112 @@ describe('detach during an active pointer drag', () => {
     expect(ids(second)).toEqual(secondBefore)
   })
 })
+
+describe('scroll-replay coalescing during autoscroll (#134)', () => {
+  // Autoscroll's rAF loop fires `scrollBy` every frame, and each `scroll`
+  // event used to replay the last pointermove synchronously — a full
+  // hit-test + rect pass per frame. The replay is now coalesced to at most
+  // one `onPointerMove` call per animation frame (`tests/setup.ts` maps
+  // `requestAnimationFrame` to a 16ms `setTimeout`, so fake timers drive it).
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('N scroll events within one frame produce exactly one replay', () => {
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    // Seed `lastPointerMoveEvent` — the scroll listener replays this.
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Several scroll ticks land before the animation frame flushes.
+    document.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('scroll'))
+    expect(replay).toHaveBeenCalledTimes(1) // still just the seed call
+
+    vi.advanceTimersByTime(16)
+
+    // One replay for the whole batch, not one per scroll event.
+    expect(replay).toHaveBeenCalledTimes(2)
+  })
+
+  it('flushes a pending replay synchronously at drop, then cancels the frame', () => {
+    // Race: pointerup lands in the same frame as the last autoscroll scroll
+    // tick, before the deferred replay has fired. The old synchronous
+    // replay never lost that last tick, so dropping here must not resolve
+    // against a one-tick-stale target (#124) — cleanupPointerDrag flushes
+    // the pending replay itself before tearing anything else down.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Schedules a replay frame that hasn't fired yet.
+    document.dispatchEvent(new Event('scroll'))
+
+    // Pointer released before the frame flushes — the drop must still see
+    // the post-scroll target: one flushed replay, right here, synchronously.
+    document.dispatchEvent(pointer('pointerup'))
+    expect(replay).toHaveBeenCalledTimes(2)
+
+    // No further callback once the frame would otherwise have fired —
+    // teardown already cancelled it.
+    vi.advanceTimersByTime(16)
+    expect(replay).toHaveBeenCalledTimes(2)
+  })
+
+  it('detach mid-drag drops a pending replay instead of flushing it', () => {
+    // `detach()` (React unmount, `option()` rebuild) documents itself as
+    // behaviourally neutral: it must not move DOM. The drop-time flush in
+    // cleanupPointerDrag would re-resolve the drop target, so detach cancels
+    // the pending frame first and no replay ever fires.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+      detach(): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Schedules a replay frame that hasn't fired yet…
+    document.dispatchEvent(new Event('scroll'))
+
+    // …and the manager is torn down before it does. No synchronous flush.
+    internals.detach()
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // And no deferred one either.
+    vi.advanceTimersByTime(16)
+    expect(replay).toHaveBeenCalledTimes(1)
+  })
+})
