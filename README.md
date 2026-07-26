@@ -103,7 +103,7 @@ new Sortable(element, {
   delayOnTouchOnly: 0,              // Touch-specific delay
   touchStartThreshold: 5,            // Pixels of movement before cancelling delay
   direction: 'vertical',             // 'vertical' | 'horizontal' list axis
-  swapThreshold: 1,                  // Overlap fraction before an item swaps
+  // swapThreshold: undefined,        // Overlap fraction before an item swaps (unset = always swap)
 
   // Drop targeting
   emptyInsertThreshold: 5,           // Px around an empty list that still counts as a drop
