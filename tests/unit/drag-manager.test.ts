@@ -715,3 +715,147 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
     expect(replay).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('stale drop-animation timer (#131)', () => {
+  // The ghost drop-settle cleanup in `cleanupPointerDrag` only defers to a
+  // transitionend/timeout pair when the ghost and the drag element disagree
+  // on position by more than 2px — otherwise it destroys synchronously and
+  // there is no timer to go stale. Force that gap so both tests exercise the
+  // deferred path.
+  function forceDropAnimation(ghost: HTMLElement, dragEl: HTMLElement): void {
+    vi.spyOn(ghost, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 50, 20)
+    )
+    vi.spyOn(dragEl, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(100, 100, 50, 20)
+    )
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("a stale fallback timer does not destroy a newer drag's ghost/placeholder", () => {
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0 })
+    // ghostManager is private; reached the same way `canDropInZone` is above.
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getPlaceholderElement(): HTMLElement | null
+        getChosenClass(): string
+        getDragClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+    const item4 = byId(list, 'list-4')
+
+    // First drag drops far enough from its ghost to schedule the 200ms
+    // fallback timer instead of destroying synchronously.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+    // Still mid drop-animation — not destroyed yet.
+    expect(document.body.contains(staleGhost)).toBe(true)
+
+    // A second drag starts within the 200ms window, before the stale timer
+    // fires, and gets its own ghost and placeholder.
+    hover(item3)
+    item4.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const freshGhost = internals.ghostManager.getGhostElement()
+    const freshPlaceholder = internals.ghostManager.getPlaceholderElement()
+    expect(freshGhost).not.toBeNull()
+    expect(freshGhost).not.toBe(staleGhost)
+    expect(freshPlaceholder).not.toBeNull()
+
+    // The stale timer from the FIRST drop fires now. Unguarded, it would
+    // destroy the CURRENT (second drag's) ghost and placeholder, leaving the
+    // new drag with no ghost for the rest of its lifetime.
+    vi.advanceTimersByTime(200)
+
+    expect(internals.ghostManager.getGhostElement()).toBe(freshGhost)
+    expect(internals.ghostManager.getPlaceholderElement()).toBe(
+      freshPlaceholder
+    )
+    // The guarded cleanup still clears the FIRST drag element's state
+    // classes — skipping the destroy must not leave item1 styled as
+    // chosen/dragging forever.
+    expect(
+      item1.classList.contains(internals.ghostManager.getChosenClass())
+    ).toBe(false)
+    expect(
+      item1.classList.contains(internals.ghostManager.getDragClass())
+    ).toBe(false)
+  })
+
+  it('re-grabbing the SAME element within the window keeps its drag classes', () => {
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getChosenClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+
+    // Drop item1 with a settle animation pending…
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    // …then re-grab the SAME item before the stale timer fires. The new
+    // drag re-applies the chosen class; the stale cleanup must not strip
+    // it off a drag that is still running.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const chosenClass = internals.ghostManager.getChosenClass()
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+
+    vi.advanceTimersByTime(200)
+
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+    // And the second drag's ghost survives, as in the cross-element case.
+    expect(internals.ghostManager.getGhostElement()).not.toBeNull()
+  })
+
+  it('transitionend cancels the fallback timer — cleanup runs once', () => {
+    const list = makeList('list', 4)
+    mount(list, { animation: 0 })
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+
+    const destroySpy = vi.spyOn(GhostManager.prototype, 'destroy')
+
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const ghost = document.querySelector(
+      '[data-resortable-ghost]'
+    ) as HTMLElement
+    forceDropAnimation(ghost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    ghost.dispatchEvent(new Event('transitionend'))
+    expect(destroySpy).toHaveBeenCalledTimes(1)
+
+    // The fallback timeout must have been cleared by transitionend — it
+    // must not fire a second cleanup.
+    vi.advanceTimersByTime(200)
+    expect(destroySpy).toHaveBeenCalledTimes(1)
+  })
+})

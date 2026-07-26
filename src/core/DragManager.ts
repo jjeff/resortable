@@ -2146,13 +2146,29 @@ export class DragManager implements DragManagerInterface {
         ghost.style.transition = 'transform 150ms cubic-bezier(0.2, 0, 0, 1)'
         ghost.style.transform = `translate(${deltaX}px, ${deltaY}px)`
 
-        // After animation, clean up
+        // After animation, clean up. Guarded by identity: if a new drag has
+        // started within the animation window, `getGhostElement()` will be
+        // that new ghost, not `ghost` — so this no-ops instead of destroying
+        // the wrong drag's ghost/placeholder (#131).
+        const timer: { id?: number } = {}
         const cleanup = () => {
-          this.ghostManager.destroy(dragEl)
+          window.clearTimeout(timer.id)
+          if (this.ghostManager.getGhostElement() === ghost) {
+            this.ghostManager.destroy(dragEl)
+          } else if (this.dragElement !== dragEl) {
+            // A newer drag owns the current ghost/placeholder — leave them
+            // intact, but this drag's element still sheds its state classes
+            // (nothing else removes them once this cleanup is skipped).
+            // Skipped when the SAME element was re-grabbed within the
+            // animation window: the new drag just re-applied these classes
+            // and its own cleanup will remove them.
+            dragEl.classList.remove(this.ghostManager.getChosenClass())
+            dragEl.classList.remove(this.ghostManager.getDragClass())
+          }
         }
         ghost.addEventListener('transitionend', cleanup, { once: true })
         // Fallback timeout in case transitionend doesn't fire
-        window.setTimeout(cleanup, 200)
+        timer.id = window.setTimeout(cleanup, 200)
       } else {
         this.ghostManager.destroy(dragEl)
       }
