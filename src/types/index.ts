@@ -374,13 +374,22 @@ export interface SortableOptions {
 
   /**
    * Threshold of the swap zone (0-1)
-   * @defaultValue 1
+   *
+   * When unset (the default), the overlap gate is disabled — swaps are not
+   * constrained by overlap amount. Setting this property enforces a minimum
+   * overlap for a swap to occur.
    *
    * @example
    * ```typescript
    * // Swap when dragged element overlaps 50% with target
    * { swapThreshold: 0.5 }
    * ```
+   *
+   * @remarks
+   * **Legacy Sortable.js compatibility**: The original Sortable.js defaults to
+   * a swap threshold of 1 (100% overlap), making items much stickier. To replicate
+   * that behavior in Resortable, explicitly set `swapThreshold: 1`. Leaving unset
+   * enables the responsive default (no minimum-overlap requirement).
    */
   swapThreshold?: number
 
