@@ -12,9 +12,29 @@ npm run check
 
 If it reports any errors, fix them before committing. **NO EXCEPTIONS.**
 
-### Worktree gotcha
+## Working in git worktrees
 
-`npm` walks up the directory tree to find `node_modules`, so a fresh worktree can lint against the parent repo's stale dependencies and falsely pass while CI fails on the same code. **In a new worktree, run `npm ci` once before the first `npm run check`** to guarantee dependencies match `package-lock.json`.
+`npm` walks up the directory tree to find `node_modules`, so a worktree without its own
+would lint against the parent repo's stale dependencies — passing locally while CI fails
+on the same code. `scripts/worktree-setup.sh` prevents that, and Claude Code runs it
+automatically via the `SessionStart` hook in `.claude/settings.json`. It:
+
+- symlinks `node_modules` to the main checkout when the two `package-lock.json` files are
+  byte-identical, and runs a real `npm ci` when they differ;
+- assigns the worktree a unique `PW_PORT` (5200–5299) in its gitignored
+  `.claude/settings.local.json`, so parallel vite/playwright runs don't collide on 5173.
+
+It is idempotent and a no-op in the main checkout. After creating a worktree outside a
+Claude Code session, run it yourself before the first `npm run check`:
+
+```
+git worktree add .worktrees/my-feature -b feat/my-feature
+cd .worktrees/my-feature && npm run worktree:setup
+```
+
+**If a branch changes dependencies**, the shared `node_modules` symlink is no longer valid —
+delete it and run `npm ci` in the worktree. Never run `npm install` through the symlink; it
+writes through to the main checkout.
 
 ## Project Overview
 
