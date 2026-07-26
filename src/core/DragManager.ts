@@ -377,6 +377,13 @@ export class DragManager implements DragManagerInterface {
     // Cleanup is non-reverting on purpose: it unbinds and clears state without
     // moving DOM, so teardown stays behaviourally neutral.
     if (this.isPointerDragging) {
+      // Drop any pending scroll-replay frame (#134) BEFORE cleanup: the
+      // flush in cleanupPointerDrag re-resolves the drop target and moves
+      // DOM, which teardown must not do.
+      if (this.scrollReplayFrame !== null) {
+        window.cancelAnimationFrame(this.scrollReplayFrame)
+        this.scrollReplayFrame = null
+      }
       this.cleanupPointerDrag()
     }
 

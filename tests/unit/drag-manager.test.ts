@@ -681,4 +681,37 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
     vi.advanceTimersByTime(16)
     expect(replay).toHaveBeenCalledTimes(2)
   })
+
+  it('detach mid-drag drops a pending replay instead of flushing it', () => {
+    // `detach()` (React unmount, `option()` rebuild) documents itself as
+    // behaviourally neutral: it must not move DOM. The drop-time flush in
+    // cleanupPointerDrag would re-resolve the drop target, so detach cancels
+    // the pending frame first and no replay ever fires.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+      detach(): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Schedules a replay frame that hasn't fired yet…
+    document.dispatchEvent(new Event('scroll'))
+
+    // …and the manager is torn down before it does. No synchronous flush.
+    internals.detach()
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // And no deferred one either.
+    vi.advanceTimersByTime(16)
+    expect(replay).toHaveBeenCalledTimes(1)
+  })
 })
