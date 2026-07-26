@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
+import { GhostManager } from '../../src/core/GhostManager'
 import type { SortableEvent, SortableOptions } from '../../src/types/index'
 
 /**
@@ -831,6 +832,44 @@ describe('stale drop-animation timer (#131)', () => {
     expect(item1.classList.contains(chosenClass)).toBe(true)
     // And the second drag's ghost survives, as in the cross-element case.
     expect(internals.ghostManager.getGhostElement()).not.toBeNull()
+  })
+
+  it('re-grab still in fallback-tolerance capture phase keeps chosenClass', () => {
+    // With `fallbackTolerance > 0` a pointerdown applies chosenClass at tap
+    // start but leaves `dragElement` null until the pointer travels the
+    // tolerance distance. A stale timer firing in that window must not
+    // strip the class off the in-flight capture phase.
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0, fallbackTolerance: 5 })
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getChosenClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+    const chosenClass = internals.ghostManager.getChosenClass()
+
+    // First drag: commit past the tolerance, then drop with a settle
+    // animation pending.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    document.dispatchEvent(pointer('pointermove', { id: 1, y: 30 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    // Re-grab the SAME item: capture phase only — no movement, so the drag
+    // has not committed and `dragElement` is still null.
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+
+    vi.advanceTimersByTime(200)
+
+    expect(item1.classList.contains(chosenClass)).toBe(true)
   })
 
   it('transitionend cancels the fallback timer — cleanup runs once', () => {

@@ -2153,15 +2153,23 @@ export class DragManager implements DragManagerInterface {
         const timer: { id?: number } = {}
         const cleanup = () => {
           window.clearTimeout(timer.id)
+          // The SAME element re-grabbed within the animation window owns its
+          // state classes again — whether the new drag has committed
+          // (dragElement) or is still in the fallback-tolerance capture
+          // phase (pointerCaptureTarget), which applies chosenClass at tap
+          // start before dragElement is set. Its own cleanup removes them.
+          const regrabbed =
+            this.dragElement === dragEl || this.pointerCaptureTarget === dragEl
           if (this.ghostManager.getGhostElement() === ghost) {
-            this.ghostManager.destroy(dragEl)
-          } else if (this.dragElement !== dragEl) {
+            // Still this drop's ghost (a capture-phase re-grab creates no
+            // new ghost, so it lands here too): settle is done, destroy it.
+            // Passing dragEl also strips its state classes, so omit it on
+            // a re-grab.
+            this.ghostManager.destroy(regrabbed ? undefined : dragEl)
+          } else if (!regrabbed) {
             // A newer drag owns the current ghost/placeholder — leave them
             // intact, but this drag's element still sheds its state classes
             // (nothing else removes them once this cleanup is skipped).
-            // Skipped when the SAME element was re-grabbed within the
-            // animation window: the new drag just re-applied these classes
-            // and its own cleanup will remove them.
             dragEl.classList.remove(this.ghostManager.getChosenClass())
             dragEl.classList.remove(this.ghostManager.getDragClass())
           }
