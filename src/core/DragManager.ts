@@ -2146,13 +2146,37 @@ export class DragManager implements DragManagerInterface {
         ghost.style.transition = 'transform 150ms cubic-bezier(0.2, 0, 0, 1)'
         ghost.style.transform = `translate(${deltaX}px, ${deltaY}px)`
 
-        // After animation, clean up
+        // After animation, clean up. Guarded by identity: if a new drag has
+        // started within the animation window, `getGhostElement()` will be
+        // that new ghost, not `ghost` — so this no-ops instead of destroying
+        // the wrong drag's ghost/placeholder (#131).
+        const timer: { id?: number } = {}
         const cleanup = () => {
-          this.ghostManager.destroy(dragEl)
+          window.clearTimeout(timer.id)
+          // The SAME element re-grabbed within the animation window owns its
+          // state classes again — whether the new drag has committed
+          // (dragElement) or is still in the fallback-tolerance capture
+          // phase (pointerCaptureTarget), which applies chosenClass at tap
+          // start before dragElement is set. Its own cleanup removes them.
+          const regrabbed =
+            this.dragElement === dragEl || this.pointerCaptureTarget === dragEl
+          if (this.ghostManager.getGhostElement() === ghost) {
+            // Still this drop's ghost (a capture-phase re-grab creates no
+            // new ghost, so it lands here too): settle is done, destroy it.
+            // Passing dragEl also strips its state classes, so omit it on
+            // a re-grab.
+            this.ghostManager.destroy(regrabbed ? undefined : dragEl)
+          } else if (!regrabbed) {
+            // A newer drag owns the current ghost/placeholder — leave them
+            // intact, but this drag's element still sheds its state classes
+            // (nothing else removes them once this cleanup is skipped).
+            dragEl.classList.remove(this.ghostManager.getChosenClass())
+            dragEl.classList.remove(this.ghostManager.getDragClass())
+          }
         }
         ghost.addEventListener('transitionend', cleanup, { once: true })
         // Fallback timeout in case transitionend doesn't fire
-        window.setTimeout(cleanup, 200)
+        timer.id = window.setTimeout(cleanup, 200)
       } else {
         this.ghostManager.destroy(dragEl)
       }
