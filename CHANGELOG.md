@@ -1,3 +1,7 @@
+## <small>2.1.5 (2026-07-26)</small>
+
+* fix(core): guard drop-animation cleanup against destroying a newer drag's ghost (#141) ([5454a40](https://github.com/jjeff/resortable/commit/5454a40)), closes [#141](https://github.com/jjeff/resortable/issues/141) [#131](https://github.com/jjeff/resortable/issues/131) [#141](https://github.com/jjeff/resortable/issues/141)
+
 ## <small>2.1.4 (2026-07-26)</small>
 
 * fix(core): gate HTML5 dragover swaps on a rect synthesized from the drag cursor (#130) (#142) ([d35a478](https://github.com/jjeff/resortable/commit/d35a478)), closes [#130](https://github.com/jjeff/resortable/issues/130) [#142](https://github.com/jjeff/resortable/issues/142)
