@@ -63,7 +63,8 @@
     "docs:serve": "npx http-server docs -p 8080",
     "docs:clean": "rimraf docs/api",
     "size": "size-limit",
-    "size:build": "npm run build && npm run size"
+    "size:build": "npm run build && npm run size",
+    "worktree:setup": "bash scripts/worktree-setup.sh"
   },
   "size-limit": [
     {
