@@ -1,3 +1,12 @@
+## <small>2.1.4 (2026-07-26)</small>
+
+* fix(core): gate HTML5 dragover swaps on a rect synthesized from the drag cursor (#130) (#142) ([d35a478](https://github.com/jjeff/resortable/commit/d35a478)), closes [#130](https://github.com/jjeff/resortable/issues/130) [#142](https://github.com/jjeff/resortable/issues/142)
+* perf(core): coalesce autoscroll scroll-replay to one onPointerMove per frame (#140) ([07269c2](https://github.com/jjeff/resortable/commit/07269c2)), closes [#140](https://github.com/jjeff/resortable/issues/140) [#134](https://github.com/jjeff/resortable/issues/134) [#140](https://github.com/jjeff/resortable/issues/140)
+* docs(types): correct swapThreshold default — unset disables the overlap gate (#139) ([cbf0f5f](https://github.com/jjeff/resortable/commit/cbf0f5f)), closes [#139](https://github.com/jjeff/resortable/issues/139) [#132](https://github.com/jjeff/resortable/issues/132) [#139](https://github.com/jjeff/resortable/issues/139)
+* ci: remove the dead claude-code-review workflow (#137) ([ff91207](https://github.com/jjeff/resortable/commit/ff91207)), closes [#137](https://github.com/jjeff/resortable/issues/137)
+* Merge pull request #138 from jjeff/chore/worktree-setup ([22dd0ac](https://github.com/jjeff/resortable/commit/22dd0ac)), closes [#138](https://github.com/jjeff/resortable/issues/138)
+* chore(worktree): automate per-worktree dev environment setup ([9fd2556](https://github.com/jjeff/resortable/commit/9fd2556))
+
 ## <small>2.1.3 (2026-07-25)</small>
 
 * fix(core): repair the DragManager listener leak and SwapPlugin; harden tests (#133) ([8f97ef5](https://github.com/jjeff/resortable/commit/8f97ef5)), closes [#133](https://github.com/jjeff/resortable/issues/133)
