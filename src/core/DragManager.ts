@@ -147,6 +147,14 @@ export class DragManager implements DragManagerInterface {
   // the new scroll offset (#124). Null outside a pointer drag.
   private lastPointerMoveEvent: PointerEvent | null = null
 
+  // rAF handle for a pending scroll-replay (#134). Autoscroll's rAF loop
+  // fires `scrollBy` every frame, so the `scroll` listener below would
+  // otherwise pay a full `onPointerMove` (hit-test + rect math) per frame.
+  // Coalescing to one replay per animation frame is enough to keep the drop
+  // target fresh without redoing that work on every scroll tick. Null when
+  // no replay is scheduled.
+  private scrollReplayFrame: number | null = null
+
   private groupManager: GroupManager
 
   private originalTouchActions = new Map<HTMLElement, string>()
@@ -1923,7 +1931,12 @@ export class DragManager implements DragManagerInterface {
   // `scroll` doesn't bubble.
   private onDocumentScrollDuringDrag = (): void => {
     if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
-    this.onPointerMove(this.lastPointerMoveEvent)
+    if (this.scrollReplayFrame !== null) return
+    this.scrollReplayFrame = window.requestAnimationFrame(() => {
+      this.scrollReplayFrame = null
+      if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
+      this.onPointerMove(this.lastPointerMoveEvent)
+    })
   }
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -1939,6 +1952,23 @@ export class DragManager implements DragManagerInterface {
   }
 
   private cleanupPointerDrag(revert = false): void {
+    // A pointerup/pointercancel can land in the same frame as the last
+    // autoscroll scroll tick, before the deferred scroll-replay (#134) has
+    // run. Flush it synchronously here, before any other teardown, while
+    // drag state is still fully live — identical timing to the old
+    // synchronous replay. Otherwise the drop resolves against a placeholder
+    // that's one scroll tick stale, resurrecting #124. Skipped on revert:
+    // a cancelled drag doesn't need its last target re-resolved.
+    if (
+      !revert &&
+      this.scrollReplayFrame !== null &&
+      this.lastPointerMoveEvent
+    ) {
+      window.cancelAnimationFrame(this.scrollReplayFrame)
+      this.scrollReplayFrame = null
+      this.onPointerMove(this.lastPointerMoveEvent)
+    }
+
     // Remove multi-drag-source class from all items
     this.draggedItems.forEach((item) => {
       item.classList.remove('sortable-multi-drag-source')
@@ -1955,6 +1985,10 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('scroll', this.onDocumentScrollDuringDrag, {
       capture: true,
     })
+    if (this.scrollReplayFrame !== null) {
+      window.cancelAnimationFrame(this.scrollReplayFrame)
+      this.scrollReplayFrame = null
+    }
     this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
