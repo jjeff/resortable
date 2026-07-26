@@ -54,6 +54,14 @@ export class DragManager implements DragManagerInterface {
   private swapThreshold?: number
   private invertSwap: boolean
   private invertedSwapThreshold?: number
+  // Grab offset + item size captured at HTML5 dragstart, used to synthesize
+  // the moving rect for the swap-threshold gate — see `html5DragRect` (#130).
+  private html5GrabOrigin: {
+    grabX: number
+    grabY: number
+    width: number
+    height: number
+  } | null = null
   private direction: 'vertical' | 'horizontal'
   // Fallback system properties.
   //
@@ -443,6 +451,26 @@ export class DragManager implements DragManagerInterface {
 
     this.startIndex = this.zone.getIndex(target)
 
+    // Where within the item the user grabbed it, plus the item's size at
+    // dragstart (its live rect later reflects cross-zone parking). Feeds the
+    // synthesized moving rect in `html5DragRect` (#130). Only capture from
+    // usable coordinates — a coordless dragstart (plain `Event`, or the
+    // (0, 0) synthetic convention) would poison the origin with NaN and
+    // freeze the gate for the whole drag; leaving it null makes the gate
+    // fall back to the item-rect measurement instead.
+    const startRect = target.getBoundingClientRect()
+    this.html5GrabOrigin =
+      Number.isFinite(e.clientX) &&
+      Number.isFinite(e.clientY) &&
+      (e.clientX !== 0 || e.clientY !== 0)
+        ? {
+            grabX: e.clientX - startRect.left,
+            grabY: e.clientY - startRect.top,
+            width: startRect.width,
+            height: startRect.height,
+          }
+        : null
+
     // Register with global drag state using HTML5 drag API as ID
     const dragId = 'html5-drag'
     globalDragState.startDrag(
@@ -551,6 +579,45 @@ export class DragManager implements DragManagerInterface {
 
     // Normal mode: swap when overlap exceeds threshold
     return overlap >= threshold
+  }
+
+  /**
+   * Moving rect for the swap-threshold gate during a native HTML5 drag
+   * (#130). The dragged item keeps its original DOM slot until drop, so its
+   * own rect never overlaps a sibling (adjacent rects touch; the rest clamp
+   * to 0) — any `swapThreshold > 0` would fail the gate on every dragover,
+   * and `invertSwap` would swap on every hover. The ghost is no substitute:
+   * `onDragStart` sets it `display: none` (the browser draws its own drag
+   * image) and `updateGhostPosition` never runs on this pipeline, so its
+   * rect is zero-size and frozen. Instead, synthesize the rect the ghost
+   * would have: position = the event's clientX/Y minus the grab offset
+   * captured at dragstart, size = the item's rect at dragstart.
+   *
+   * Returns null (caller falls back to the old measurement) when the active
+   * drag isn't the HTML5 one or the event has no usable coordinates —
+   * (0, 0) means "synthetic event", same convention as
+   * `controlledInsertAfter`.
+   */
+  private html5DragRect(e: Event, activeDrag: ActiveDrag): DOMRect | null {
+    if (activeDrag.id !== 'html5-drag') return null
+    // TS private access across instances of the same class is permitted by
+    // design; the origin lives on the SOURCE manager, `this` may be a target.
+    const origin = (activeDrag.fromDragManager as DragManager).html5GrabOrigin
+    if (!origin) return null
+    const pt = e as MouseEvent
+    if (
+      !Number.isFinite(pt.clientX) ||
+      !Number.isFinite(pt.clientY) ||
+      (pt.clientX === 0 && pt.clientY === 0)
+    ) {
+      return null
+    }
+    return new DOMRect(
+      pt.clientX - origin.grabX,
+      pt.clientY - origin.grabY,
+      origin.width,
+      origin.height
+    )
   }
 
   /**
@@ -776,10 +843,15 @@ export class DragManager implements DragManagerInterface {
     if (overIdx === -1) return
     const oldIdx = targetZone.getControlledIndex(placeholder, items)
 
-    // Overlap gate: the ghost is the moving visual in controlled mode.
-    const movingRect = (
-      sourceManager.ghostManager.getGhostElement() ?? placeholder
-    ).getBoundingClientRect()
+    // Overlap gate. Pointer pipeline: the cursor-following ghost is the
+    // moving visual. HTML5 pipeline: that ghost is `display: none` (browser
+    // draws its own drag image) and never repositioned, so measure the rect
+    // synthesized from the drag cursor instead (#130).
+    const movingRect =
+      this.html5DragRect(e, activeDrag) ??
+      (
+        sourceManager.ghostManager.getGhostElement() ?? placeholder
+      ).getBoundingClientRect()
     const overRect = over.getBoundingClientRect()
     const naturalAfter = this.controlledInsertAfter(
       e,
@@ -1005,28 +1077,13 @@ export class DragManager implements DragManagerInterface {
     const dragIndex = this.zone.getIndex(dragItem)
     if (overIndex === dragIndex) return
 
-    // Check swap threshold if configured.
-    //
-    // KNOWN GAP — `swapThreshold` does not merely misbehave here, it disables
-    // same-zone sorting outright. Within a zone `dragItem` keeps its original
-    // slot for the whole drag (the reorder is committed on drop — see the
-    // commented-out `zone.move` below), so against a sibling `over` the
-    // overlap is 0: adjacent rects touch, non-adjacent ones clamp to 0. Every
-    // `swapThreshold > 0` therefore fails this gate on every dragover, the
-    // placeholder never moves, and sort/update/change never fire. `invertSwap`
-    // has the mirror bug — `0 < threshold` is always true, so the threshold is
-    // bypassed entirely. (`dragItem` IS moved on cross-zone entry above, but
-    // it lands as a parked sibling in the new zone, so the overlap is still 0.)
-    //
-    // The pointer pipeline had the same bug and fixed it by measuring the
-    // cursor-following ghost (#121). That is NOT available here: `onDragStart`
-    // sets the ghost to `display: none` because the browser draws its own drag
-    // image, and `updateGhostPosition` is only ever called from the pointer
-    // path — so its rect is both zero-size and frozen. The placeholder is no
-    // use either; it is only repositioned AFTER this gate passes. A real fix
-    // needs a rect synthesized from the DragEvent's clientX/clientY. Do NOT
-    // "restore parity" by copying the pointer pipeline's ghost lookup here.
-    const dragRect = dragItem.getBoundingClientRect()
+    // Swap-threshold gate (#130). `dragItem` keeps its DOM slot until drop,
+    // so its own rect never overlaps a sibling — gate on a rect synthesized
+    // from the drag cursor instead (see `html5DragRect`). The item-rect
+    // fallback only applies to synthetic events without coordinates, where
+    // the gate degrades to its pre-fix behavior.
+    const dragRect =
+      this.html5DragRect(e, activeDrag) ?? dragItem.getBoundingClientRect()
     const targetRect = over.getBoundingClientRect()
 
     if (!this.shouldSwap(dragRect, targetRect, this.zone.getItems())) {
@@ -1205,6 +1262,7 @@ export class DragManager implements DragManagerInterface {
 
     globalDragState.endDrag(dragId)
     this.startIndex = -1
+    this.html5GrabOrigin = null
   }
 
   private onDragEnter = (e: DragEvent): void => {
