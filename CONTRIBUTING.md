@@ -76,7 +76,10 @@ change so the version bump is correct on the next release.
 5. CI must be green before merge. The full matrix runs on PR creation:
    - `lint-and-typecheck` — ESLint + TypeScript
    - `unit-tests` — Vitest
-   - `e2e-tests-linux` — Playwright chromium baseline
+   - `e2e-tests-linux (chromium)` / `(firefox)` / `(webkit)` — Playwright on
+     all three desktop engines, one job each. The WebKit leg runs headed
+     under Xvfb; headless Linux WebKit has no frame clock (see the comment
+     in `.github/workflows/ci.yml`)
    - `e2e-tests-hosted-windows` — full browser matrix (chromium, firefox,
      webkit, Mobile Chrome, Mobile Safari)
    - `build` — library bundle (Rollup output via Vite)

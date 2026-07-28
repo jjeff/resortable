@@ -101,9 +101,46 @@ jobs:
           retention-days: 30
 
   e2e-tests-linux:
-    # Chromium-only baseline on GitHub-hosted Linux. Firefox / WebKit / mobile
-    # projects are tracked under issue #38 (cross-browser matrix).
+    # Cross-browser matrix on GitHub-hosted Linux (issue #38): every PR
+    # exercises all three engines. Ubuntu minutes bill at 1x and the
+    # per-engine run is only a couple of minutes, so the three run as
+    # parallel jobs rather than sharded within one job.
+    #
+    # `fail-fast: false` is deliberate: a WebKit-only failure must not
+    # cancel the Firefox job, or per-browser triage has nothing to triage.
+    #
+    # Mobile emulation projects ("Mobile Chrome" / "Mobile Safari") stay on
+    # the Windows/macOS jobs below, which run the full 5-project matrix.
+    name: e2e-tests-linux (${{ matrix.browser }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            run: npm run test:e2e -- --project=chromium
+          - browser: firefox
+            run: npm run test:e2e -- --project=firefox
+          # WebKit runs headed against an Xvfb display, unlike the other two.
+          #
+          # Headless WebKit on Linux has no compositor and therefore no real
+          # frame clock: `requestAnimationFrame` fires ~1.2x/sec, where
+          # headless Chromium still drives frames at ~60x/sec. (Measured in
+          # mcr.microsoft.com/playwright:v1.58.2-noble.) Everything driven by
+          # a rAF loop then runs ~50x slow. AutoScrollPlugin advances the
+          # scroll once per frame, so the ~1000px scroll in
+          # autoscroll-drop-target.spec.ts takes the better part of a minute
+          # and cannot pass under any sane timeout. It is a headless-
+          # environment artifact, not a library bug: real WebKit users have a
+          # compositor.
+          #
+          # `xvfb-run` gives WebKit a real display, which restores the frame
+          # clock (~36 rAF/sec measured) — and makes the leg FASTER overall,
+          # 5.6m to 3.4m, since rAF-driven waits stop crawling. Chromium and
+          # Firefox headless already have a working clock, so they stay
+          # headless; headed would buy them nothing.
+          - browser: webkit
+            run: xvfb-run -a npm run test:e2e -- --project=webkit --headed
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -117,17 +154,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Install only the engine this job runs — downloading all three per
+      # job would triple the setup cost for no added coverage.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Run Playwright tests (chromium)
-        run: npm run test:e2e -- --project=chromium
+      - name: Run Playwright tests (${{ matrix.browser }})
+        run: ${{ matrix.run }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-linux-chromium
+          name: playwright-report-linux-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 30
 
