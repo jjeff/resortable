@@ -121,6 +121,39 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
       { timeout: 20000 }
     )
 
+    // Now wait for the drop target itself to catch up with that scroll.
+    //
+    // `scrollTop` moves synchronously inside the autoscroll loop's `scrollBy`,
+    // but the `scroll` event that re-resolves the drop target is dispatched
+    // asynchronously and coalesced — WebKit especially, and more so under the
+    // load of a full parallel suite. Releasing as soon as the list merely
+    // *looks* scrolled therefore races the replay and commits whatever target
+    // the last delivered `scroll` resolved: measured at index 6-8 instead of
+    // 29 on the Linux WebKit CI leg, while the same drag run alone reaches 29
+    // every time. Waiting on the placeholder removes the race from the test.
+    //
+    // This does NOT weaken the #124 guard. The regression #124 describes
+    // freezes the placeholder at the source row, so it would never pass this
+    // wait — the test still fails, just here rather than on the assertion.
+    //
+    // The underlying library gap is real but narrower than this test: a drop
+    // that lands while `scroll` events are still queued commits a stale index.
+    // Fixing it means re-resolving the target at drop time, which today would
+    // mean re-running `onPointerMove` and double-emitting `sort`/`change`.
+    // Tracked in #144.
+    await page.waitForFunction(
+      (half) => {
+        const ul = (window as unknown as AsWindow).__asList
+        if (!ul) return false
+        const placeholderIndex = Array.from(ul.children).findIndex((c) =>
+          c.classList.contains('sortable-ghost')
+        )
+        return placeholderIndex > half
+      },
+      COUNT / 2,
+      { timeout: 20000 }
+    )
+
     await page.mouse.up()
 
     const intents = await page.evaluate(
