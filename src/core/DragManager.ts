@@ -2004,6 +2004,32 @@ export class DragManager implements DragManagerInterface {
     })
   }
 
+  /**
+   * Re-resolve the drop target after a *programmatic* scroll, without waiting
+   * for the `scroll` event.
+   *
+   * The listener above is driven by the DOM `scroll` event, which is
+   * dispatched asynchronously and coalesced. For user scrolling that is fine.
+   * For autoscroll it is not: `AutoScrollPlugin` mutates `scrollTop`
+   * synchronously inside its own rAF loop, and under main-thread load WebKit
+   * can leave the resulting `scroll` event undelivered long enough that the
+   * pointer is released first. No event means no replay is ever scheduled,
+   * so the drop-time flush in `cleanupPointerDrag` has nothing pending to
+   * flush and the drop commits a target resolved against a pre-scroll offset.
+   *
+   * Measured on the Linux WebKit CI leg under full-suite load: a 30-row list
+   * that had scrolled its entire 1000px committed index 5 and 14 across
+   * retries, where the correct answer is 29.
+   *
+   * Calling this from the scroll site removes the dependency on event
+   * delivery. It routes through the same per-frame coalescing, so a caller
+   * that fires every frame costs at most one replay per frame — exactly what
+   * the `scroll` path already cost.
+   */
+  public notifyProgrammaticScroll(): void {
+    this.onDocumentScrollDuringDrag()
+  }
+
   private onPointerUp = (e: PointerEvent): void => {
     if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 

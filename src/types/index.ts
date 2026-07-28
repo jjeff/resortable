@@ -854,6 +854,18 @@ export interface DragManagerInterface {
   // selectionManager is always available in DragManager implementation
   readonly selectionManager: SelectionManagerInterface
   getGroupManager?(): { getName(): string }
+  /**
+   * Re-resolve the drop target after the caller has scrolled a container
+   * programmatically, without waiting for the resulting `scroll` event.
+   *
+   * A plugin that moves content under a held pointer must call this, or the
+   * drop target stays anchored to the pre-scroll offset until the async
+   * `scroll` event is delivered — which under load can be after the drop.
+   *
+   * Optional so third-party plugins typed against older releases still
+   * compile; call it as `dragManager?.notifyProgrammaticScroll?.()`.
+   */
+  notifyProgrammaticScroll?(): void
 }
 
 /**
