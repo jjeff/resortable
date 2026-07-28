@@ -293,6 +293,46 @@ jobs:
       - name: Check bundle size against budget
         run: npm run size
 
+  ci-ok:
+    # The single required status check for `main`.
+    #
+    # Branch rulesets match required checks by literal job name, which makes
+    # naming individual jobs there brittle in both directions. Renaming a job
+    # strands the old name as "expected, never reported" and deadlocks every
+    # PR — #143 renamed `e2e-tests-linux` to three per-engine names and would
+    # have done exactly that. Deleting a required job fails the other way,
+    # silently: the ruleset still lists it, the settings UI still looks
+    # strict, and nothing is enforced.
+    #
+    # Requiring only this job removes both failure modes. Legs can be added,
+    # renamed, or sharded freely; the only edit is to `needs` below.
+    needs:
+      - lint-and-typecheck
+      - unit-tests
+      - accessibility
+      - e2e-tests-linux
+      - e2e-tests-hosted-windows
+      - e2e-tests-hosted-macos
+      - build
+      - bundle-size
+      - node-version-test
+    # `always()` is load-bearing. Without it this job is SKIPPED when any
+    # dependency fails, and a skipped required check does not block a merge —
+    # the ruleset would read as satisfied on exactly the runs it must stop.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # `needs.*.result` is one of success | failure | cancelled | skipped.
+      # 'skipped' is deliberately tolerated: matrix legs and conditional jobs
+      # can legitimately skip, and treating that as failure would block PRs
+      # for non-failures.
+      - name: Fail if any required job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more required jobs failed or were cancelled:"
+          echo '${{ toJSON(needs) }}'
+          exit 1
+
   # Node-version compatibility, not OS coverage — the name is historical.
   # Cross-OS browser testing lives in the e2e-tests-hosted-* jobs above.
   # (Dropped an `exclude:` block here that filtered on `self-hosted-macos` /
