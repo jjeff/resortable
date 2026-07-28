@@ -17,6 +17,7 @@ interface AsWindow extends Window {
   Sortable?: typeof import('../../src/index.js').Sortable
   __asIntents?: Array<{ oldIndexes?: number[]; newIndexes?: number[] }>
   __asList?: HTMLElement
+  __asScrollEvents?: number
 }
 
 const COUNT = 30
@@ -45,6 +46,12 @@ async function buildScrollingList(page: Page): Promise<void> {
       if (!Sortable) throw new Error('Sortable not loaded on window')
       win.__asIntents = []
       win.__asList = ul
+      // TEMPORARY diagnostics — this failure only reproduces on the CI
+      // runner, never locally, so the numbers have to come from CI itself.
+      win.__asScrollEvents = 0
+      ul.addEventListener('scroll', () => {
+        win.__asScrollEvents = (win.__asScrollEvents ?? 0) + 1
+      })
       new Sortable(ul, {
         controlled: true,
         draggable: '.as-item',
@@ -141,6 +148,29 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     // the library no longer promises, and on a loaded runner it simply never
     // arrives — it timed out 3/3 on the Linux WebKit leg while the drop
     // itself was resolving correctly the whole time.
+    // TEMPORARY diagnostics, captured immediately before release. The key
+    // field is `underCursor`: if the row actually under the pointer is near
+    // the end of the list but the committed index is not, the fault is in
+    // target resolution rather than in scrolling.
+    const diag = await page.evaluate(
+      ({ x, y }) => {
+        const ul = (window as unknown as AsWindow).__asList
+        if (!ul) return null
+        const kids = Array.from(ul.children)
+        return {
+          scrollTop: Math.round(ul.scrollTop),
+          maxScroll: Math.round(ul.scrollHeight - ul.clientHeight),
+          scrollEvents: (window as unknown as AsWindow).__asScrollEvents ?? -1,
+          placeholderIndex: kids.findIndex((c) =>
+            c.hasAttribute('data-resortable-placeholder')
+          ),
+          childCount: kids.length,
+          underCursor: document.elementFromPoint(x, y)?.id ?? 'none',
+        }
+      },
+      { x: list.x + 25, y: edgeY }
+    )
+
     await page.mouse.up()
 
     const intents = await page.evaluate(
@@ -150,6 +180,8 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     const newIndex = intents[0].newIndexes?.[0] ?? -1
     // Source was row 0; after scrolling to the bottom the target must land far
     // down the list, not collapse back to 0.
-    expect(newIndex).toBeGreaterThan(COUNT / 2)
+    expect(newIndex, `pre-drop state: ${JSON.stringify(diag)}`).toBeGreaterThan(
+      COUNT / 2
+    )
   })
 })
