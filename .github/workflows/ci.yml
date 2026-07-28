@@ -202,12 +202,18 @@ jobs:
           retention-days: 30
 
   e2e-tests-hosted-macos:
-    # GitHub-hosted macOS runs the full 5-project matrix on push to main
-    # (and other configured push branches) but NOT on pull_request events.
-    # macOS minutes count at 10x on the OSS quota, so per-PR runs were
-    # burning ~90 minutes apiece; running post-merge keeps regression
-    # signal without the per-PR cost.
-    if: github.event_name == 'push'
+    # GitHub-hosted macOS running the full 5-project Playwright matrix on
+    # every PR. This is the only leg that exercises Apple's WebKit build —
+    # the Linux webkit leg runs the Playwright-bundled WebKit, which differs
+    # in exactly the areas this library lives in (pointer/drag event order,
+    # compositing, momentum scroll).
+    #
+    # This job was previously push-only, justified by "macOS minutes count at
+    # 10x on the OSS quota". That premise doesn't hold: Actions is free and
+    # unmetered on standard GitHub-hosted runners for PUBLIC repos, macOS
+    # included, so the 10x multiplier bills against nothing. The real cost is
+    # wall clock, and it's small — macOS runs 21m in parallel with the 19m
+    # Windows job, so per-PR latency grows by ~2m, not 21m.
     runs-on: macos-latest
     steps:
       - name: Checkout code
