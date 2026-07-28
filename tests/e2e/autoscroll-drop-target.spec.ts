@@ -74,6 +74,12 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
   test('a held-pointer edge drag lands near the scrolled end, not the source', async ({
     page,
   }) => {
+    // Two 20s waits below (scroll reaches bottom, then drop target catches
+    // up) do not fit the 30s default from playwright.config.ts. Without this
+    // a slow engine reports "Test timeout of 30000ms exceeded" at a
+    // waitForFunction instead of failing on the index this test is about.
+    test.setTimeout(60_000)
+
     await buildScrollingList(page)
 
     const list = await page.locator('#as-list').boundingBox()
@@ -90,28 +96,35 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     // Hold the pointer still and let autoscroll drive the list to the bottom.
     // No further pointermove fires — this is the stationary-pointer scenario.
     //
-    // Generous timeout: autoscroll advances 20px per animation frame, so the
-    // ~1000px this list has to travel costs ~50 frames, and the wait is only
-    // ever as fast as the engine's frame clock.
+    // Generous timeout: AutoScrollPlugin advances `el.scrollTop` once per
+    // animation frame (by `calculateSpeed`, which tapers with edge distance
+    // and tops out at `scrollSpeed`), so the ~1000px this list travels costs
+    // tens of frames. The wait can never outrun the engine's frame clock.
     //
     // That clock is the whole story on WebKit. Measured in the Playwright
-    // v1.58.2-noble image at 2 CPUs, over a 5s held-pointer drag:
+    // v1.58.2-noble image at 2 CPUs, over one 5s held-pointer drag:
     //
-    //   engine                     rAF/sec   px scrolled
-    //   Linux Chromium (headless)     60.4          1000
-    //   Linux WebKit   (headless)      1.2            80
-    //   Linux WebKit   (headed/Xvfb)  36.0          1000
+    //   engine                     rAF/sec   px scrolled in 5s
+    //   Linux Chromium (headless)     60.4   1000 (done in ~1s)
+    //   Linux WebKit   (headless)      1.2   80
+    //   Linux WebKit   (headed/Xvfb)  36.0   1000 (done in ~3s)
     //
-    // Headless WebKit on Linux has no compositor and so no real frame clock;
-    // at 1.2 fps this scroll needs ~42s. CI therefore runs the WebKit project
-    // headed under Xvfb (see the e2e-tests-linux matrix in ci.yml), which is
-    // what keeps this test inside the budget below.
+    // Headless WebKit on Linux has no compositor and so no real frame clock.
+    // At ~1.2 fps this scroll needs the better part of a minute, which no
+    // sane budget covers. CI therefore runs the WebKit project headed under
+    // Xvfb (see the e2e-tests-linux matrix in ci.yml); that is what keeps
+    // this test inside the budget below. Headless Chromium is unaffected —
+    // it still drives frames at ~60/sec.
     //
-    // The replay itself is NOT the cost — an earlier comment here blamed the
+    // The replay is NOT the cost. An earlier comment here blamed the
     // per-`scroll` `onPointerMove` replay and #134 proposed throttling it to
-    // one per frame. The measurement above disproves that: the hit test runs
-    // in ~0.18ms and fired 3 times in 5s on WebKit (60 on Chromium), i.e.
-    // roughly once per frame already. There is nothing to coalesce.
+    // one per frame. In the same measurement the hit test ran in ~0.18ms and
+    // `scroll` never arrived faster than one per frame while scrolling was
+    // actually happening (Chromium: 49 events across ~60 scrolling frames),
+    // so there is nothing for a per-frame throttle to coalesce. Note this
+    // measures Linux only — #134's separate WebKit-on-Windows 7-9s figure was
+    // never re-measured, and the frame clock is a likelier explanation for it
+    // than replay cost. See #144.
     await page.waitForFunction(
       () => {
         const ul = (window as unknown as AsWindow).__asList
@@ -123,7 +136,7 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
 
     // Now wait for the drop target itself to catch up with that scroll.
     //
-    // `scrollTop` moves synchronously inside the autoscroll loop's `scrollBy`,
+    // `scrollTop` moves synchronously inside the autoscroll loop,
     // but the `scroll` event that re-resolves the drop target is dispatched
     // asynchronously and coalesced — WebKit especially, and more so under the
     // load of a full parallel suite. Releasing as soon as the list merely
@@ -141,16 +154,27 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     // Fixing it means re-resolving the target at drop time, which today would
     // mean re-running `onPointerMove` and double-emitting `sort`/`change`.
     // Tracked in #144.
+    // Match on `data-resortable-placeholder`, NOT on the ghost class: the
+    // cursor-following ghost clone carries `sortable-ghost` too and, with
+    // `fallbackOnBody` false, lives inside this same `ul`. The attribute is
+    // set on the placeholder alone (GhostManager.createPlaceholder) precisely
+    // so index math can tell them apart.
+    //
+    // Threshold is `COUNT / 2 + 1`, one higher than the assertion below.
+    // `placeholderIndex` counts `ul.children`, which still includes the
+    // hidden source row, while the reported `newIndex` excludes it — measured
+    // as exactly `newIndex + 1`. Waiting on the same number the assertion
+    // uses would let the pointer go one row early and fail at the boundary.
     await page.waitForFunction(
-      (half) => {
+      (threshold) => {
         const ul = (window as unknown as AsWindow).__asList
         if (!ul) return false
         const placeholderIndex = Array.from(ul.children).findIndex((c) =>
-          c.classList.contains('sortable-ghost')
+          c.hasAttribute('data-resortable-placeholder')
         )
-        return placeholderIndex > half
+        return placeholderIndex > threshold
       },
-      COUNT / 2,
+      COUNT / 2 + 1,
       { timeout: 20000 }
     )
 

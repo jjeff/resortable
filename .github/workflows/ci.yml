@@ -123,20 +123,22 @@ jobs:
             run: npm run test:e2e -- --project=firefox
           # WebKit runs headed against an Xvfb display, unlike the other two.
           #
-          # Headless WebKit on Linux has no compositor and therefore no frame
-          # clock: `requestAnimationFrame` fires ~1.2x/sec where Chromium's
-          # headless virtual clock gives ~60x/sec. (Measured in
-          # mcr.microsoft.com/playwright:v1.58.2-noble at --cpus=2, matching
-          # this runner.) Everything driven by a rAF loop then runs ~50x slow —
-          # AutoScrollPlugin scrolls 20px per frame, so the 1000px scroll in
-          # autoscroll-drop-target.spec.ts needs ~42s and cannot pass under any
-          # sane timeout. It is a headless-environment artifact, not a library
-          # bug: real WebKit users have a compositor.
+          # Headless WebKit on Linux has no compositor and therefore no real
+          # frame clock: `requestAnimationFrame` fires ~1.2x/sec, where
+          # headless Chromium still drives frames at ~60x/sec. (Measured in
+          # mcr.microsoft.com/playwright:v1.58.2-noble.) Everything driven by
+          # a rAF loop then runs ~50x slow. AutoScrollPlugin advances the
+          # scroll once per frame, so the ~1000px scroll in
+          # autoscroll-drop-target.spec.ts takes the better part of a minute
+          # and cannot pass under any sane timeout. It is a headless-
+          # environment artifact, not a library bug: real WebKit users have a
+          # compositor.
           #
           # `xvfb-run` gives WebKit a real display, which restores the frame
-          # clock (~36 rAF/sec measured). Chromium and Firefox headless both
-          # already have a working clock, so they stay headless — headed mode
-          # is slower and buys them nothing.
+          # clock (~36 rAF/sec measured) — and makes the leg FASTER overall,
+          # 5.6m to 3.4m, since rAF-driven waits stop crawling. Chromium and
+          # Firefox headless already have a working clock, so they stay
+          # headless; headed would buy them nothing.
           - browser: webkit
             run: xvfb-run -a npm run test:e2e -- --project=webkit --headed
     steps:
