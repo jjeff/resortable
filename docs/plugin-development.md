@@ -1,12 +1,14 @@
 # Plugin Development Guide
 
-<sub>[← Home](../README.md) · [Docs hub](./README.md) · Related: [Migration](./migration-from-sortable-v1.md) · [Accessibility](./accessibility.md) · [API Reference](https://jjeff.github.io/resortable/api/)</sub>
+<sub>[← Home](../README.md) · [Docs hub](./README.md) · Related: [Migration](./migration-from-sortable-v1.md) ·
+[Accessibility](./accessibility.md) · [API Reference](https://jjeff.github.io/resortable/api/)</sub>
 
 This guide explains how to create custom plugins for the Resortable library.
 
 ## Overview
 
-The Resortable plugin system allows you to extend the library's functionality by creating reusable components that can be installed and uninstalled from Sortable instances. Plugins follow a simple interface and lifecycle pattern.
+The Resortable plugin system allows you to extend the library's functionality by creating reusable components that can
+be installed and uninstalled from Sortable instances. Plugins follow a simple interface and lifecycle pattern.
 
 ## Plugin Interface
 
@@ -14,10 +16,10 @@ All plugins must implement the `SortablePlugin` interface:
 
 ```typescript
 interface SortablePlugin {
-  readonly name: string      // Unique plugin identifier
-  readonly version: string   // Plugin version
-  install(sortable: any): void    // Called when plugin is installed
-  uninstall(sortable: any): void  // Called when plugin is uninstalled
+  readonly name: string // Unique plugin identifier
+  readonly version: string // Plugin version
+  install(sortable: any): void // Called when plugin is installed
+  uninstall(sortable: any): void // Called when plugin is uninstalled
 }
 ```
 
@@ -127,7 +129,7 @@ export class MyPlugin implements SortablePlugin {
       enabled: true,
       delay: 100,
       className: 'my-plugin-active',
-      ...options
+      ...options,
     }
   }
 
@@ -159,7 +161,7 @@ export class StatefulPlugin implements SortablePlugin {
     const state = {
       isActive: false,
       dragCount: 0,
-      timers: new Set<number>()
+      timers: new Set<number>(),
     }
 
     this.states.set(sortable, state)
@@ -178,7 +180,7 @@ export class StatefulPlugin implements SortablePlugin {
     const state = this.states.get(sortable)
     if (state) {
       // Clean up timers
-      state.timers.forEach(timer => clearTimeout(timer))
+      state.timers.forEach((timer) => clearTimeout(timer))
       this.states.delete(sortable)
     }
   }
@@ -300,9 +302,9 @@ describe('MyPlugin', () => {
     mockSortable = {
       eventSystem: {
         on: vi.fn(),
-        off: vi.fn()
+        off: vi.fn(),
       },
-      element: document.createElement('div')
+      element: document.createElement('div'),
     }
   })
 
@@ -328,7 +330,7 @@ test('MyPlugin integration', async ({ page }) => {
   await page.goto('/test-page.html')
 
   await page.evaluate(() => {
-    const { Sortable, PluginSystem, MyPlugin } = (window as any)
+    const { Sortable, PluginSystem, MyPlugin } = window as any
 
     PluginSystem.register(MyPlugin.create())
 
@@ -432,7 +434,8 @@ Study the built-in plugins for examples:
 - **OnSpillPlugin**: Revert / remove handlers for items dropped outside a sortable
 - **SwapPlugin**: Swap-based sorting instead of insertion
 
-> Multi-drag is part of the core, not a plugin. Set `multiDrag: true` in `SortableOptions` (no mount/install call needed). The former `MultiDragPlugin` v1-compat shim was removed in #34.
+> Multi-drag is part of the core, not a plugin. Set `multiDrag: true` in `SortableOptions` (no mount/install call
+> needed). The former `MultiDragPlugin` v1-compat shim was removed in #34.
 
 These plugins demonstrate different patterns and can serve as templates for your own plugins.
 
@@ -465,6 +468,8 @@ PluginSystem.register(MyPlugin.create())
 
 ## Conclusion
 
-The Resortable plugin system provides a powerful way to extend functionality while maintaining clean separation of concerns. Follow the patterns shown in this guide to create robust, reusable plugins that integrate seamlessly with the library.
+The Resortable plugin system provides a powerful way to extend functionality while maintaining clean separation of
+concerns. Follow the patterns shown in this guide to create robust, reusable plugins that integrate seamlessly with the
+library.
 
 For more examples and advanced use cases, refer to the built-in plugins in the `src/plugins/` directory.

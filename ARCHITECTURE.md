@@ -2,17 +2,21 @@
 
 ## Overview
 
-Resortable is a TypeScript rewrite of Sortable.js that provides drag-and-drop functionality for reorderable lists. This document explains the internal workings, state management, event flow, and core components.
+Resortable is a TypeScript rewrite of Sortable.js that provides drag-and-drop functionality for reorderable lists. This
+document explains the internal workings, state management, event flow, and core components.
 
 ## Core Concepts
 
 ### 1. Draggable Items vs. Drop Zones (Containers)
 
-**Current Design Issue**: The library currently marks individual items as draggable but doesn't explicitly mark containers as drop zones. This creates problems when:
+**Current Design Issue**: The library currently marks individual items as draggable but doesn't explicitly mark
+containers as drop zones. This creates problems when:
+
 - Containers are empty (no items to detect drag-over events)
 - Cross-container dragging needs to determine valid drop targets
 
 **How it works now**:
+
 - `draggable` selector (e.g., `.horizontal-item`) identifies which elements can be dragged
 - Containers are implicitly drop zones because they contain draggable items
 - Empty containers have no draggable children, making drop detection difficult
@@ -36,17 +40,20 @@ Sortable (Main Class)
 ## Key Components
 
 ### Sortable (src/Sortable.ts)
+
 - Main entry point
 - Creates and configures all sub-components
 - Manages options and plugin system
 
 ### DropZone (src/core/DropZone.ts)
+
 - Represents a sortable container
 - Manages item positions and indices
 - Handles DOM operations (add, remove, move)
 - **Problem**: No explicit drop zone detection for empty containers
 
 ### DragManager (src/core/DragManager.ts)
+
 - Handles all drag operations
 - Manages drag events (dragstart, dragover, drop, dragend)
 - **Key Methods**:
@@ -56,6 +63,7 @@ Sortable (Main Class)
   - `onDragEnd`: Cleanup after drag
 
 ### GlobalDragState (src/core/GlobalDragState.ts)
+
 - Singleton that tracks active drag operations across all Sortable instances
 - Enables cross-container dragging
 - Stores:
@@ -69,6 +77,7 @@ Sortable (Main Class)
 ### Standard Drag Operation
 
 1. **User starts drag** (mousedown/touchstart on draggable item)
+
    ```
    DragManager.onDragStart()
    ├── Check if item is draggable
@@ -78,6 +87,7 @@ Sortable (Main Class)
    ```
 
 2. **User drags over container** (dragover events)
+
    ```
    DragManager.onDragOver()
    ├── Check if container accepts this drag (group compatibility)
@@ -100,12 +110,14 @@ Sortable (Main Class)
 ## State Management
 
 ### Local State (per Sortable instance)
+
 - Container element reference
 - Configuration options
 - Draggable selector
 - Animation settings
 
 ### Global State (shared across instances)
+
 - Active drag operation
 - Source and target containers
 - Group memberships
@@ -113,11 +125,16 @@ Sortable (Main Class)
 
 ## Empty Container Drop Targets
 
-Resolved in #32. When the pointer-based drag handler's `elementFromPoint(...).closest(draggable)` returns null, `DragManager.onPointerMove` falls back to `findSortableContainerUnder(elementUnderMouse)`, which walks up the ancestor chain looking for an element registered in `dragManagerRegistry`. If found and group-compatible, the dragged item is appended via `targetZoneElement.insertBefore(item, null)`. Regression coverage lives in `tests/e2e/empty-container.spec.ts`.
+Resolved in #32. When the pointer-based drag handler's `elementFromPoint(...).closest(draggable)` returns null,
+`DragManager.onPointerMove` falls back to `findSortableContainerUnder(elementUnderMouse)`, which walks up the ancestor
+chain looking for an element registered in `dragManagerRegistry`. If found and group-compatible, the dragged item is
+appended via `targetZoneElement.insertBefore(item, null)`. Regression coverage lives in
+`tests/e2e/empty-container.spec.ts`.
 
 ## Configuration
 
 ### Key Options
+
 - `group`: String or object defining cross-container behavior
   - `name`: Group identifier
   - `pull`: true/false/'clone' - can items be removed?
@@ -129,6 +146,7 @@ Resolved in #32. When the pointer-based drag handler's `elementFromPoint(...).cl
 ## Plugin System
 
 Plugins extend functionality:
+
 - **MultiDrag**: Select and drag multiple items
 - **Swap**: Swap items instead of insert
 - **AutoScroll**: Auto-scroll containers during drag
@@ -136,12 +154,14 @@ Plugins extend functionality:
 ## Debugging Tips
 
 ### Key Places to Set Breakpoints
+
 1. `DragManager.onDragOver` - Watch how drop positions are calculated
 2. `DragManager.onDrop` - See if drop events fire for empty containers
 3. `GlobalDragState.canAcceptDrop` - Check group compatibility
 4. `DropZone.appendChild` - Watch DOM manipulation
 
 ### Common Issues
+
 1. **Empty containers**: Not recognized as drop zones
 2. **Group configuration**: Incorrect pull/put settings
 3. **Event bubbling**: Parent containers intercepting events
@@ -150,6 +170,7 @@ Plugins extend functionality:
 ## Recommended Improvements
 
 1. **Explicit Drop Zone Marking**
+
    ```typescript
    class DropZone {
      markAsDropZone() {
@@ -160,6 +181,7 @@ Plugins extend functionality:
    ```
 
 2. **Container-Level Event Handling**
+
    ```typescript
    // Attach events to container, not just items
    container.addEventListener('dragover', (e) => {

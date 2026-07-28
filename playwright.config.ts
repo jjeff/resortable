@@ -1,8 +1,8 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test'
 
 // Use a different port in CI to avoid conflicts with dev server on host.
 // PW_PORT overrides both so parallel worktrees can each serve on their own port.
-const PORT = process.env.PW_PORT || (process.env.CI ? '4173' : '5173');
+const PORT = process.env.PW_PORT || (process.env.CI ? '4173' : '5173')
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -21,14 +21,12 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? [
-      ['list'],
-      ['github'],
-      ['junit', { outputFile: 'test-results/junit.xml' }],
-      ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ]
-    : [
-      ['list'],
-    ],
+        ['list'],
+        ['github'],
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+        ['html', { outputFolder: 'playwright-report', open: 'never' }],
+      ]
+    : [['list']],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -72,11 +70,11 @@ export default defineConfig({
   webServer: process.env.PW_DISABLE_WEBSERVER
     ? undefined
     : {
-      command: 'npm run dev',
-      url: `http://localhost:${PORT}`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-});
+        command: 'npm run dev',
+        url: `http://localhost:${PORT}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+})

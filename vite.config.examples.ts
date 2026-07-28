@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import { readdirSync } from 'fs';
+import { defineConfig } from 'vite'
+import { resolve } from 'path'
+import { readdirSync } from 'fs'
 
 // Multi-page build for the showcase + dev playground + curated examples.
 //
@@ -21,22 +21,22 @@ import { readdirSync } from 'fs';
 //   are E2E test fixtures (referenced by `tests/e2e/animation*.spec.ts`) and
 //   are intentionally left untouched here.
 
-const examplesDir = resolve(__dirname, 'examples');
-const EXCLUDED_EXAMPLES = new Set(['simple-list.html', 'multi-list.html']);
+const examplesDir = resolve(__dirname, 'examples')
+const EXCLUDED_EXAMPLES = new Set(['simple-list.html', 'multi-list.html'])
 
 const exampleHtmlFiles = readdirSync(examplesDir)
   .filter((f) => f.endsWith('.html'))
-  .filter((f) => !EXCLUDED_EXAMPLES.has(f));
+  .filter((f) => !EXCLUDED_EXAMPLES.has(f))
 
 const input: Record<string, string> = {
   // Polished showcase at the root of /demo/
   main: resolve(__dirname, 'index.html'),
   // Bare-bones dev playground at /demo/playground.html
   playground: resolve(__dirname, 'playground.html'),
-};
+}
 for (const file of exampleHtmlFiles) {
-  const name = file.replace(/\.html$/, '');
-  input[`examples/${name}`] = resolve(examplesDir, file);
+  const name = file.replace(/\.html$/, '')
+  input[`examples/${name}`] = resolve(examplesDir, file)
 }
 
 export default defineConfig({
@@ -53,4 +53,4 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
-});
+})

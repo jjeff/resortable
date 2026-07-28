@@ -7,14 +7,12 @@
     "declaration": false,
     "declarationMap": false,
     "outDir": "dist",
-    
+
     /* Ensure ES modules work correctly */
     "moduleResolution": "node",
     "module": "ESNext"
   },
-  "include": [
-    "src/**/*.ts"
-  ],
+  "include": ["src/**/*.ts"],
   "exclude": [
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
