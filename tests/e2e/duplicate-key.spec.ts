@@ -32,6 +32,16 @@ async function expectOrder(
  * on the alt-held tests here, switch that fixture over to `#dup-shift` /
  * `page.keyboard.down('Shift')` instead — `duplicateKey` itself is
  * modifier-agnostic, only the OS gesture collision is alt-specific.
+ *
+ * DROP TARGET: every test that pins an exact order drops on the item ONE slot
+ * down, never further. Reorders are hover-driven and `DragManager` skips them
+ * while a FLIP animation is running, so a drag spanning two slots resolves to
+ * whichever index the animation timing happens to allow — index 1 when the
+ * second hover is swallowed (Chromium/Firefox, usually) and index 2 when it
+ * is not (WebKit). One slot down has no such race: after the single swap the
+ * dragged item itself sits under the pointer, so `over === movingElement` and
+ * no further reorder can fire, while a swallowed first hover is still retried
+ * by the remaining `pointermove` steps.
  */
 
 test.describe('duplicateKey', () => {
@@ -54,15 +64,18 @@ test.describe('duplicateKey', () => {
     page,
   }) => {
     const from = await center(page, '#dup-a [data-id="dup-a-1"]')
-    const to = await center(page, '#dup-a [data-id="dup-a-3"]')
+    const to = await center(page, '#dup-a [data-id="dup-a-2"]')
 
     await page.keyboard.down('Alt')
     await pointerDrag(page, from, to)
     await page.keyboard.up('Alt')
 
-    // The copy lands at the DROP SLOT (index 2), the original is back at its
-    // start index (0), and the clone keeps the original's data-id (identity
-    // re-minting is left to the `clone` event handler) — hence dup-a-1 twice.
+    // The copy lands at the DROP SLOT (index 2 of the final list — the
+    // dragged item's slot at drop time was index 1, and re-homing the
+    // original at index 0 shifts the copy right by one), the original is
+    // back at its start index (0), and the clone keeps the original's
+    // data-id (identity re-minting is left to the `clone` event handler) —
+    // hence dup-a-1 twice.
     await expectOrder(page, '#dup-a', [
       'dup-a-1',
       'dup-a-2',
@@ -110,7 +123,7 @@ test.describe('duplicateKey', () => {
     page,
   }) => {
     const from = await center(page, '#dup-a [data-id="dup-a-1"]')
-    const to = await center(page, '#dup-a [data-id="dup-a-3"]')
+    const to = await center(page, '#dup-a [data-id="dup-a-2"]')
 
     await pointerDrag(page, from, to)
 
@@ -216,7 +229,7 @@ test.describe('duplicateKey', () => {
     page,
   }) => {
     const from = await center(page, '#dup-shift [data-id="dup-shift-1"]')
-    const to = await center(page, '#dup-shift [data-id="dup-shift-3"]')
+    const to = await center(page, '#dup-shift [data-id="dup-shift-2"]')
 
     // duplicateKey: 'shift' on #dup-shift means a shift+pointerdown must
     // still START a drag here — normally shift+click is a selection
