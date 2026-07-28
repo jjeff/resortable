@@ -17,7 +17,6 @@ interface AsWindow extends Window {
   Sortable?: typeof import('../../src/index.js').Sortable
   __asIntents?: Array<{ oldIndexes?: number[]; newIndexes?: number[] }>
   __asList?: HTMLElement
-  __asScrollEvents?: number
 }
 
 const COUNT = 30
@@ -28,9 +27,27 @@ async function buildScrollingList(page: Page): Promise<void> {
   await page.evaluate(
     ({ count, itemH, viewportH }) => {
       document.getElementById('as-list')?.remove()
+
+      // Hide the playground's own content first. This fixture is
+      // position:absolute over `document.body`, and the page underneath has
+      // sortable lists of its own. Where they land depends on viewport size
+      // and font metrics, so on some environments one of them covered this
+      // list's drop point: `document.elementFromPoint` at the cursor returned
+      // `shared-a-1` — a row from an unrelated list — and the drag resolved
+      // its target there, committing indexes like 5 and 11 instead of 29.
+      //
+      // It reproduced only on the Linux WebKit CI runner and never locally,
+      // at any CPU count, in isolation or under the full suite, which made it
+      // read convincingly like a scroll-event timing bug. It was a layout
+      // overlap. z-index alone is not enough: an overlapping element in its
+      // own stacking context can still win the hit test.
+      for (const child of Array.from(document.body.children)) {
+        ;(child as HTMLElement).style.display = 'none'
+      }
+
       const ul = document.createElement('ul')
       ul.id = 'as-list'
-      ul.style.cssText = `list-style:none;margin:0;padding:0;position:absolute;top:40px;left:40px;width:120px;height:${viewportH}px;overflow-y:auto;background:#eef`
+      ul.style.cssText = `list-style:none;margin:0;padding:0;position:absolute;top:40px;left:40px;width:120px;height:${viewportH}px;overflow-y:auto;background:#eef;z-index:2147483647`
       for (let i = 0; i < count; i++) {
         const li = document.createElement('li')
         li.id = `as-${i}`
@@ -46,12 +63,6 @@ async function buildScrollingList(page: Page): Promise<void> {
       if (!Sortable) throw new Error('Sortable not loaded on window')
       win.__asIntents = []
       win.__asList = ul
-      // TEMPORARY diagnostics — this failure only reproduces on the CI
-      // runner, never locally, so the numbers have to come from CI itself.
-      win.__asScrollEvents = 0
-      ul.addEventListener('scroll', () => {
-        win.__asScrollEvents = (win.__asScrollEvents ?? 0) + 1
-      })
       new Sortable(ul, {
         controlled: true,
         draggable: '.as-item',
@@ -142,16 +153,15 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     // placeholder to catch up first: since #140 the `scroll` replay is
     // coalesced to one `onPointerMove` per animation frame, so between the
     // last scroll tick and the next frame the placeholder is legitimately one
-    // tick stale. `cleanupPointerDrag` flushes that pending replay
-    // synchronously on pointerup, which is what makes the committed index
-    // correct. Waiting for pre-release freshness therefore demands a state
-    // the library no longer promises, and on a loaded runner it simply never
-    // arrives — it timed out 3/3 on the Linux WebKit leg while the drop
-    // itself was resolving correctly the whole time.
-    // TEMPORARY diagnostics, captured immediately before release. The key
-    // field is `underCursor`: if the row actually under the pointer is near
-    // the end of the list but the committed index is not, the fault is in
-    // target resolution rather than in scrolling.
+    // tick stale, and `cleanupPointerDrag` flushes that pending replay on
+    // pointerup. Such a wait was tried here and only masked the overlap bug
+    // described in `buildScrollingList` — it timed out instead of failing on
+    // the index, which made a layout problem look like a timing problem.
+    //
+    // State at the instant of release, used for both the guard below and the
+    // failure message on the final assertion. A bare index mismatch is close
+    // to undebuggable on a runner you cannot attach to; these few fields are
+    // what actually identified the bug this test previously had.
     const diag = await page.evaluate(
       ({ x, y }) => {
         const ul = (window as unknown as AsWindow).__asList
@@ -160,16 +170,29 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
         return {
           scrollTop: Math.round(ul.scrollTop),
           maxScroll: Math.round(ul.scrollHeight - ul.clientHeight),
-          scrollEvents: (window as unknown as AsWindow).__asScrollEvents ?? -1,
           placeholderIndex: kids.findIndex((c) =>
             c.hasAttribute('data-resortable-placeholder')
           ),
           childCount: kids.length,
           underCursor: document.elementFromPoint(x, y)?.id ?? 'none',
+          // The list itself is a legitimate hit at the bottom edge (the point
+          // can land on the ul's own box rather than a row), so containment
+          // is the real question, not whether the id looks like a row.
+          cursorInList: ul.contains(document.elementFromPoint(x, y)),
         }
       },
       { x: list.x + 25, y: edgeY }
     )
+
+    // Guard the premise before asserting the conclusion. If something else on
+    // the page covers the drop point, the drag resolves against that element
+    // and the committed index is meaningless — which is exactly how this test
+    // used to fail, with an index that looked like a scroll bug. Fail here
+    // instead, where the message names the real cause.
+    expect(
+      diag?.cursorInList,
+      `cursor is not over the fixture list: ${JSON.stringify(diag)}`
+    ).toBe(true)
 
     await page.mouse.up()
 
