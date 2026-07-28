@@ -211,12 +211,8 @@ export class AutoScrollPlugin implements SortablePlugin {
       }
 
       // Never scroll on a stale/unseen cursor position.
-      if (this.cursorSeen && this.scrollNearCursor(sortable)) {
-        // Tell the drag pipeline immediately rather than letting it wait for
-        // the `scroll` event this mutation will eventually produce. That
-        // event is async and, under load, can arrive after the drop — see
-        // DragManager.notifyProgrammaticScroll.
-        sortable.dragManager?.notifyProgrammaticScroll?.()
+      if (this.cursorSeen) {
+        this.scrollNearCursor(sortable)
       }
 
       this.animationFrame = window.requestAnimationFrame(scroll)
@@ -259,13 +255,12 @@ export class AutoScrollPlugin implements SortablePlugin {
    *   skipped (instead of feeding `scrollBy` no-ops and then unconditionally
    *   scrolling the window as a "last resort").
    */
-  private scrollNearCursor(sortable: SortableInstance): boolean {
+  private scrollNearCursor(sortable: SortableInstance): void {
     const mouse = this.lastMousePosition
-    let scrolled = false
 
     let el: HTMLElement | null = sortable.element
     while (el && el !== document.body && el !== document.documentElement) {
-      if (this.scrollElementIfNearEdge(el, mouse)) scrolled = true
+      this.scrollElementIfNearEdge(el, mouse)
       el = el.parentElement
     }
 
@@ -277,38 +272,28 @@ export class AutoScrollPlugin implements SortablePlugin {
       const sens = Math.min(this.options.sensitivity, vw / 3)
       if (mouse.x < sens && window.scrollX > 0) {
         window.scrollBy(-this.calculateSpeed(sens - mouse.x), 0)
-        scrolled = true
       } else if (mouse.x > vw - sens && window.scrollX + vw < doc.scrollWidth) {
         window.scrollBy(this.calculateSpeed(mouse.x - (vw - sens)), 0)
-        scrolled = true
       }
     }
     if (this.options.scrollY && doc.scrollHeight > vh) {
       const sens = Math.min(this.options.sensitivity, vh / 3)
       if (mouse.y < sens && window.scrollY > 0) {
         window.scrollBy(0, -this.calculateSpeed(sens - mouse.y))
-        scrolled = true
       } else if (
         mouse.y > vh - sens &&
         window.scrollY + vh < doc.scrollHeight
       ) {
         window.scrollBy(0, this.calculateSpeed(mouse.y - (vh - sens)))
-        scrolled = true
       }
     }
-
-    return scrolled
   }
 
-  /**
-   * Edge-scroll a single element along the axes it can actually scroll.
-   *
-   * @returns whether this call actually mutated a scroll offset
-   */
+  /** Edge-scroll a single element along the axes it can actually scroll. */
   private scrollElementIfNearEdge(
     el: HTMLElement,
     mouse: { x: number; y: number }
-  ): boolean {
+  ): void {
     const style = window.getComputedStyle(el)
     const scrollableX =
       (style.overflowX === 'auto' || style.overflowX === 'scroll') &&
@@ -316,22 +301,19 @@ export class AutoScrollPlugin implements SortablePlugin {
     const scrollableY =
       (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
       el.scrollHeight > el.clientHeight
-    if (!scrollableX && !scrollableY) return false
+    if (!scrollableX && !scrollableY) return
 
     const rect = el.getBoundingClientRect()
-    let scrolled = false
 
     if (this.options.scrollX && scrollableX) {
       const sens = Math.min(this.options.sensitivity, rect.width / 3)
       if (mouse.x < rect.left + sens && el.scrollLeft > 0) {
         el.scrollLeft -= this.calculateSpeed(rect.left + sens - mouse.x)
-        scrolled = true
       } else if (
         mouse.x > rect.right - sens &&
         el.scrollLeft + el.clientWidth < el.scrollWidth
       ) {
         el.scrollLeft += this.calculateSpeed(mouse.x - (rect.right - sens))
-        scrolled = true
       }
     }
 
@@ -339,17 +321,13 @@ export class AutoScrollPlugin implements SortablePlugin {
       const sens = Math.min(this.options.sensitivity, rect.height / 3)
       if (mouse.y < rect.top + sens && el.scrollTop > 0) {
         el.scrollTop -= this.calculateSpeed(rect.top + sens - mouse.y)
-        scrolled = true
       } else if (
         mouse.y > rect.bottom - sens &&
         el.scrollTop + el.clientHeight < el.scrollHeight
       ) {
         el.scrollTop += this.calculateSpeed(mouse.y - (rect.bottom - sens))
-        scrolled = true
       }
     }
-
-    return scrolled
   }
 
   /**
