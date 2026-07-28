@@ -1,9 +1,9 @@
-import js from '@eslint/js';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsparser from '@typescript-eslint/parser';
-import prettierConfig from 'eslint-config-prettier';
-import prettier from 'eslint-plugin-prettier';
-import tsdoc from 'eslint-plugin-tsdoc';
+import js from '@eslint/js'
+import tseslint from '@typescript-eslint/eslint-plugin'
+import tsparser from '@typescript-eslint/parser'
+import prettierConfig from 'eslint-config-prettier'
+import prettier from 'eslint-plugin-prettier'
+import tsdoc from 'eslint-plugin-tsdoc'
 
 export default [
   js.configs.recommended,
@@ -27,8 +27,8 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
-      'tsdoc': tsdoc,
-      'prettier': prettier,
+      tsdoc: tsdoc,
+      prettier: prettier,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -75,4 +75,4 @@ export default [
       '*.config.*.ts',
     ],
   },
-];
+]

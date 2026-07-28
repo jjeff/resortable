@@ -10,24 +10,30 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 [![TypeScript](https://img.shields.io/npm/types/resortable?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/npm/l/resortable?color=blue)](./LICENSE)
 
-> **Migrating from Sortable.js?** See the [migration guide](./docs/migration-from-sortable-v1.md) for the option/plugin/breaking-change delta.
+> **Migrating from Sortable.js?** See the [migration guide](./docs/migration-from-sortable-v1.md) for the
+> option/plugin/breaking-change delta.
 
-**Contents:** [Features](#features) · [Install](#installation) · [Quick start](#quick-start) · [Options](#options) · [Methods](#methods) · [Static API](#static-api) · [Plugins](#plugins) · [Examples](#examples) · [Development](#development) · [Architecture](#architecture)
+**Contents:** [Features](#features) · [Install](#installation) · [Quick start](#quick-start) · [Options](#options) ·
+[Methods](#methods) · [Static API](#static-api) · [Plugins](#plugins) · [Examples](#examples) ·
+[Development](#development) · [Architecture](#architecture)
 
 ## Documentation
 
-Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortable/) · folder index: [`docs/`](./docs/README.md)
+Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortable/) · folder index:
+[`docs/`](./docs/README.md)
 
-| Guide | What's inside |
-| --- | --- |
-| [API Reference](https://jjeff.github.io/resortable/api/) | TypeDoc — every exported class, interface, option, and type |
-| [Migration from Sortable v1](./docs/migration-from-sortable-v1.md) | Option renames, plugin changes, and breaking-change delta |
-| [Plugin Development](./docs/plugin-development.md) | Plugin lifecycle, hook reference, and authoring patterns |
-| [Accessibility](./docs/accessibility.md) | Keyboard contract, ARIA attributes, and the WCAG 2.1 AA audit |
+| Guide                                                              | What's inside                                                 |
+| ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| [API Reference](https://jjeff.github.io/resortable/api/)           | TypeDoc — every exported class, interface, option, and type   |
+| [Migration from Sortable v1](./docs/migration-from-sortable-v1.md) | Option renames, plugin changes, and breaking-change delta     |
+| [Plugin Development](./docs/plugin-development.md)                 | Plugin lifecycle, hook reference, and authoring patterns      |
+| [Accessibility](./docs/accessibility.md)                           | Keyboard contract, ARIA attributes, and the WCAG 2.1 AA audit |
 
-**Live:** [Examples](https://jjeff.github.io/resortable/demo/examples/) · [Showcase](https://jjeff.github.io/resortable/demo/) · [Playground](https://jjeff.github.io/resortable/demo/playground.html)
-&nbsp;•&nbsp;
-**Project:** [Architecture](./ARCHITECTURE.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Changelog](./CHANGELOG.md)
+**Live:** [Examples](https://jjeff.github.io/resortable/demo/examples/) ·
+[Showcase](https://jjeff.github.io/resortable/demo/) ·
+[Playground](https://jjeff.github.io/resortable/demo/playground.html) &nbsp;•&nbsp; **Project:**
+[Architecture](./ARCHITECTURE.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) ·
+[Changelog](./CHANGELOG.md)
 
 ## Features
 
@@ -35,15 +41,21 @@ Full docs hub: [**jjeff.github.io/resortable**](https://jjeff.github.io/resortab
 - **Cross-Container** — Drag items between lists with shared groups
 - **Clone Support** — `group.pull: 'clone'` to copy items instead of moving
 - **Animations** — FLIP-based 60fps reorder animations
-- **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support. WCAG 2.1 AA verified via an automated axe-core audit in CI; see [docs/accessibility.md](./docs/accessibility.md) for the keyboard contract and ARIA reference.
+- **Accessibility** — Full keyboard navigation, ARIA attributes, screen reader support. WCAG 2.1 AA verified via an
+  automated axe-core audit in CI; see [docs/accessibility.md](./docs/accessibility.md) for the keyboard contract and
+  ARIA reference.
 - **Multi-Drag** — Ctrl+Click / Shift+Click selection, drag multiple items together
-- **Controlled mode** — `controlled: true` reports the drop as intent (`newIndex`/`newIndexes` + target zone) and never mutates your DOM, so React/Vue/state-owned lists stay the single source of truth
-- **React hook** — `resortable/react` ships a `useSortable` hook (1.4 kB, built on controlled mode); Vue/Svelte wrappers are on the roadmap
-- **Flexible drop targeting** — `emptyInsertThreshold` and `hitArea` let a list accept drops thrown at the empty space or surrounding region around it, not just its own box
+- **Controlled mode** — `controlled: true` reports the drop as intent (`newIndex`/`newIndexes` + target zone) and never
+  mutates your DOM, so React/Vue/state-owned lists stay the single source of truth
+- **React hook** — `resortable/react` ships a `useSortable` hook (1.4 kB, built on controlled mode); Vue/Svelte wrappers
+  are on the roadmap
+- **Flexible drop targeting** — `emptyInsertThreshold` and `hitArea` let a list accept drops thrown at the empty space
+  or surrounding region around it, not just its own box
 - **Plugin System** — AutoScroll, Swap plugins (extensible architecture)
 - **TypeScript** — Strict types with full IntelliSense support, zero runtime dependencies
 - **Small** — ~20 kB gzipped (19.8 kB ESM)
-- **Cross-browser tested** — 299 unit tests (Vitest) + 182 end-to-end tests (Playwright) exercised across Chromium, Firefox, WebKit, and mobile emulation (iOS Safari + Android Chrome), run on Linux, Windows, and macOS in CI
+- **Cross-browser tested** — 299 unit tests (Vitest) + 182 end-to-end tests (Playwright) exercised across Chromium,
+  Firefox, WebKit, and mobile emulation (iOS Safari + Android Chrome), run on Linux, Windows, and macOS in CI
 
 ## Installation
 
@@ -55,7 +67,8 @@ npm install resortable
 
 ### CDN (UMD)
 
-The UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking changes:
+The UMD bundle exposes a `window.Sortable` global and works without a bundler. Version-pin to avoid surprise breaking
+changes:
 
 ```html
 <!-- unpkg — @2 tracks the latest 2.x (major-pinned, no surprise breaking changes) -->
@@ -68,24 +81,25 @@ The UMD bundle exposes a `window.Sortable` global and works without a bundler. V
   // The UMD build attaches the library as `window.Sortable`
   new Sortable(document.getElementById('my-list'), {
     animation: 150,
-  });
+  })
 </script>
 ```
 
-The ESM build via `npm install resortable` is the recommended path for app code — it tree-shakes, ships TypeScript types, and integrates with modern bundlers.
+The ESM build via `npm install resortable` is the recommended path for app code — it tree-shakes, ships TypeScript
+types, and integrates with modern bundlers.
 
 ## Quick Start
 
 ```typescript
-import { Sortable } from 'resortable';
+import { Sortable } from 'resortable'
 
 const sortable = new Sortable(document.getElementById('my-list'), {
   animation: 150,
   ghostClass: 'sortable-ghost',
   onEnd: (evt) => {
-    console.log(`Moved from ${evt.oldIndex} to ${evt.newIndex}`);
-  }
-});
+    console.log(`Moved from ${evt.oldIndex} to ${evt.newIndex}`)
+  },
+})
 ```
 
 ## Options
@@ -93,41 +107,41 @@ const sortable = new Sortable(document.getElementById('my-list'), {
 ```typescript
 new Sortable(element, {
   // Behavior
-  group: 'shared',                    // Group name or { name, pull, put } config
-  sort: true,                         // Allow sorting within list
-  disabled: false,                    // Disable the sortable
-  draggable: '.sortable-item',       // CSS selector for draggable items
-  handle: '.drag-handle',            // Restrict drag to handle elements
-  filter: 'input, button',           // Prevent drag on these elements
-  ignore: 'a, img',                  // Descendants that should NOT initiate drag (default 'a, img')
-  delay: 0,                          // Delay in ms before drag starts
-  delayOnTouchOnly: 0,              // Touch-specific delay
-  touchStartThreshold: 5,            // Pixels of movement before cancelling delay
-  direction: 'vertical',             // 'vertical' | 'horizontal' list axis
+  group: 'shared', // Group name or { name, pull, put } config
+  sort: true, // Allow sorting within list
+  disabled: false, // Disable the sortable
+  draggable: '.sortable-item', // CSS selector for draggable items
+  handle: '.drag-handle', // Restrict drag to handle elements
+  filter: 'input, button', // Prevent drag on these elements
+  ignore: 'a, img', // Descendants that should NOT initiate drag (default 'a, img')
+  delay: 0, // Delay in ms before drag starts
+  delayOnTouchOnly: 0, // Touch-specific delay
+  touchStartThreshold: 5, // Pixels of movement before cancelling delay
+  direction: 'vertical', // 'vertical' | 'horizontal' list axis
   // swapThreshold: 0.5,              // Min overlap fraction (0-1) before an item swaps;
-                                     // omit for the default (no overlap gate)
+  // omit for the default (no overlap gate)
 
   // Drop targeting
-  emptyInsertThreshold: 5,           // Px around an empty list that still counts as a drop
-  hitArea: '.row',                   // Selector for a surrounding region whose drops this
-                                     // list also claims, inserting at the nearest end
+  emptyInsertThreshold: 5, // Px around an empty list that still counts as a drop
+  hitArea: '.row', // Selector for a surrounding region whose drops this
+  // list also claims, inserting at the nearest end
 
   // Visual
-  animation: 150,                    // Animation duration in ms
+  animation: 150, // Animation duration in ms
   easing: 'cubic-bezier(0.4,0,0.2,1)', // CSS easing
-  ghostClass: 'sortable-ghost',      // Class on the ghost placeholder
-  chosenClass: 'sortable-chosen',    // Class on the chosen item
-  dragClass: 'sortable-drag',        // Class on the dragging item
+  ghostClass: 'sortable-ghost', // Class on the ghost placeholder
+  chosenClass: 'sortable-chosen', // Class on the chosen item
+  dragClass: 'sortable-drag', // Class on the dragging item
 
   // Multi-drag
-  multiDrag: false,                  // Enable multi-selection
+  multiDrag: false, // Enable multi-selection
   selectedClass: 'sortable-selected', // Class on selected items
 
   // State ownership
-  controlled: false,                 // Report intent via events, never mutate the DOM
+  controlled: false, // Report intent via events, never mutate the DOM
 
   // Accessibility
-  enableAccessibility: true,         // Keyboard nav + ARIA
+  enableAccessibility: true, // Keyboard nav + ARIA
 
   // Events
   onStart: (evt) => {},
@@ -143,7 +157,7 @@ new Sortable(element, {
   onMove: (evt, originalEvent) => {},
   onSelect: (evt) => {},
   onFilter: (evt) => {},
-});
+})
 ```
 
 ## Shared Groups / Clone
@@ -152,22 +166,22 @@ new Sortable(element, {
 // Source list — items are cloned when dragged out
 new Sortable(sourceList, {
   group: { name: 'shared', pull: 'clone', put: false },
-});
+})
 
 // Target list — accepts items from 'shared' group
 new Sortable(targetList, {
   group: { name: 'shared', pull: true, put: true },
-});
+})
 ```
 
 ## Methods
 
 ```typescript
-sortable.toArray()              // Get order as array of data-id values
-sortable.sort(['c','a','b'])    // Set order by data-id values
-sortable.option('animation')    // Get option value
+sortable.toArray() // Get order as array of data-id values
+sortable.sort(['c', 'a', 'b']) // Set order by data-id values
+sortable.option('animation') // Get option value
 sortable.option('animation', 300) // Set option value
-sortable.destroy()              // Remove instance and clean up
+sortable.destroy() // Remove instance and clean up
 ```
 
 ## Static API
@@ -193,24 +207,27 @@ Sortable.utils.clone(el)                     // Deep-clone an element (cloneNode
 ## Plugins
 
 ```typescript
-import { Sortable, PluginSystem } from 'resortable';
-import { registerAllPlugins } from 'resortable/plugins';
+import { Sortable, PluginSystem } from 'resortable'
+import { registerAllPlugins } from 'resortable/plugins'
 
 // Register all built-in plugins
-registerAllPlugins();
+registerAllPlugins()
 
-const sortable = new Sortable(element, { animation: 150 });
-sortable.usePlugin('AutoScroll');
-sortable.usePlugin('Swap');
+const sortable = new Sortable(element, { animation: 150 })
+sortable.usePlugin('AutoScroll')
+sortable.usePlugin('Swap')
 ```
 
 **Built-in plugins:** `AutoScroll`, `MarqueeSelect`, `OnSpill`, `Swap`.
 
-> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options. (The `MultiDragPlugin` v1-compat shim was removed in #34; see the [migration guide](./docs/migration-from-sortable-v1.md#multidrag-is-built-into-the-core--do-not-mount-the-plugin).)
+> **Note:** Multi-drag is built into the core — no plugin needed. Set `multiDrag: true` in options. (The
+> `MultiDragPlugin` v1-compat shim was removed in #34; see the
+> [migration guide](./docs/migration-from-sortable-v1.md#multidrag-is-built-into-the-core--do-not-mount-the-plugin).)
 
 ### Authoring custom plugins
 
-See the [Plugin Development Guide](./docs/plugin-development.md) for the plugin lifecycle, hook reference, and authoring patterns.
+See the [Plugin Development Guide](./docs/plugin-development.md) for the plugin lifecycle, hook reference, and authoring
+patterns.
 
 ## API Reference
 
@@ -218,33 +235,44 @@ Full TypeDoc-generated API reference: [jjeff.github.io/resortable/api/](https://
 
 ## Framework wrappers
 
-**React** ships today as a first-class hook: `import { useSortable } from 'resortable/react'`. It is built on [controlled mode](#options), so your component state stays the source of truth — the hook reports reorders as intent and never mutates React-owned DOM:
+**React** ships today as a first-class hook: `import { useSortable } from 'resortable/react'`. It is built on
+[controlled mode](#options), so your component state stays the source of truth — the hook reports reorders as intent and
+never mutates React-owned DOM:
 
 ```tsx
-import { useSortable } from 'resortable/react';
+import { useSortable } from 'resortable/react'
 
 function List({ items, setItems }) {
   const { ref } = useSortable<HTMLUListElement>({
     animation: 150,
     onSort: (intent) => setItems(reorder(items, intent)),
-  });
+  })
   return (
     <ul ref={ref}>
-      {items.map((i) => <li key={i.id} data-id={i.id}>{i.label}</li>)}
+      {items.map((i) => (
+        <li key={i.id} data-id={i.id}>
+          {i.label}
+        </li>
+      ))}
     </ul>
-  );
+  )
 }
 ```
 
-Vue and Svelte wrappers are on the roadmap. Any other framework works today via the imperative `new Sortable(element, options)` API on a ref/`useEffect`-mounted element. See [#44](https://github.com/jjeff/resortable/issues/44) for the v2.0 master roadmap, where the remaining framework-wrapper packages are tracked.
+Vue and Svelte wrappers are on the roadmap. Any other framework works today via the imperative
+`new Sortable(element, options)` API on a ref/`useEffect`-mounted element. See
+[#44](https://github.com/jjeff/resortable/issues/44) for the v2.0 master roadmap, where the remaining framework-wrapper
+packages are tracked.
 
 ## Examples
 
-The repo ships with a curated set of nine standalone examples covering the v2 API surface — basic list, shared lists, kanban board, clone mode, swap, multi-drag, handle + filter, accessibility, and a custom plugin.
+The repo ships with a curated set of nine standalone examples covering the v2 API surface — basic list, shared lists,
+kanban board, clone mode, swap, multi-drag, handle + filter, accessibility, and a custom plugin.
 
 **Live examples:** <https://jjeff.github.io/resortable/demo/examples/>
 
-To run them against the source locally, see [`./examples/index.html`](./examples/index.html) (clone the repo and `npm run dev`, then open `http://localhost:5173/examples/index.html`).
+To run them against the source locally, see [`./examples/index.html`](./examples/index.html) (clone the repo and
+`npm run dev`, then open `http://localhost:5173/examples/index.html`).
 
 ## Development
 
@@ -264,18 +292,18 @@ Setup, conventions, and the PR checklist live in [CONTRIBUTING.md](./CONTRIBUTIN
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for module documentation.
 
-| Module | Purpose |
-|--------|---------|
-| `core/DragManager` | Drag interaction handling (HTML5 + Pointer Events) |
-| `core/DropZone` | Container management and DOM operations |
-| `core/EventSystem` | Type-safe event emitter |
-| `core/GlobalDragState` | Cross-zone drag coordination |
-| `core/GroupManager` | Group config and clone detection |
-| `core/GhostManager` | Ghost/placeholder elements |
-| `core/KeyboardManager` | Keyboard navigation |
-| `core/SelectionManager` | Multi-item selection |
-| `core/PluginSystem` | Plugin lifecycle management |
-| `animation/AnimationManager` | FLIP-based animations |
+| Module                       | Purpose                                            |
+| ---------------------------- | -------------------------------------------------- |
+| `core/DragManager`           | Drag interaction handling (HTML5 + Pointer Events) |
+| `core/DropZone`              | Container management and DOM operations            |
+| `core/EventSystem`           | Type-safe event emitter                            |
+| `core/GlobalDragState`       | Cross-zone drag coordination                       |
+| `core/GroupManager`          | Group config and clone detection                   |
+| `core/GhostManager`          | Ghost/placeholder elements                         |
+| `core/KeyboardManager`       | Keyboard navigation                                |
+| `core/SelectionManager`      | Multi-item selection                               |
+| `core/PluginSystem`          | Plugin lifecycle management                        |
+| `animation/AnimationManager` | FLIP-based animations                              |
 
 ## License
 
@@ -283,4 +311,6 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for module documentation.
 
 ## Acknowledgments
 
-Resortable is a TypeScript rewrite of [SortableJS](https://github.com/SortableJS/Sortable) by Lebedev Konstantin and the SortableJS contributors. The original library pioneered the drag-and-drop patterns this project builds on, and the legacy source under `legacy-sortable/` is consulted for v1 parity. See [NOTICE](./NOTICE) for full attribution.
+Resortable is a TypeScript rewrite of [SortableJS](https://github.com/SortableJS/Sortable) by Lebedev Konstantin and the
+SortableJS contributors. The original library pioneered the drag-and-drop patterns this project builds on, and the
+legacy source under `legacy-sortable/` is consulted for v1 parity. See [NOTICE](./NOTICE) for full attribution.

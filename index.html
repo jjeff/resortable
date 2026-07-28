@@ -1,849 +1,982 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Resortable - Modern Drag & Drop Library</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-    }
-    
-    /* Default Sortable Classes */
-    .sortable-ghost {
-      opacity: 0.8;
-      filter: brightness(0.95);
-    }
-    
-    .sortable-chosen {
-      opacity: 1;
-    }
-    
-    .sortable-drag {
-      opacity: 0.5;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resortable - Modern Drag & Drop Library</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    /* Multi-drag source items (dimmed during drag) */
-    .sortable-multi-drag-source {
-      opacity: 0.3;
-      transition: opacity 0.2s ease;
-    }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
 
-    /* Selected items */
-    .sortable-selected {
-      outline: 2px solid #4A90D9;
-      outline-offset: -2px;
-    }
-    
-    /* Hero Section */
-    .hero {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: white;
-      background: rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(10px);
-    }
-    
-    .hero h1 {
-      font-size: 3.5rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
-      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    .hero p {
-      font-size: 1.25rem;
-      opacity: 0.95;
-      max-width: 600px;
-      margin: 0 auto 2rem;
-    }
-    
-    .badges {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-top: 2rem;
-    }
-    
-    .badge {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 0.5rem 1rem;
-      border-radius: 2rem;
-      font-size: 0.875rem;
-      backdrop-filter: blur(10px);
-    }
-    
-    /* Showcase Container */
-    .showcase {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    
-    /* Demo Sections */
-    .demo-section {
-      background: white;
-      border-radius: 16px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    }
-    
-    .demo-section h2 {
-      color: #333;
-      margin-bottom: 0.5rem;
-      font-size: 2rem;
-    }
-    
-    .demo-section .subtitle {
-      color: #666;
-      margin-bottom: 2rem;
-    }
-    
-    /* Visual Effects Demo */
-    .effects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 2rem;
-    }
-    
-    .effect-demo {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 1.5rem;
-      border: 2px dashed #dee2e6;
-    }
-    
-    .effect-demo h3 {
-      color: #495057;
-      margin-bottom: 1rem;
-      font-size: 1.1rem;
-    }
-    
-    .smooth-list .sortable-item {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border-radius: 8px;
-      cursor: move;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .smooth-list .sortable-item::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-      transform: translateX(-100%);
-      transition: transform 0.6s;
-    }
-    
-    .smooth-list .sortable-item:hover::before {
-      transform: translateX(100%);
-    }
-    
-    .smooth-list .sortable-item:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-    
-    .smooth-list .sortable-ghost {
-      opacity: 0.2;
-      background: #e9ecef !important;
-    }
-    
-    .smooth-list .sortable-chosen {
-      transform: scale(1.05);
-      box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
-    }
-    
-    .smooth-list .sortable-drag {
-      opacity: 0;
-    }
-    
-    /* Advanced Interactions */
-    .interaction-demos {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2rem;
-    }
-    
-    .multi-select-list .sortable-item {
-      background: #6c757d;
-      color: white;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border-radius: 6px;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .multi-select-list .sortable-item.selected {
-      background: #28a745;
-      transform: translateX(10px);
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-    }
-    
-    .multi-select-list .sortable-ghost {
-      opacity: 0.4;
-    }
-    
-    /* Keyboard Navigation Demo */
-    .keyboard-list {
-      border: 3px solid #17a2b8;
-      border-radius: 12px;
-      padding: 1rem;
-      background: #f0f8ff;
-    }
-    
-    .keyboard-list .sortable-item {
-      background: white;
-      border: 2px solid #17a2b8;
-      color: #333;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border-radius: 6px;
-      cursor: move;
-      transition: all 0.2s;
-    }
-    
-    .keyboard-list .sortable-item:focus {
-      outline: 3px solid #ffc107;
-      outline-offset: 2px;
-      transform: scale(1.02);
-    }
-    
-    .keyboard-list .sortable-item.sortable-selected {
-      background: #e7f5ff;
-      border-color: #0c5460;
-      box-shadow: 0 0 0 2px #17a2b8;
-    }
+      /* Default Sortable Classes */
+      .sortable-ghost {
+        opacity: 0.8;
+        filter: brightness(0.95);
+      }
 
-    .keyboard-list .sortable-item[aria-grabbed="true"] {
-      background: #17a2b8;
-      color: white;
-      transform: scale(1.05);
-    }
-    
-    .keyboard-hint {
-      background: #e7f5ff;
-      border: 1px solid #17a2b8;
-      border-radius: 6px;
-      padding: 0.75rem;
-      margin-top: 1rem;
-      font-size: 0.875rem;
-      color: #0c5460;
-    }
+      .sortable-chosen {
+        opacity: 1;
+      }
 
-    .keyboard-hint kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: white;
-      border: 1px solid #b0d4dd;
-      border-bottom-width: 2px;
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: 0.8125rem;
-      color: #0c5460;
-    }
-    
-    /* Practical Examples */
-    .examples-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 2rem;
-    }
-    
-    /* Kanban Board */
-    .kanban-board {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      background: #f8f9fa;
-      padding: 1rem;
-      border-radius: 12px;
-    }
-    
-    .kanban-column {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      min-height: 300px;
-    }
-    
-    .kanban-column h4 {
-      color: #495057;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid #e9ecef;
-    }
-    
-    .kanban-column.todo h4 { border-bottom-color: #dc3545; }
-    .kanban-column.doing h4 { border-bottom-color: #ffc107; }
-    .kanban-column.done h4 { border-bottom-color: #28a745; }
-    
-    .kanban-card {
-      background: white;
-      border: 1px solid #dee2e6;
-      border-radius: 6px;
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
-      cursor: move;
-      transition: all 0.2s;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    .kanban-card:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-    
-    .kanban-card .priority {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 3px;
-      font-size: 0.75rem;
-      margin-top: 0.5rem;
-    }
-    
-    .priority.high { background: #f8d7da; color: #721c24; }
-    .priority.medium { background: #fff3cd; color: #856404; }
-    .priority.low { background: #d4edda; color: #155724; }
-    
-    .kanban-card.sortable-ghost {
-      opacity: 0.4;
-      transform: rotate(2deg);
-    }
-    
-    /* Image Gallery */
-    .image-gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 1rem;
-      padding: 1rem;
-      background: #f8f9fa;
-      border-radius: 12px;
-      min-height: 280px;
-    }
-    
-    .gallery-item {
-      aspect-ratio: 1;
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: move;
-      transition: all 0.3s;
-      position: relative;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .gallery-item .image-placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      background: linear-gradient(135deg, var(--color1), var(--color2));
-      color: white;
-    }
-    
-    .gallery-item:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-      z-index: 10;
-    }
-    
-    .gallery-item.sortable-ghost {
-      opacity: 0.3;
-    }
-    
-    .gallery-item.sortable-chosen {
-      transform: scale(1.1) rotate(-5deg);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
+      .sortable-drag {
+        opacity: 0.5;
+      }
 
-    @media (max-width: 768px) {
-      .image-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      /* Multi-drag source items (dimmed during drag) */
+      .sortable-multi-drag-source {
+        opacity: 0.3;
+        transition: opacity 0.2s ease;
+      }
+
+      /* Selected items */
+      .sortable-selected {
+        outline: 2px solid #4a90d9;
+        outline-offset: -2px;
+      }
+
+      /* Hero Section */
+      .hero {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: white;
+        background: rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .hero p {
+        font-size: 1.25rem;
+        opacity: 0.95;
+        max-width: 600px;
+        margin: 0 auto 2rem;
+      }
+
+      .badges {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+      }
+
+      .badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        backdrop-filter: blur(10px);
+      }
+
+      /* Showcase Container */
+      .showcase {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      /* Demo Sections */
+      .demo-section {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      }
+
+      .demo-section h2 {
+        color: #333;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+      }
+
+      .demo-section .subtitle {
+        color: #666;
+        margin-bottom: 2rem;
+      }
+
+      /* Visual Effects Demo */
+      .effects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+      }
+
+      .effect-demo {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 2px dashed #dee2e6;
+      }
+
+      .effect-demo h3 {
+        color: #495057;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+      }
+
+      .smooth-list .sortable-item {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
+        cursor: move;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .smooth-list .sortable-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          45deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+      }
+
+      .smooth-list .sortable-item:hover::before {
+        transform: translateX(100%);
+      }
+
+      .smooth-list .sortable-item:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+      }
+
+      .smooth-list .sortable-ghost {
+        opacity: 0.2;
+        background: #e9ecef !important;
+      }
+
+      .smooth-list .sortable-chosen {
+        transform: scale(1.05);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+      }
+
+      .smooth-list .sortable-drag {
+        opacity: 0;
+      }
+
+      /* Advanced Interactions */
+      .interaction-demos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+
+      .multi-select-list .sortable-item {
+        background: #6c757d;
+        color: white;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 6px;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
         gap: 0.5rem;
+      }
+
+      .multi-select-list .sortable-item.selected {
+        background: #28a745;
+        transform: translateX(10px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+      }
+
+      .multi-select-list .sortable-ghost {
+        opacity: 0.4;
+      }
+
+      /* Keyboard Navigation Demo */
+      .keyboard-list {
+        border: 3px solid #17a2b8;
+        border-radius: 12px;
+        padding: 1rem;
+        background: #f0f8ff;
+      }
+
+      .keyboard-list .sortable-item {
+        background: white;
+        border: 2px solid #17a2b8;
+        color: #333;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 6px;
+        cursor: move;
+        transition: all 0.2s;
+      }
+
+      .keyboard-list .sortable-item:focus {
+        outline: 3px solid #ffc107;
+        outline-offset: 2px;
+        transform: scale(1.02);
+      }
+
+      .keyboard-list .sortable-item.sortable-selected {
+        background: #e7f5ff;
+        border-color: #0c5460;
+        box-shadow: 0 0 0 2px #17a2b8;
+      }
+
+      .keyboard-list .sortable-item[aria-grabbed='true'] {
+        background: #17a2b8;
+        color: white;
+        transform: scale(1.05);
+      }
+
+      .keyboard-hint {
+        background: #e7f5ff;
+        border: 1px solid #17a2b8;
+        border-radius: 6px;
         padding: 0.75rem;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        color: #0c5460;
       }
 
-      .gallery-item .image-placeholder {
-        font-size: 1.5rem;
+      .keyboard-hint kbd {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: white;
+        border: 1px solid #b0d4dd;
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 0.8125rem;
+        color: #0c5460;
       }
 
+      /* Practical Examples */
+      .examples-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+      }
+
+      /* Kanban Board */
       .kanban-board {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 12px;
       }
 
       .kanban-column {
-        min-height: 150px;
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        min-height: 300px;
       }
-    }
-    
-    /* Nested Lists */
-    .nested-list {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 1rem;
-    }
-    
-    .nested-list .folder {
-      background: white;
-      border: 2px solid #dee2e6;
-      border-radius: 8px;
-      margin: 0.5rem 0;
-      overflow: hidden;
-    }
-    
-    .nested-list .folder-header {
-      padding: 1rem;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      color: white;
-      cursor: move;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .nested-list .folder-content {
-      padding: 0.5rem 1rem;
-      background: #f8f9fa;
-    }
-    
-    .nested-list .file {
-      background: white;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 0.75rem;
-      margin: 0.25rem 0;
-      cursor: move;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .nested-list .file:hover {
-      background: #e9ecef;
-      transform: translateX(5px);
-    }
-    
-    .nested-list .sortable-ghost {
-      opacity: 0.4;
-    }
-    
-    /* Page footer / link out to the dev playground */
-    .page-footer {
-      max-width: 1400px;
-      margin: 1rem auto 3rem;
-      padding: 2rem;
-      text-align: center;
-      color: rgba(255, 255, 255, 0.95);
-    }
 
-    .page-footer p {
-      margin: 0.5rem 0;
-    }
+      .kanban-column h4 {
+        color: #495057;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+      }
 
-    .page-footer .muted {
-      opacity: 0.7;
-      font-size: 0.875rem;
-    }
+      .kanban-column.todo h4 {
+        border-bottom-color: #dc3545;
+      }
+      .kanban-column.doing h4 {
+        border-bottom-color: #ffc107;
+      }
+      .kanban-column.done h4 {
+        border-bottom-color: #28a745;
+      }
 
-    .page-footer a {
-      color: white;
-      text-decoration: underline;
-    }
+      .kanban-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        cursor: move;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
 
-    .playground-link {
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <!-- Hero Section -->
-  <div class="hero">
-    <h1>Resortable</h1>
-    <p>A modern, accessible, and performant drag-and-drop library built with TypeScript</p>
-    <div class="badges">
-      <span class="badge">✨ Smooth Animations</span>
-      <span class="badge">⌨️ Keyboard Navigation</span>
-      <span class="badge">📱 Touch & Pen Support</span>
-      <span class="badge">♿ WCAG 2.1 AA</span>
-      <span class="badge">🚀 Zero Dependencies</span>
-      <span class="badge">📝 TypeScript First</span>
-    </div>
-  </div>
+      .kanban-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
 
-  <!-- Showcase Section -->
-  <div class="showcase">
-    <!-- Smooth Transitions Demo -->
-    <div class="demo-section">
-      <h2>✨ Smooth Transitions</h2>
-      <p class="subtitle">Animated reordering with easing curves you can configure per-instance</p>
+      .kanban-card .priority {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+      }
 
-      <div class="smooth-list" id="smooth-list" style="max-width: 480px;">
-        <div class="sortable-item" data-id="smooth-1">🎨 Gradient Card</div>
-        <div class="sortable-item" data-id="smooth-2">🚀 Hover Effects</div>
-        <div class="sortable-item" data-id="smooth-3">✨ Smooth Animation</div>
-        <div class="sortable-item" data-id="smooth-4">💫 Transform Scale</div>
+      .priority.high {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .priority.medium {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .priority.low {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .kanban-card.sortable-ghost {
+        opacity: 0.4;
+        transform: rotate(2deg);
+      }
+
+      /* Image Gallery */
+      .image-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+        min-height: 280px;
+      }
+
+      .gallery-item {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: move;
+        transition: all 0.3s;
+        position: relative;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .gallery-item .image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        background: linear-gradient(135deg, var(--color1), var(--color2));
+        color: white;
+      }
+
+      .gallery-item:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        z-index: 10;
+      }
+
+      .gallery-item.sortable-ghost {
+        opacity: 0.3;
+      }
+
+      .gallery-item.sortable-chosen {
+        transform: scale(1.1) rotate(-5deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      @media (max-width: 768px) {
+        .image-gallery {
+          grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+          gap: 0.5rem;
+          padding: 0.75rem;
+        }
+
+        .gallery-item .image-placeholder {
+          font-size: 1.5rem;
+        }
+
+        .kanban-board {
+          grid-template-columns: 1fr;
+        }
+
+        .kanban-column {
+          min-height: 150px;
+        }
+      }
+
+      /* Nested Lists */
+      .nested-list {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1rem;
+      }
+
+      .nested-list .folder {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        overflow: hidden;
+      }
+
+      .nested-list .folder-header {
+        padding: 1rem;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        color: white;
+        cursor: move;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .nested-list .folder-content {
+        padding: 0.5rem 1rem;
+        background: #f8f9fa;
+      }
+
+      .nested-list .file {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0.75rem;
+        margin: 0.25rem 0;
+        cursor: move;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .nested-list .file:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+      }
+
+      .nested-list .sortable-ghost {
+        opacity: 0.4;
+      }
+
+      /* Page footer / link out to the dev playground */
+      .page-footer {
+        max-width: 1400px;
+        margin: 1rem auto 3rem;
+        padding: 2rem;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.95);
+      }
+
+      .page-footer p {
+        margin: 0.5rem 0;
+      }
+
+      .page-footer .muted {
+        opacity: 0.7;
+        font-size: 0.875rem;
+      }
+
+      .page-footer a {
+        color: white;
+        text-decoration: underline;
+      }
+
+      .playground-link {
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Hero Section -->
+    <div class="hero">
+      <h1>Resortable</h1>
+      <p>
+        A modern, accessible, and performant drag-and-drop library built with
+        TypeScript
+      </p>
+      <div class="badges">
+        <span class="badge">✨ Smooth Animations</span>
+        <span class="badge">⌨️ Keyboard Navigation</span>
+        <span class="badge">📱 Touch & Pen Support</span>
+        <span class="badge">♿ WCAG 2.1 AA</span>
+        <span class="badge">🚀 Zero Dependencies</span>
+        <span class="badge">📝 TypeScript First</span>
       </div>
     </div>
 
-    <!-- Advanced Interactions -->
-    <div class="demo-section">
-      <h2>🎯 Advanced Interactions</h2>
-      <p class="subtitle">Powerful features for complex use cases</p>
-      
-      <div class="interaction-demos">
-        <div>
-          <h3>Multi-Select &amp; Drag</h3>
-          <div class="multi-select-list" id="multi-select-list">
-            <div class="sortable-item" data-id="multi-1">Alpha</div>
-            <div class="sortable-item" data-id="multi-2">Beta</div>
-            <div class="sortable-item" data-id="multi-3">Gamma</div>
-            <div class="sortable-item" data-id="multi-4">Delta</div>
-            <div class="sortable-item" data-id="multi-5">Epsilon</div>
-          </div>
-          <div class="keyboard-hint">
-            💡 <strong>Try:</strong> Click items to toggle selection &mdash;
-            then drag any selected item to move the whole group together.
-          </div>
-        </div>
+    <!-- Showcase Section -->
+    <div class="showcase">
+      <!-- Smooth Transitions Demo -->
+      <div class="demo-section">
+        <h2>✨ Smooth Transitions</h2>
+        <p class="subtitle">
+          Animated reordering with easing curves you can configure per-instance
+        </p>
 
-        <div>
-          <h3>Keyboard Navigation</h3>
-          <div class="keyboard-list" id="keyboard-list" aria-label="Sortable list — keyboard demo">
-            <div class="sortable-item" data-id="key-1">🎵 Allegro</div>
-            <div class="sortable-item" data-id="key-2">🎶 Andante</div>
-            <div class="sortable-item" data-id="key-3">🎼 Largo</div>
-            <div class="sortable-item" data-id="key-4">🎹 Presto</div>
+        <div class="smooth-list" id="smooth-list" style="max-width: 480px">
+          <div class="sortable-item" data-id="smooth-1">🎨 Gradient Card</div>
+          <div class="sortable-item" data-id="smooth-2">🚀 Hover Effects</div>
+          <div class="sortable-item" data-id="smooth-3">
+            ✨ Smooth Animation
           </div>
-          <div class="keyboard-hint">
-            💡 <strong>Try:</strong> Tab into the list, then
-            <kbd>↑</kbd>/<kbd>↓</kbd> to move focus,
-            <kbd>Space</kbd> to toggle selection (additive),
-            <kbd>Enter</kbd> to grab, <kbd>↑</kbd>/<kbd>↓</kbd> to move,
-            <kbd>Enter</kbd> to drop, <kbd>Esc</kbd> to cancel.
+          <div class="sortable-item" data-id="smooth-4">💫 Transform Scale</div>
+        </div>
+      </div>
+
+      <!-- Advanced Interactions -->
+      <div class="demo-section">
+        <h2>🎯 Advanced Interactions</h2>
+        <p class="subtitle">Powerful features for complex use cases</p>
+
+        <div class="interaction-demos">
+          <div>
+            <h3>Multi-Select &amp; Drag</h3>
+            <div class="multi-select-list" id="multi-select-list">
+              <div class="sortable-item" data-id="multi-1">Alpha</div>
+              <div class="sortable-item" data-id="multi-2">Beta</div>
+              <div class="sortable-item" data-id="multi-3">Gamma</div>
+              <div class="sortable-item" data-id="multi-4">Delta</div>
+              <div class="sortable-item" data-id="multi-5">Epsilon</div>
+            </div>
+            <div class="keyboard-hint">
+              💡 <strong>Try:</strong> Click items to toggle selection &mdash;
+              then drag any selected item to move the whole group together.
+            </div>
+          </div>
+
+          <div>
+            <h3>Keyboard Navigation</h3>
+            <div
+              class="keyboard-list"
+              id="keyboard-list"
+              aria-label="Sortable list — keyboard demo"
+            >
+              <div class="sortable-item" data-id="key-1">🎵 Allegro</div>
+              <div class="sortable-item" data-id="key-2">🎶 Andante</div>
+              <div class="sortable-item" data-id="key-3">🎼 Largo</div>
+              <div class="sortable-item" data-id="key-4">🎹 Presto</div>
+            </div>
+            <div class="keyboard-hint">
+              💡 <strong>Try:</strong> Tab into the list, then <kbd>↑</kbd>/<kbd
+                >↓</kbd
+              >
+              to move focus, <kbd>Space</kbd> to toggle selection (additive),
+              <kbd>Enter</kbd> to grab, <kbd>↑</kbd>/<kbd>↓</kbd> to move,
+              <kbd>Enter</kbd> to drop, <kbd>Esc</kbd> to cancel.
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Practical Examples -->
-    <div class="demo-section">
-      <h2>🛠️ Practical Examples</h2>
-      <p class="subtitle">Real-world applications ready to use</p>
-      
-      <!-- Kanban Board -->
-      <div style="margin-bottom: 2rem;">
-        <h3>Kanban Board</h3>
-        <!-- a11y (#40): h4 headings live OUTSIDE the sortable container.
+      <!-- Practical Examples -->
+      <div class="demo-section">
+        <h2>🛠️ Practical Examples</h2>
+        <p class="subtitle">Real-world applications ready to use</p>
+
+        <!-- Kanban Board -->
+        <div style="margin-bottom: 2rem">
+          <h3>Kanban Board</h3>
+          <!-- a11y (#40): h4 headings live OUTSIDE the sortable container.
              KeyboardManager marks the sortable container as role="listbox",
              which requires role="option" children — a non-option child
              (the heading) trips axe `aria-required-children`. -->
-        <div class="kanban-board">
-          <div class="kanban-column todo">
-            <h4>📋 To Do</h4>
-            <div id="kanban-todo">
-              <div class="kanban-card" data-id="task-1">
-                <strong>Design new homepage</strong>
-                <div class="priority high">High Priority</div>
-              </div>
-              <div class="kanban-card" data-id="task-2">
-                <strong>Update documentation</strong>
-                <div class="priority medium">Medium Priority</div>
-              </div>
-              <div class="kanban-card" data-id="task-3">
-                <strong>Fix responsive issues</strong>
-                <div class="priority low">Low Priority</div>
+          <div class="kanban-board">
+            <div class="kanban-column todo">
+              <h4>📋 To Do</h4>
+              <div id="kanban-todo">
+                <div class="kanban-card" data-id="task-1">
+                  <strong>Design new homepage</strong>
+                  <div class="priority high">High Priority</div>
+                </div>
+                <div class="kanban-card" data-id="task-2">
+                  <strong>Update documentation</strong>
+                  <div class="priority medium">Medium Priority</div>
+                </div>
+                <div class="kanban-card" data-id="task-3">
+                  <strong>Fix responsive issues</strong>
+                  <div class="priority low">Low Priority</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="kanban-column doing">
-            <h4>🚧 In Progress</h4>
-            <div id="kanban-doing">
-              <div class="kanban-card" data-id="task-4">
-                <strong>Implement drag & drop</strong>
-                <div class="priority high">High Priority</div>
-              </div>
-              <div class="kanban-card" data-id="task-5">
-                <strong>Write unit tests</strong>
-                <div class="priority medium">Medium Priority</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="kanban-column done">
-            <h4>✅ Done</h4>
-            <div id="kanban-done">
-              <div class="kanban-card" data-id="task-6">
-                <strong>Setup TypeScript</strong>
-                <div class="priority low">Low Priority</div>
+            <div class="kanban-column doing">
+              <h4>🚧 In Progress</h4>
+              <div id="kanban-doing">
+                <div class="kanban-card" data-id="task-4">
+                  <strong>Implement drag & drop</strong>
+                  <div class="priority high">High Priority</div>
+                </div>
+                <div class="kanban-card" data-id="task-5">
+                  <strong>Write unit tests</strong>
+                  <div class="priority medium">Medium Priority</div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Image Gallery -->
-      <div style="margin-bottom: 2rem;">
-        <h3>Image Gallery</h3>
-        <div class="image-gallery" id="image-gallery">
-          <div class="gallery-item" data-id="img-1" style="--color1: #FF6B6B; --color2: #FF8787;">
-            <div class="image-placeholder">🌅</div>
-          </div>
-          <div class="gallery-item" data-id="img-2" style="--color1: #4ECDC4; --color2: #44A08D;">
-            <div class="image-placeholder">🌊</div>
-          </div>
-          <div class="gallery-item" data-id="img-3" style="--color1: #45B7D1; --color2: #2196F3;">
-            <div class="image-placeholder">🏔️</div>
-          </div>
-          <div class="gallery-item" data-id="img-4" style="--color1: #F7DC6F; --color2: #F39C12;">
-            <div class="image-placeholder">🌻</div>
-          </div>
-          <div class="gallery-item" data-id="img-5" style="--color1: #BB8FCE; --color2: #8E44AD;">
-            <div class="image-placeholder">🌸</div>
-          </div>
-          <div class="gallery-item" data-id="img-6" style="--color1: #85C88A; --color2: #52B788;">
-            <div class="image-placeholder">🌿</div>
-          </div>
-          <div class="gallery-item" data-id="img-7" style="--color1: #FFB6C1; --color2: #FF69B4;">
-            <div class="image-placeholder">🌺</div>
-          </div>
-          <div class="gallery-item" data-id="img-8" style="--color1: #87CEEB; --color2: #4682B4;">
-            <div class="image-placeholder">☁️</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Nested Lists -->
-      <div>
-        <h3>File Explorer (Nested Lists)</h3>
-        <div class="nested-list" id="nested-list">
-          <div class="folder" data-id="folder-1">
-            <div class="folder-header">📁 Documents</div>
-            <div class="folder-content" id="folder-1-content">
-              <div class="file" data-id="file-1">📄 Report.pdf</div>
-              <div class="file" data-id="file-2">📄 Presentation.pptx</div>
-              <div class="file" data-id="file-3">📄 Budget.xlsx</div>
-            </div>
-          </div>
-          <div class="folder" data-id="folder-2">
-            <div class="folder-header">📁 Images</div>
-            <div class="folder-content" id="folder-2-content">
-              <div class="file" data-id="file-4">🖼️ Photo1.jpg</div>
-              <div class="file" data-id="file-5">🖼️ Photo2.png</div>
-              <div class="file" data-id="file-6">🖼️ Logo.svg</div>
-            </div>
-          </div>
-          <div class="folder" data-id="folder-3">
-            <div class="folder-header">📁 Code</div>
-            <div class="folder-content" id="folder-3-content">
-              <div class="file" data-id="file-7">📝 index.html</div>
-              <div class="file" data-id="file-8">🎨 styles.css</div>
-              <div class="file" data-id="file-9">⚡ script.js</div>
+            <div class="kanban-column done">
+              <h4>✅ Done</h4>
+              <div id="kanban-done">
+                <div class="kanban-card" data-id="task-6">
+                  <strong>Setup TypeScript</strong>
+                  <div class="priority low">Low Priority</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Marquee Select Demo -->
-    <div class="demo-section" id="marquee-demo">
-      <h2>🔲 Marquee Select</h2>
-      <p class="subtitle">Rubber-band selection like Finder / Explorer</p>
+        <!-- Image Gallery -->
+        <div style="margin-bottom: 2rem">
+          <h3>Image Gallery</h3>
+          <div class="image-gallery" id="image-gallery">
+            <div
+              class="gallery-item"
+              data-id="img-1"
+              style="--color1: #ff6b6b; --color2: #ff8787"
+            >
+              <div class="image-placeholder">🌅</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-2"
+              style="--color1: #4ecdc4; --color2: #44a08d"
+            >
+              <div class="image-placeholder">🌊</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-3"
+              style="--color1: #45b7d1; --color2: #2196f3"
+            >
+              <div class="image-placeholder">🏔️</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-4"
+              style="--color1: #f7dc6f; --color2: #f39c12"
+            >
+              <div class="image-placeholder">🌻</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-5"
+              style="--color1: #bb8fce; --color2: #8e44ad"
+            >
+              <div class="image-placeholder">🌸</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-6"
+              style="--color1: #85c88a; --color2: #52b788"
+            >
+              <div class="image-placeholder">🌿</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-7"
+              style="--color1: #ffb6c1; --color2: #ff69b4"
+            >
+              <div class="image-placeholder">🌺</div>
+            </div>
+            <div
+              class="gallery-item"
+              data-id="img-8"
+              style="--color1: #87ceeb; --color2: #4682b4"
+            >
+              <div class="image-placeholder">☁️</div>
+            </div>
+          </div>
+        </div>
 
-      <div class="interaction-demos">
+        <!-- Nested Lists -->
         <div>
-          <h3>Drag empty space to select — Shift adds, Alt subtracts</h3>
-          <div class="marquee-list" id="marquee-list" style="padding: 24px; gap: 12px; display: flex; flex-wrap: wrap; min-height: 180px;">
-            <div class="sortable-item" data-id="mq-1" style="flex: 0 0 calc(50% - 6px);">🟦 Item One</div>
-            <div class="sortable-item" data-id="mq-2" style="flex: 0 0 calc(50% - 6px);">🟩 Item Two</div>
-            <div class="sortable-item" data-id="mq-3" style="flex: 0 0 calc(50% - 6px);">🟨 Item Three</div>
-            <div class="sortable-item" data-id="mq-4" style="flex: 0 0 calc(50% - 6px);">🟧 Item Four</div>
-            <div class="sortable-item" data-id="mq-5" style="flex: 0 0 calc(50% - 6px);">🟥 Item Five</div>
-            <div class="sortable-item" data-id="mq-6" style="flex: 0 0 calc(50% - 6px);">🟪 Item Six</div>
+          <h3>File Explorer (Nested Lists)</h3>
+          <div class="nested-list" id="nested-list">
+            <div class="folder" data-id="folder-1">
+              <div class="folder-header">📁 Documents</div>
+              <div class="folder-content" id="folder-1-content">
+                <div class="file" data-id="file-1">📄 Report.pdf</div>
+                <div class="file" data-id="file-2">📄 Presentation.pptx</div>
+                <div class="file" data-id="file-3">📄 Budget.xlsx</div>
+              </div>
+            </div>
+            <div class="folder" data-id="folder-2">
+              <div class="folder-header">📁 Images</div>
+              <div class="folder-content" id="folder-2-content">
+                <div class="file" data-id="file-4">🖼️ Photo1.jpg</div>
+                <div class="file" data-id="file-5">🖼️ Photo2.png</div>
+                <div class="file" data-id="file-6">🖼️ Logo.svg</div>
+              </div>
+            </div>
+            <div class="folder" data-id="folder-3">
+              <div class="folder-header">📁 Code</div>
+              <div class="folder-content" id="folder-3-content">
+                <div class="file" data-id="file-7">📝 index.html</div>
+                <div class="file" data-id="file-8">🎨 styles.css</div>
+                <div class="file" data-id="file-9">⚡ script.js</div>
+              </div>
+            </div>
           </div>
-          <div class="keyboard-hint">
-            💡 <strong>Try:</strong> Click+drag empty space → marquee selects items &nbsp;|&nbsp;
-            Shift+drag → add to selection &nbsp;|&nbsp;
-            Alt+drag on items → starts marquee (not drag), removes from selection &nbsp;|&nbsp;
-            📱 Long-press empty space → touch marquee
+        </div>
+      </div>
+
+      <!-- Marquee Select Demo -->
+      <div class="demo-section" id="marquee-demo">
+        <h2>🔲 Marquee Select</h2>
+        <p class="subtitle">Rubber-band selection like Finder / Explorer</p>
+
+        <div class="interaction-demos">
+          <div>
+            <h3>Drag empty space to select — Shift adds, Alt subtracts</h3>
+            <div
+              class="marquee-list"
+              id="marquee-list"
+              style="
+                padding: 24px;
+                gap: 12px;
+                display: flex;
+                flex-wrap: wrap;
+                min-height: 180px;
+              "
+            >
+              <div
+                class="sortable-item"
+                data-id="mq-1"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟦 Item One
+              </div>
+              <div
+                class="sortable-item"
+                data-id="mq-2"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟩 Item Two
+              </div>
+              <div
+                class="sortable-item"
+                data-id="mq-3"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟨 Item Three
+              </div>
+              <div
+                class="sortable-item"
+                data-id="mq-4"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟧 Item Four
+              </div>
+              <div
+                class="sortable-item"
+                data-id="mq-5"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟥 Item Five
+              </div>
+              <div
+                class="sortable-item"
+                data-id="mq-6"
+                style="flex: 0 0 calc(50% - 6px)"
+              >
+                🟪 Item Six
+              </div>
+            </div>
+            <div class="keyboard-hint">
+              💡 <strong>Try:</strong> Click+drag empty space → marquee selects
+              items &nbsp;|&nbsp; Shift+drag → add to selection &nbsp;|&nbsp;
+              Alt+drag on items → starts marquee (not drag), removes from
+              selection &nbsp;|&nbsp; 📱 Long-press empty space → touch marquee
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Footer / nav out to the playground -->
-  <footer class="page-footer">
-    <p>
-      Looking for the raw API surface, shared groups, grid layouts, and
-      fallback-mode test rigs? &rarr;
-      <a class="playground-link" href="./playground.html">Open the dev playground</a>
-    </p>
-    <p class="muted">
-      Resortable is MIT-licensed &middot;
-      <a href="https://github.com/jjeff/resortable">GitHub</a>
-    </p>
-  </footer>
+    <!-- Footer / nav out to the playground -->
+    <footer class="page-footer">
+      <p>
+        Looking for the raw API surface, shared groups, grid layouts, and
+        fallback-mode test rigs? &rarr;
+        <a class="playground-link" href="./playground.html"
+          >Open the dev playground</a
+        >
+      </p>
+      <p class="muted">
+        Resortable is MIT-licensed &middot;
+        <a href="https://github.com/jjeff/resortable">GitHub</a>
+      </p>
+    </footer>
 
-  <script type="module">
-    try {
-      const { Sortable, PluginSystem } = await import('./src/index.ts');
-      const { MarqueeSelectPlugin } = await import('./src/plugins/MarqueeSelectPlugin.ts');
+    <script type="module">
+      try {
+        const { Sortable, PluginSystem } = await import('./src/index.ts')
+        const { MarqueeSelectPlugin } = await import(
+          './src/plugins/MarqueeSelectPlugin.ts'
+        )
 
-      PluginSystem.register(MarqueeSelectPlugin.create({ marqueeArea: '#marquee-demo' }));
+        PluginSystem.register(
+          MarqueeSelectPlugin.create({ marqueeArea: '#marquee-demo' })
+        )
 
-      window.Sortable = Sortable;
-      window.PluginSystem = PluginSystem;
-      window.sortables = [];
-      window.resortableLoaded = true;
+        window.Sortable = Sortable
+        window.PluginSystem = PluginSystem
+        window.sortables = []
+        window.resortableLoaded = true
 
-      // Touch tuning shared by every demo below.
-      // The library default is delayOnTouchOnly: 200ms / touchStartThreshold: 5px.
-      // That 5px cancel-threshold is so tight that a natural drag motion (press +
-      // immediately move) blows past it before the 200ms hold elapses, so the
-      // pending drag is cancelled and the gesture falls through to a PAGE SCROLL.
-      // Snappier hold (150ms) + a forgiving 15px tolerance means a deliberate
-      // press-and-drag reliably starts a drag, while a fast swipe — which covers
-      // far more than 15px well under 150ms — still scrolls the page.
-      const TOUCH = { delayOnTouchOnly: 150, touchStartThreshold: 15 };
+        // Touch tuning shared by every demo below.
+        // The library default is delayOnTouchOnly: 200ms / touchStartThreshold: 5px.
+        // That 5px cancel-threshold is so tight that a natural drag motion (press +
+        // immediately move) blows past it before the 200ms hold elapses, so the
+        // pending drag is cancelled and the gesture falls through to a PAGE SCROLL.
+        // Snappier hold (150ms) + a forgiving 15px tolerance means a deliberate
+        // press-and-drag reliably starts a drag, while a fast swipe — which covers
+        // far more than 15px well under 150ms — still scrolls the page.
+        const TOUCH = { delayOnTouchOnly: 150, touchStartThreshold: 15 }
 
-      // Smooth Transitions
-      const smoothList = document.getElementById('smooth-list');
-      if (smoothList) {
-        window.sortables.push(new Sortable(smoothList, {
+        // Smooth Transitions
+        const smoothList = document.getElementById('smooth-list')
+        if (smoothList) {
+          window.sortables.push(
+            new Sortable(smoothList, {
+              ...TOUCH,
+              animation: 300,
+              draggable: '.sortable-item',
+              easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+              ghostClass: 'sortable-ghost',
+              chosenClass: 'sortable-chosen',
+              dragClass: 'sortable-drag',
+              group: 'smooth-demo',
+            })
+          )
+        }
+
+        // Multi-select + drag: KeyboardManager already toggles selection on
+        // plain click when `multiDrag: true` is set — no custom click handler
+        // needed.
+        const multiSelectList = document.getElementById('multi-select-list')
+        if (multiSelectList) {
+          window.sortables.push(
+            new Sortable(multiSelectList, {
+              ...TOUCH,
+              animation: 200,
+              draggable: '.sortable-item',
+              multiDrag: true,
+              selectedClass: 'selected',
+              group: 'multi-select-demo',
+            })
+          )
+        }
+
+        // Keyboard nav: multiDrag = true so Space toggles additively
+        const keyboardList = document.getElementById('keyboard-list')
+        if (keyboardList) {
+          window.sortables.push(
+            new Sortable(keyboardList, {
+              ...TOUCH,
+              animation: 200,
+              draggable: '.sortable-item',
+              multiDrag: true,
+              enableAccessibility: true,
+              selectedClass: 'sortable-selected',
+              ghostClass: 'sortable-ghost',
+              group: 'keyboard-demo',
+            })
+          )
+        }
+
+        // Marquee Select
+        const marqueeList = document.getElementById('marquee-list')
+        if (marqueeList) {
+          const marqueeSortable = new Sortable(marqueeList, {
+            ...TOUCH,
+            animation: 200,
+            draggable: '.sortable-item',
+            multiDrag: true,
+            selectedClass: 'sortable-selected',
+            group: 'marquee-demo',
+          })
+          window.sortables.push(marqueeSortable)
+          PluginSystem.install(marqueeSortable, 'MarqueeSelect')
+        }
+
+        // Kanban
+        const kanbanOptions = {
           ...TOUCH,
-          animation: 300,
-          draggable: '.sortable-item',
-          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          dragClass: 'sortable-drag',
-          group: 'smooth-demo',
-        }));
-      }
-
-      // Multi-select + drag: KeyboardManager already toggles selection on
-      // plain click when `multiDrag: true` is set — no custom click handler
-      // needed.
-      const multiSelectList = document.getElementById('multi-select-list');
-      if (multiSelectList) {
-        window.sortables.push(new Sortable(multiSelectList, {
-          ...TOUCH,
+          group: 'kanban',
           animation: 200,
-          draggable: '.sortable-item',
-          multiDrag: true,
-          selectedClass: 'selected',
-          group: 'multi-select-demo',
-        }));
-      }
-
-      // Keyboard nav: multiDrag = true so Space toggles additively
-      const keyboardList = document.getElementById('keyboard-list');
-      if (keyboardList) {
-        window.sortables.push(new Sortable(keyboardList, {
-          ...TOUCH,
-          animation: 200,
-          draggable: '.sortable-item',
-          multiDrag: true,
-          enableAccessibility: true,
-          selectedClass: 'sortable-selected',
+          draggable: '.kanban-card',
           ghostClass: 'sortable-ghost',
-          group: 'keyboard-demo',
-        }));
-      }
+        }
+        for (const id of ['kanban-todo', 'kanban-doing', 'kanban-done']) {
+          const el = document.getElementById(id)
+          if (el) window.sortables.push(new Sortable(el, kanbanOptions))
+        }
 
-      // Marquee Select
-      const marqueeList = document.getElementById('marquee-list');
-      if (marqueeList) {
-        const marqueeSortable = new Sortable(marqueeList, {
+        // Image Gallery
+        const imageGallery = document.getElementById('image-gallery')
+        if (imageGallery) {
+          window.sortables.push(
+            new Sortable(imageGallery, {
+              ...TOUCH,
+              animation: 300,
+              draggable: '.gallery-item',
+              ghostClass: 'sortable-ghost',
+              chosenClass: 'sortable-chosen',
+              group: 'gallery-demo',
+            })
+          )
+        }
+
+        // Nested Lists — folders reorder via header handle, files move freely
+        const nestedList = document.getElementById('nested-list')
+        if (nestedList) {
+          window.sortables.push(
+            new Sortable(nestedList, {
+              ...TOUCH,
+              animation: 200,
+              draggable: '.folder',
+              handle: '.folder-header',
+              ghostClass: 'sortable-ghost',
+              group: 'folders-demo',
+            })
+          )
+        }
+        const folderOptions = {
           ...TOUCH,
-          animation: 200,
-          draggable: '.sortable-item',
-          multiDrag: true,
-          selectedClass: 'sortable-selected',
-          group: 'marquee-demo',
-        });
-        window.sortables.push(marqueeSortable);
-        PluginSystem.install(marqueeSortable, 'MarqueeSelect');
-      }
-
-      // Kanban
-      const kanbanOptions = {
-        ...TOUCH,
-        group: 'kanban',
-        animation: 200,
-        draggable: '.kanban-card',
-        ghostClass: 'sortable-ghost',
-      };
-      for (const id of ['kanban-todo', 'kanban-doing', 'kanban-done']) {
-        const el = document.getElementById(id);
-        if (el) window.sortables.push(new Sortable(el, kanbanOptions));
-      }
-
-      // Image Gallery
-      const imageGallery = document.getElementById('image-gallery');
-      if (imageGallery) {
-        window.sortables.push(new Sortable(imageGallery, {
-          ...TOUCH,
-          animation: 300,
-          draggable: '.gallery-item',
+          group: 'files',
+          animation: 150,
+          draggable: '.file',
           ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          group: 'gallery-demo',
-        }));
+        }
+        for (const id of [
+          'folder-1-content',
+          'folder-2-content',
+          'folder-3-content',
+        ]) {
+          const el = document.getElementById(id)
+          if (el) window.sortables.push(new Sortable(el, folderOptions))
+        }
+      } catch (error) {
+        console.error('Failed to load Resortable:', error)
       }
-
-      // Nested Lists — folders reorder via header handle, files move freely
-      const nestedList = document.getElementById('nested-list');
-      if (nestedList) {
-        window.sortables.push(new Sortable(nestedList, {
-          ...TOUCH,
-          animation: 200,
-          draggable: '.folder',
-          handle: '.folder-header',
-          ghostClass: 'sortable-ghost',
-          group: 'folders-demo',
-        }));
-      }
-      const folderOptions = {
-        ...TOUCH,
-        group: 'files',
-        animation: 150,
-        draggable: '.file',
-        ghostClass: 'sortable-ghost',
-      };
-      for (const id of ['folder-1-content', 'folder-2-content', 'folder-3-content']) {
-        const el = document.getElementById(id);
-        if (el) window.sortables.push(new Sortable(el, folderOptions));
-      }
-    } catch (error) {
-      console.error('Failed to load Resortable:', error);
-    }
-  </script>
-</body>
+    </script>
+  </body>
 </html>
