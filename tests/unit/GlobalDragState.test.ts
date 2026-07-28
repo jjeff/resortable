@@ -397,6 +397,267 @@ describe('GlobalDragState', () => {
     })
   })
 
+  describe('setDuplicate / applyDuplicate', () => {
+    it('setDuplicate toggles the duplicate flag', () => {
+      const item = mockElement('div')
+      const zone = mockElement('div')
+      const dm = mockDragManager()
+      const es = mockEventSystem()
+
+      globalDragState.startDrag('drag-dup1', item, zone, dm, 'group1', 0, es)
+      expect(
+        globalDragState.getActiveDrag('drag-dup1')!.duplicate
+      ).toBeUndefined()
+
+      globalDragState.setDuplicate('drag-dup1', true)
+      expect(globalDragState.getActiveDrag('drag-dup1')!.duplicate).toBe(true)
+
+      globalDragState.setDuplicate('drag-dup1', false)
+      expect(globalDragState.getActiveDrag('drag-dup1')!.duplicate).toBe(false)
+    })
+
+    it('applyDuplicate sets pullMode to clone and stores the clones', () => {
+      const item = mockElement('div')
+      const clone = mockElement('div', 'clone1')
+      const zone = mockElement('div')
+      const dm = mockDragManager()
+      const es = mockEventSystem()
+
+      globalDragState.startDrag('drag-dup2', item, zone, dm, 'group1', 0, es)
+      globalDragState.applyDuplicate('drag-dup2', [clone])
+
+      const drag = globalDragState.getActiveDrag('drag-dup2')
+      expect(drag!.pullMode).toBe('clone')
+      expect(drag!.clones).toEqual([clone])
+    })
+  })
+
+  describe('endDrag - same-zone duplicate', () => {
+    it('fires clone, sort, update, change (in order) then unchoose, end; no add', () => {
+      const item = mockElement('div', 'orig')
+      const clone = mockElement('div', 'copy')
+      const zone = mockElement('div')
+      // DragManager already did the DOM surgery before applyDuplicate/endDrag:
+      // original stays at its slot, copy is inserted right after it.
+      zone.appendChild(item)
+      zone.appendChild(clone)
+      const dm = mockDragManager(zone)
+      // getIndex should report the copy's live position (index 1)
+      ;(dm.zone.getIndex as ReturnType<typeof vi.fn>).mockImplementation(
+        (el: HTMLElement) => Array.from(zone.children).indexOf(el)
+      )
+      const es = mockEventSystem()
+
+      globalDragState.startDrag('drag-dup3', item, zone, dm, 'group1', 0, es)
+      globalDragState.setDuplicate('drag-dup3', true)
+      globalDragState.applyDuplicate('drag-dup3', [clone])
+
+      globalDragState.endDrag('drag-dup3')
+
+      const calls = (es.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      expect(calls.map((c) => c[0])).toEqual([
+        'clone',
+        'sort',
+        'update',
+        'change',
+        'unchoose',
+        'end',
+      ])
+
+      for (const name of ['clone', 'sort', 'update', 'change']) {
+        const call = calls.find((c) => c[0] === name)!
+        expect(call[1].item).toBe(item)
+        expect(call[1].from).toBe(zone)
+        expect(call[1].to).toBe(zone)
+        expect(call[1].oldIndex).toBe(0)
+        expect(call[1].newIndex).toBe(1)
+        // Payload symmetry with the controlled branch — consumers get the
+        // same index arrays either way.
+        expect(call[1].oldIndexes).toEqual([0])
+        expect(call[1].newIndexes).toEqual([1])
+        expect(call[1].clone).toBe(clone)
+        expect(call[1].pullMode).toBe('clone')
+      }
+
+      expect(calls.some((c) => c[0] === 'add')).toBe(false)
+    })
+
+    it('does not fire the duplicate branch when duplicate is false, even with clones present', () => {
+      // Simulates a group pull:'clone' drag that crossed zones and was
+      // returned home — clones exist, but this must not be mistaken for a
+      // same-zone duplicate.
+      const item = mockElement('div', 'orig2')
+      const clone = mockElement('div', 'copy2')
+      const zone = mockElement('div')
+      zone.appendChild(item)
+      const dm = mockDragManager(zone)
+      const es = mockEventSystem()
+
+      globalDragState.startDrag('drag-dup4', item, zone, dm, 'group1', 0, es)
+      // clones exist (e.g. from a cross-zone pull:'clone' setPutTarget call)
+      // but duplicate was never armed.
+      globalDragState.applyDuplicate('drag-dup4', [clone])
+      globalDragState.setDuplicate('drag-dup4', false)
+
+      globalDragState.endDrag('drag-dup4')
+
+      const calls = (es.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      expect(calls.map((c) => c[0])).toEqual(['unchoose', 'end'])
+    })
+  })
+
+  describe('endControlledDrag - same-zone duplicate index math', () => {
+    it('computes newIndex/newIndexes with the offset formula ([A..F], drag C to end)', () => {
+      const items = [
+        mockElement('div', 'A'),
+        mockElement('div', 'B'),
+        mockElement('div', 'C'),
+        mockElement('div', 'D'),
+        mockElement('div', 'E'),
+        mockElement('div', 'F'),
+      ]
+      const zone = mockElement('div')
+      const dm = mockDragManager(zone)
+      const es = mockEventSystem()
+
+      // Drag item C (start index 2) to the end (pending.index 5), controlled.
+      globalDragState.startDrag(
+        'drag-cdup1',
+        items[2],
+        zone,
+        dm,
+        'group1',
+        2,
+        es,
+        true
+      )
+      globalDragState.setDuplicate('drag-cdup1', true)
+      globalDragState.setPending('drag-cdup1', { zone, index: 5 })
+
+      globalDragState.endDrag('drag-cdup1')
+
+      const calls = (es.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      expect(calls.map((c) => c[0])).toEqual([
+        'clone',
+        'sort',
+        'update',
+        'change',
+        'unchoose',
+        'end',
+      ])
+
+      const cloneCall = calls.find((c) => c[0] === 'clone')!
+      expect(cloneCall[1].newIndex).toBe(6) // offset 1 -> 5 + 1
+      expect(cloneCall[1].newIndexes).toEqual([6])
+      expect(cloneCall[1].pullMode).toBe('clone')
+      expect(cloneCall[1].clone).toBeUndefined()
+    })
+
+    it('computes offset 0 when the drop point is before the original (drag item 4 to index 1)', () => {
+      const item = mockElement('div', 'item4')
+      const zone = mockElement('div')
+      const dm = mockDragManager(zone)
+      const es = mockEventSystem()
+
+      globalDragState.startDrag(
+        'drag-cdup2',
+        item,
+        zone,
+        dm,
+        'group1',
+        4,
+        es,
+        true
+      )
+      globalDragState.setDuplicate('drag-cdup2', true)
+      globalDragState.setPending('drag-cdup2', { zone, index: 1 })
+
+      globalDragState.endDrag('drag-cdup2')
+
+      const calls = (es.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      const cloneCall = calls.find((c) => c[0] === 'clone')!
+      expect(cloneCall[1].newIndex).toBe(1) // offset 0 -> 1 + 0
+      expect(cloneCall[1].newIndexes).toEqual([1])
+    })
+
+    it('multi-drag: offsets against the REDUCED list, not the full one', () => {
+      // List of 5. Drag items at full-list indices 0 and 2. DropZone hides
+      // the dragged items, so `getControlledIndex` reports positions in the
+      // reduced list [1, 3, 4] — dropping before item 3 gives pending.index
+      // 1, NOT 3. Expected result once the consumer inserts the copies:
+      // [0, 1, 2, copy0, copy2, 3, 4] -> newIndex 3, newIndexes [3, 4].
+      // Comparing raw startIndices against that reduced index used to yield
+      // 2 / [2, 3].
+      const items = [mockElement('div', 'm0'), mockElement('div', 'm2')]
+      const zone = mockElement('div')
+      const dm = mockDragManager(zone)
+      const es = mockEventSystem()
+
+      globalDragState.startDrag(
+        'drag-cdup4',
+        items,
+        zone,
+        dm,
+        'group1',
+        [0, 2],
+        es,
+        true
+      )
+      globalDragState.setDuplicate('drag-cdup4', true)
+      globalDragState.setPending('drag-cdup4', { zone, index: 1 })
+
+      globalDragState.endDrag('drag-cdup4')
+
+      const calls = (es.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      const cloneCall = calls.find((c) => c[0] === 'clone')!
+      expect(cloneCall[1].oldIndexes).toEqual([0, 2])
+      expect(cloneCall[1].newIndex).toBe(3)
+      expect(cloneCall[1].newIndexes).toEqual([3, 4])
+    })
+  })
+
+  describe('endControlledDrag - cross-zone duplicate=true without pullMode', () => {
+    it('takes the clone path (not remove) when duplicate is true even though pullMode is unset', () => {
+      const item = mockElement('div', 'xitem')
+      const sourceZone = mockElement('div')
+      const targetZone = mockElement('div')
+      const sourceEs = mockEventSystem()
+      const sourceDm = mockDragManager(sourceZone, sourceEs)
+
+      globalDragState.startDrag(
+        'drag-cdup3',
+        item,
+        sourceZone,
+        sourceDm,
+        'group1',
+        0,
+        sourceEs,
+        true
+      )
+      globalDragState.setDuplicate('drag-cdup3', true)
+      // Cross-zone: pending points at the target zone. pullMode is
+      // deliberately left unset — never touched by setPutTarget here — to
+      // prove `duplicate` alone (not `pullMode`) drives the clone path.
+      globalDragState.setPending('drag-cdup3', { zone: targetZone, index: 0 })
+      expect(
+        globalDragState.getActiveDrag('drag-cdup3')!.pullMode
+      ).toBeUndefined()
+
+      globalDragState.endDrag('drag-cdup3')
+
+      const sourceCalls = (sourceEs.emit as ReturnType<typeof vi.fn>).mock
+        .calls as EmitCall[]
+      expect(sourceCalls[0][0]).toBe('clone')
+      expect(sourceCalls[0][1].pullMode).toBe('clone')
+      expect(sourceCalls.some((c) => c[0] === 'remove')).toBe(false)
+    })
+  })
+
   describe('ActiveDrag type shape', () => {
     it('exposes items and startIndices on the returned ActiveDrag', () => {
       const items = [mockElement('div'), mockElement('div')]

@@ -173,6 +173,48 @@ export interface SortableOptions {
   multiDragKey?: 'ctrl' | 'meta' | 'shift' | 'alt' | null
 
   /**
+   * Modifier key that, when held at drop time, duplicates the dragged
+   * item(s) instead of moving them.
+   *
+   * @remarks
+   * Off by default. Pointer drags only — keyboard-driven accessibility
+   * drags ignore it. The modifier is evaluated live: it's the state at drop
+   * time that decides, not the state at drag start. A cross-zone drop
+   * behaves like `group.pull: 'clone'`; a same-zone drop inserts a copy at
+   * the drop position while the original returns to its start index (see
+   * the `clone` event, where `to === from` marks this in-place case). The
+   * clone keeps the original's data attributes (e.g. `data-id`) — mint new
+   * ids in the `clone` event handler.
+   *
+   * A same-list duplicate also fires `sort`, `update` and `change` with
+   * `pullMode: 'clone'` and `clone` set — handlers must insert a copy, not
+   * move the item. See the {@link SortableEvents.update} docs.
+   *
+   * With `sort: false` reordering is blocked, so the copy simply lands
+   * adjacent to the original. That is intended, not a bug.
+   *
+   * `'alt'` is the recommended value. With `multiDrag: true`, only `'alt'`
+   * may be held at drag START, since `ctrl`/`meta`/`shift` are selection
+   * gestures there; all four still arm duplicate mode if pressed after the
+   * drag begins. And with `enableAccessibility` (on by default) click
+   * selection is live, so `ctrl`/`meta`/`shift` do double duty: the click
+   * that ends a duplicate drag also reaches the selection handler and
+   * toggles the item's selected state. Nothing suppresses that — pick
+   * `'alt'` unless you want both effects.
+   *
+   * The `sortable-duplicate` CSS class is applied to the ghost and
+   * placeholder while duplicate mode is armed.
+   *
+   * @defaultValue undefined
+   *
+   * @example
+   * ```typescript
+   * { duplicateKey: 'alt' } // Alt+drop duplicates instead of moving
+   * ```
+   */
+  duplicateKey?: 'alt' | 'ctrl' | 'meta' | 'shift'
+
+  /**
    * CSS class for selected items in multi-drag mode
    * @defaultValue 'sortable-selected'
    */
@@ -735,6 +777,9 @@ export interface SortableEvent {
    * - `'clone'` when cloning
    * - `'move'` or `true` when moving
    * - `false` or undefined for same-list operations
+   *
+   * On a `clone` event fired by `duplicateKey`, `to === from` marks an
+   * in-place (same-list) duplicate rather than a cross-zone copy.
    */
   pullMode?: boolean | 'clone' | 'move'
 
@@ -913,9 +958,22 @@ export interface SortableEvents {
   choose: SortableEvent
   /** Fired when an item is unchosen (drag cancelled) */
   unchoose: SortableEvent
-  /** Fired when an item is moved during drag */
+  /**
+   * Fired when an item is moved during drag
+   * @remarks
+   * A same-list `duplicateKey` drop fires this too, with `pullMode: 'clone'`
+   * and `clone` set. That is NOT a move: the handler must INSERT a copy at
+   * `newIndex` (`newIndexes` for multi-drag) and leave the original at
+   * `oldIndex`. Splicing the item out and back in — the usual `onUpdate`
+   * reorder — would lose the duplicate.
+   */
   update: SortableEvent
-  /** Fired when sorting changes */
+  /**
+   * Fired when sorting changes
+   * @remarks
+   * Also fires for a same-list `duplicateKey` drop — see {@link update} for
+   * why `pullMode: 'clone'` means insert-a-copy, not move.
+   */
   sort: SortableEvent
   /** Fired when drag ends */
   end: SortableEvent
@@ -927,9 +985,19 @@ export interface SortableEvents {
   select: Partial<SortableEvent>
   /** Fired during move operations */
   move: MoveEvent
-  /** Fired when an item is cloned */
+  /**
+   * Fired when an item is cloned
+   * @remarks
+   * Also fires for a `duplicateKey` drop. `to === from` on the event means
+   * an in-place (same-list) duplicate rather than a cross-zone copy.
+   */
   clone: SortableEvent
-  /** Fired when the sort order has changed */
+  /**
+   * Fired when the sort order has changed
+   * @remarks
+   * Also fires for a same-list `duplicateKey` drop — see {@link update} for
+   * why `pullMode: 'clone'` means insert-a-copy, not move.
+   */
   change: SortableEvent
   /** Fired when an item is dropped outside all sortable containers */
   spill: SortableEvent

@@ -1,3 +1,7 @@
+## Unreleased
+
+* feat(core): add `duplicateKey` option to duplicate item(s) on drop instead of moving
+
 ## <small>2.1.3 (2026-07-25)</small>
 
 * fix(core): repair the DragManager listener leak and SwapPlugin; harden tests (#133) ([8f97ef5](https://github.com/jjeff/resortable/commit/8f97ef5)), closes [#133](https://github.com/jjeff/resortable/issues/133)

@@ -104,6 +104,7 @@ new Sortable(element, {
   touchStartThreshold: 5,            // Pixels of movement before cancelling delay
   direction: 'vertical',             // 'vertical' | 'horizontal' list axis
   swapThreshold: 1,                  // Overlap fraction before an item swaps
+  duplicateKey: 'alt',               // Hold this modifier at drop time to duplicate instead of move
 
   // Drop targeting
   emptyInsertThreshold: 5,           // Px around an empty list that still counts as a drop
