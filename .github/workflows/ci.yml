@@ -116,7 +116,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        include:
+          - browser: chromium
+            run: npm run test:e2e -- --project=chromium
+          - browser: firefox
+            run: npm run test:e2e -- --project=firefox
+          # WebKit runs headed against an Xvfb display, unlike the other two.
+          #
+          # Headless WebKit on Linux has no compositor and therefore no frame
+          # clock: `requestAnimationFrame` fires ~1.2x/sec where Chromium's
+          # headless virtual clock gives ~60x/sec. (Measured in
+          # mcr.microsoft.com/playwright:v1.58.2-noble at --cpus=2, matching
+          # this runner.) Everything driven by a rAF loop then runs ~50x slow —
+          # AutoScrollPlugin scrolls 20px per frame, so the 1000px scroll in
+          # autoscroll-drop-target.spec.ts needs ~42s and cannot pass under any
+          # sane timeout. It is a headless-environment artifact, not a library
+          # bug: real WebKit users have a compositor.
+          #
+          # `xvfb-run` gives WebKit a real display, which restores the frame
+          # clock (~36 rAF/sec measured). Chromium and Firefox headless both
+          # already have a working clock, so they stay headless — headed mode
+          # is slower and buys them nothing.
+          - browser: webkit
+            run: xvfb-run -a npm run test:e2e -- --project=webkit --headed
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -136,7 +158,7 @@ jobs:
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run Playwright tests (${{ matrix.browser }})
-        run: npm run test:e2e -- --project=${{ matrix.browser }}
+        run: ${{ matrix.run }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

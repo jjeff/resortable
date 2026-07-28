@@ -90,10 +90,28 @@ test.describe('autoscroll keeps the controlled drop target fresh (#124)', () => 
     // Hold the pointer still and let autoscroll drive the list to the bottom.
     // No further pointermove fires — this is the stationary-pointer scenario.
     //
-    // Generous timeout: every `scroll` event replays a full `onPointerMove`
-    // (hit test + placeholder move), so ~50 autoscroll frames are expensive.
-    // WebKit on hosted Windows needs 7-9s where Chromium needs <2s. Throttling
-    // that replay to one per animation frame is tracked in #134.
+    // Generous timeout: autoscroll advances 20px per animation frame, so the
+    // ~1000px this list has to travel costs ~50 frames, and the wait is only
+    // ever as fast as the engine's frame clock.
+    //
+    // That clock is the whole story on WebKit. Measured in the Playwright
+    // v1.58.2-noble image at 2 CPUs, over a 5s held-pointer drag:
+    //
+    //   engine                     rAF/sec   px scrolled
+    //   Linux Chromium (headless)     60.4          1000
+    //   Linux WebKit   (headless)      1.2            80
+    //   Linux WebKit   (headed/Xvfb)  36.0          1000
+    //
+    // Headless WebKit on Linux has no compositor and so no real frame clock;
+    // at 1.2 fps this scroll needs ~42s. CI therefore runs the WebKit project
+    // headed under Xvfb (see the e2e-tests-linux matrix in ci.yml), which is
+    // what keeps this test inside the budget below.
+    //
+    // The replay itself is NOT the cost — an earlier comment here blamed the
+    // per-`scroll` `onPointerMove` replay and #134 proposed throttling it to
+    // one per frame. The measurement above disproves that: the hit test runs
+    // in ~0.18ms and fired 3 times in 5s on WebKit (60 on Chromium), i.e.
+    // roughly once per frame already. There is nothing to coalesce.
     await page.waitForFunction(
       () => {
         const ul = (window as unknown as AsWindow).__asList
