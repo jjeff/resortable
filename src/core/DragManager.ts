@@ -60,6 +60,14 @@ export class DragManager implements DragManagerInterface {
   private swapThreshold?: number
   private invertSwap: boolean
   private invertedSwapThreshold?: number
+  // Grab offset + item size captured at HTML5 dragstart, used to synthesize
+  // the moving rect for the swap-threshold gate — see `html5DragRect` (#130).
+  private html5GrabOrigin: {
+    grabX: number
+    grabY: number
+    width: number
+    height: number
+  } | null = null
   private direction: 'vertical' | 'horizontal'
   // Fallback system properties.
   //
@@ -162,6 +170,19 @@ export class DragManager implements DragManagerInterface {
   // modifiers (ctrl/meta/shift) from a configured `duplicateKey` — only
   // relevant when multiSelect is off (see that method for why).
   private multiSelect: boolean
+
+  // rAF handle for a pending scroll-replay (#134). Autoscroll's rAF loop
+  // fires `scrollBy` every frame, so the `scroll` listener below would
+  // otherwise pay a full `onPointerMove` (hit-test + rect math) per frame.
+  // Coalescing to one replay per animation frame is enough to keep the drop
+  // target fresh without redoing that work on every scroll tick. Null when
+  // no replay is scheduled.
+  private scrollReplayFrame: number | null = null
+  // True while a scroll-replay re-runs onPointerMove with a STALE pointer
+  // event. syncDuplicate must ignore that event's modifier flags — a keyup
+  // handled between the real move and the replay would otherwise be
+  // clobbered by the old event's held-modifier state.
+  private isReplayingScroll = false
 
   private groupManager: GroupManager
 
@@ -390,6 +411,13 @@ export class DragManager implements DragManagerInterface {
     // `isDrop` is what keeps that promise for `duplicateKey` — a mid-drag
     // destroy must not materialize a copy or fire `clone`.
     if (this.isPointerDragging) {
+      // Drop any pending scroll-replay frame (#134) BEFORE cleanup: the
+      // flush in cleanupPointerDrag re-resolves the drop target and moves
+      // DOM, which teardown must not do.
+      if (this.scrollReplayFrame !== null) {
+        window.cancelAnimationFrame(this.scrollReplayFrame)
+        this.scrollReplayFrame = null
+      }
       this.cleanupPointerDrag()
     }
 
@@ -448,6 +476,26 @@ export class DragManager implements DragManagerInterface {
     }
 
     this.startIndex = this.zone.getIndex(target)
+
+    // Where within the item the user grabbed it, plus the item's size at
+    // dragstart (its live rect later reflects cross-zone parking). Feeds the
+    // synthesized moving rect in `html5DragRect` (#130). Only capture from
+    // usable coordinates — a coordless dragstart (plain `Event`, or the
+    // (0, 0) synthetic convention) would poison the origin with NaN and
+    // freeze the gate for the whole drag; leaving it null makes the gate
+    // fall back to the item-rect measurement instead.
+    const startRect = target.getBoundingClientRect()
+    this.html5GrabOrigin =
+      Number.isFinite(e.clientX) &&
+      Number.isFinite(e.clientY) &&
+      (e.clientX !== 0 || e.clientY !== 0)
+        ? {
+            grabX: e.clientX - startRect.left,
+            grabY: e.clientY - startRect.top,
+            width: startRect.width,
+            height: startRect.height,
+          }
+        : null
 
     // Register with global drag state using HTML5 drag API as ID
     const dragId = 'html5-drag'
@@ -557,6 +605,45 @@ export class DragManager implements DragManagerInterface {
 
     // Normal mode: swap when overlap exceeds threshold
     return overlap >= threshold
+  }
+
+  /**
+   * Moving rect for the swap-threshold gate during a native HTML5 drag
+   * (#130). The dragged item keeps its original DOM slot until drop, so its
+   * own rect never overlaps a sibling (adjacent rects touch; the rest clamp
+   * to 0) — any `swapThreshold > 0` would fail the gate on every dragover,
+   * and `invertSwap` would swap on every hover. The ghost is no substitute:
+   * `onDragStart` sets it `display: none` (the browser draws its own drag
+   * image) and `updateGhostPosition` never runs on this pipeline, so its
+   * rect is zero-size and frozen. Instead, synthesize the rect the ghost
+   * would have: position = the event's clientX/Y minus the grab offset
+   * captured at dragstart, size = the item's rect at dragstart.
+   *
+   * Returns null (caller falls back to the old measurement) when the active
+   * drag isn't the HTML5 one or the event has no usable coordinates —
+   * (0, 0) means "synthetic event", same convention as
+   * `controlledInsertAfter`.
+   */
+  private html5DragRect(e: Event, activeDrag: ActiveDrag): DOMRect | null {
+    if (activeDrag.id !== 'html5-drag') return null
+    // TS private access across instances of the same class is permitted by
+    // design; the origin lives on the SOURCE manager, `this` may be a target.
+    const origin = (activeDrag.fromDragManager as DragManager).html5GrabOrigin
+    if (!origin) return null
+    const pt = e as MouseEvent
+    if (
+      !Number.isFinite(pt.clientX) ||
+      !Number.isFinite(pt.clientY) ||
+      (pt.clientX === 0 && pt.clientY === 0)
+    ) {
+      return null
+    }
+    return new DOMRect(
+      pt.clientX - origin.grabX,
+      pt.clientY - origin.grabY,
+      origin.width,
+      origin.height
+    )
   }
 
   /**
@@ -782,10 +869,15 @@ export class DragManager implements DragManagerInterface {
     if (overIdx === -1) return
     const oldIdx = targetZone.getControlledIndex(placeholder, items)
 
-    // Overlap gate: the ghost is the moving visual in controlled mode.
-    const movingRect = (
-      sourceManager.ghostManager.getGhostElement() ?? placeholder
-    ).getBoundingClientRect()
+    // Overlap gate. Pointer pipeline: the cursor-following ghost is the
+    // moving visual. HTML5 pipeline: that ghost is `display: none` (browser
+    // draws its own drag image) and never repositioned, so measure the rect
+    // synthesized from the drag cursor instead (#130).
+    const movingRect =
+      this.html5DragRect(e, activeDrag) ??
+      (
+        sourceManager.ghostManager.getGhostElement() ?? placeholder
+      ).getBoundingClientRect()
     const overRect = over.getBoundingClientRect()
     const naturalAfter = this.controlledInsertAfter(
       e,
@@ -1011,28 +1103,13 @@ export class DragManager implements DragManagerInterface {
     const dragIndex = this.zone.getIndex(dragItem)
     if (overIndex === dragIndex) return
 
-    // Check swap threshold if configured.
-    //
-    // KNOWN GAP — `swapThreshold` does not merely misbehave here, it disables
-    // same-zone sorting outright. Within a zone `dragItem` keeps its original
-    // slot for the whole drag (the reorder is committed on drop — see the
-    // commented-out `zone.move` below), so against a sibling `over` the
-    // overlap is 0: adjacent rects touch, non-adjacent ones clamp to 0. Every
-    // `swapThreshold > 0` therefore fails this gate on every dragover, the
-    // placeholder never moves, and sort/update/change never fire. `invertSwap`
-    // has the mirror bug — `0 < threshold` is always true, so the threshold is
-    // bypassed entirely. (`dragItem` IS moved on cross-zone entry above, but
-    // it lands as a parked sibling in the new zone, so the overlap is still 0.)
-    //
-    // The pointer pipeline had the same bug and fixed it by measuring the
-    // cursor-following ghost (#121). That is NOT available here: `onDragStart`
-    // sets the ghost to `display: none` because the browser draws its own drag
-    // image, and `updateGhostPosition` is only ever called from the pointer
-    // path — so its rect is both zero-size and frozen. The placeholder is no
-    // use either; it is only repositioned AFTER this gate passes. A real fix
-    // needs a rect synthesized from the DragEvent's clientX/clientY. Do NOT
-    // "restore parity" by copying the pointer pipeline's ghost lookup here.
-    const dragRect = dragItem.getBoundingClientRect()
+    // Swap-threshold gate (#130). `dragItem` keeps its DOM slot until drop,
+    // so its own rect never overlaps a sibling — gate on a rect synthesized
+    // from the drag cursor instead (see `html5DragRect`). The item-rect
+    // fallback only applies to synthetic events without coordinates, where
+    // the gate degrades to its pre-fix behavior.
+    const dragRect =
+      this.html5DragRect(e, activeDrag) ?? dragItem.getBoundingClientRect()
     const targetRect = over.getBoundingClientRect()
 
     if (!this.shouldSwap(dragRect, targetRect, this.zone.getItems())) {
@@ -1211,6 +1288,7 @@ export class DragManager implements DragManagerInterface {
 
     globalDragState.endDrag(dragId)
     this.startIndex = -1
+    this.html5GrabOrigin = null
   }
 
   private onDragEnter = (e: DragEvent): void => {
@@ -1979,7 +2057,17 @@ export class DragManager implements DragManagerInterface {
   // `scroll` doesn't bubble.
   private onDocumentScrollDuringDrag = (): void => {
     if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
-    this.onPointerMove(this.lastPointerMoveEvent)
+    if (this.scrollReplayFrame !== null) return
+    this.scrollReplayFrame = window.requestAnimationFrame(() => {
+      this.scrollReplayFrame = null
+      if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
+      this.isReplayingScroll = true
+      try {
+        this.onPointerMove(this.lastPointerMoveEvent)
+      } finally {
+        this.isReplayingScroll = false
+      }
+    })
   }
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -2002,6 +2090,28 @@ export class DragManager implements DragManagerInterface {
   }
 
   private cleanupPointerDrag(revert = false, isDrop = false): void {
+    // A pointerup/pointercancel can land in the same frame as the last
+    // autoscroll scroll tick, before the deferred scroll-replay (#134) has
+    // run. Flush it synchronously here, before any other teardown, while
+    // drag state is still fully live — identical timing to the old
+    // synchronous replay. Otherwise the drop resolves against a placeholder
+    // that's one scroll tick stale, resurrecting #124. Skipped on revert:
+    // a cancelled drag doesn't need its last target re-resolved.
+    if (
+      !revert &&
+      this.scrollReplayFrame !== null &&
+      this.lastPointerMoveEvent
+    ) {
+      window.cancelAnimationFrame(this.scrollReplayFrame)
+      this.scrollReplayFrame = null
+      this.isReplayingScroll = true
+      try {
+        this.onPointerMove(this.lastPointerMoveEvent)
+      } finally {
+        this.isReplayingScroll = false
+      }
+    }
+
     // Did this drag ever actually move? `lastPointerMoveEvent` is set by
     // onPointerMove (past its guards) and nulled below, so null here means a
     // modifier+click with zero pointermove — which must NOT duplicate. A drag
@@ -2026,6 +2136,10 @@ export class DragManager implements DragManagerInterface {
     })
     document.removeEventListener('keydown', this.onDuplicateKeyChange)
     document.removeEventListener('keyup', this.onDuplicateKeyChange)
+    if (this.scrollReplayFrame !== null) {
+      window.cancelAnimationFrame(this.scrollReplayFrame)
+      this.scrollReplayFrame = null
+    }
     this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
@@ -2137,13 +2251,37 @@ export class DragManager implements DragManagerInterface {
         ghost.style.transition = 'transform 150ms cubic-bezier(0.2, 0, 0, 1)'
         ghost.style.transform = `translate(${deltaX}px, ${deltaY}px)`
 
-        // After animation, clean up
+        // After animation, clean up. Guarded by identity: if a new drag has
+        // started within the animation window, `getGhostElement()` will be
+        // that new ghost, not `ghost` — so this no-ops instead of destroying
+        // the wrong drag's ghost/placeholder (#131).
+        const timer: { id?: number } = {}
         const cleanup = () => {
-          this.ghostManager.destroy(dragEl)
+          window.clearTimeout(timer.id)
+          // The SAME element re-grabbed within the animation window owns its
+          // state classes again — whether the new drag has committed
+          // (dragElement) or is still in the fallback-tolerance capture
+          // phase (pointerCaptureTarget), which applies chosenClass at tap
+          // start before dragElement is set. Its own cleanup removes them.
+          const regrabbed =
+            this.dragElement === dragEl || this.pointerCaptureTarget === dragEl
+          if (this.ghostManager.getGhostElement() === ghost) {
+            // Still this drop's ghost (a capture-phase re-grab creates no
+            // new ghost, so it lands here too): settle is done, destroy it.
+            // Passing dragEl also strips its state classes, so omit it on
+            // a re-grab.
+            this.ghostManager.destroy(regrabbed ? undefined : dragEl)
+          } else if (!regrabbed) {
+            // A newer drag owns the current ghost/placeholder — leave them
+            // intact, but this drag's element still sheds its state classes
+            // (nothing else removes them once this cleanup is skipped).
+            dragEl.classList.remove(this.ghostManager.getChosenClass())
+            dragEl.classList.remove(this.ghostManager.getDragClass())
+          }
         }
         ghost.addEventListener('transitionend', cleanup, { once: true })
         // Fallback timeout in case transitionend doesn't fire
-        window.setTimeout(cleanup, 200)
+        timer.id = window.setTimeout(cleanup, 200)
       } else {
         this.ghostManager.destroy(dragEl)
       }
@@ -2184,6 +2322,10 @@ export class DragManager implements DragManagerInterface {
    */
   private syncDuplicate(e: PointerEvent | KeyboardEvent): void {
     if (!this.duplicateKey || this.activePointerId === null) return
+    // A scroll-replay re-runs onPointerMove with a stale event whose
+    // modifier flags predate any keydown/keyup handled since — never let it
+    // overwrite the live duplicate state.
+    if (this.isReplayingScroll) return
     const active = isModifierHeld(e, this.duplicateKey)
     const dragId = `pointer-${this.activePointerId}`
     globalDragState.setDuplicate(dragId, active)

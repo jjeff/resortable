@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
+import { GhostManager } from '../../src/core/GhostManager'
 import type { SortableEvent, SortableOptions } from '../../src/types/index'
 
 /**
@@ -604,5 +605,296 @@ describe('detach during an active pointer drag', () => {
     document.dispatchEvent(pointer('pointermove', { y: 60 }))
 
     expect(ids(second)).toEqual(secondBefore)
+  })
+})
+
+describe('scroll-replay coalescing during autoscroll (#134)', () => {
+  // Autoscroll's rAF loop fires `scrollBy` every frame, and each `scroll`
+  // event used to replay the last pointermove synchronously — a full
+  // hit-test + rect pass per frame. The replay is now coalesced to at most
+  // one `onPointerMove` call per animation frame (`tests/setup.ts` maps
+  // `requestAnimationFrame` to a 16ms `setTimeout`, so fake timers drive it).
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('N scroll events within one frame produce exactly one replay', () => {
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    // Seed `lastPointerMoveEvent` — the scroll listener replays this.
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Several scroll ticks land before the animation frame flushes.
+    document.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('scroll'))
+    expect(replay).toHaveBeenCalledTimes(1) // still just the seed call
+
+    vi.advanceTimersByTime(16)
+
+    // One replay for the whole batch, not one per scroll event.
+    expect(replay).toHaveBeenCalledTimes(2)
+  })
+
+  it('flushes a pending replay synchronously at drop, then cancels the frame', () => {
+    // Race: pointerup lands in the same frame as the last autoscroll scroll
+    // tick, before the deferred replay has fired. The old synchronous
+    // replay never lost that last tick, so dropping here must not resolve
+    // against a one-tick-stale target (#124) — cleanupPointerDrag flushes
+    // the pending replay itself before tearing anything else down.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Schedules a replay frame that hasn't fired yet.
+    document.dispatchEvent(new Event('scroll'))
+
+    // Pointer released before the frame flushes — the drop must still see
+    // the post-scroll target: one flushed replay, right here, synchronously.
+    document.dispatchEvent(pointer('pointerup'))
+    expect(replay).toHaveBeenCalledTimes(2)
+
+    // No further callback once the frame would otherwise have fired —
+    // teardown already cancelled it.
+    vi.advanceTimersByTime(16)
+    expect(replay).toHaveBeenCalledTimes(2)
+  })
+
+  it('detach mid-drag drops a pending replay instead of flushing it', () => {
+    // `detach()` (React unmount, `option()` rebuild) documents itself as
+    // behaviourally neutral: it must not move DOM. The drop-time flush in
+    // cleanupPointerDrag would re-resolve the drop target, so detach cancels
+    // the pending frame first and no replay ever fires.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      onPointerMove(e: PointerEvent): void
+      detach(): void
+    }
+    const replay = vi.spyOn(internals, 'onPointerMove')
+
+    const item1 = list.children[0] as HTMLElement
+    hover(list.children[2] as HTMLElement)
+    item1.dispatchEvent(pointer('pointerdown'))
+
+    document.dispatchEvent(pointer('pointermove', { y: 20 }))
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // Schedules a replay frame that hasn't fired yet…
+    document.dispatchEvent(new Event('scroll'))
+
+    // …and the manager is torn down before it does. No synchronous flush.
+    internals.detach()
+    expect(replay).toHaveBeenCalledTimes(1)
+
+    // And no deferred one either.
+    vi.advanceTimersByTime(16)
+    expect(replay).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('stale drop-animation timer (#131)', () => {
+  // The ghost drop-settle cleanup in `cleanupPointerDrag` only defers to a
+  // transitionend/timeout pair when the ghost and the drag element disagree
+  // on position by more than 2px — otherwise it destroys synchronously and
+  // there is no timer to go stale. Force that gap so both tests exercise the
+  // deferred path.
+  function forceDropAnimation(ghost: HTMLElement, dragEl: HTMLElement): void {
+    vi.spyOn(ghost, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, 50, 20)
+    )
+    vi.spyOn(dragEl, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(100, 100, 50, 20)
+    )
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("a stale fallback timer does not destroy a newer drag's ghost/placeholder", () => {
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0 })
+    // ghostManager is private; reached the same way `canDropInZone` is above.
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getPlaceholderElement(): HTMLElement | null
+        getChosenClass(): string
+        getDragClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+    const item4 = byId(list, 'list-4')
+
+    // First drag drops far enough from its ghost to schedule the 200ms
+    // fallback timer instead of destroying synchronously.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+    // Still mid drop-animation — not destroyed yet.
+    expect(document.body.contains(staleGhost)).toBe(true)
+
+    // A second drag starts within the 200ms window, before the stale timer
+    // fires, and gets its own ghost and placeholder.
+    hover(item3)
+    item4.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const freshGhost = internals.ghostManager.getGhostElement()
+    const freshPlaceholder = internals.ghostManager.getPlaceholderElement()
+    expect(freshGhost).not.toBeNull()
+    expect(freshGhost).not.toBe(staleGhost)
+    expect(freshPlaceholder).not.toBeNull()
+
+    // The stale timer from the FIRST drop fires now. Unguarded, it would
+    // destroy the CURRENT (second drag's) ghost and placeholder, leaving the
+    // new drag with no ghost for the rest of its lifetime.
+    vi.advanceTimersByTime(200)
+
+    expect(internals.ghostManager.getGhostElement()).toBe(freshGhost)
+    expect(internals.ghostManager.getPlaceholderElement()).toBe(
+      freshPlaceholder
+    )
+    // The guarded cleanup still clears the FIRST drag element's state
+    // classes — skipping the destroy must not leave item1 styled as
+    // chosen/dragging forever.
+    expect(
+      item1.classList.contains(internals.ghostManager.getChosenClass())
+    ).toBe(false)
+    expect(
+      item1.classList.contains(internals.ghostManager.getDragClass())
+    ).toBe(false)
+  })
+
+  it('re-grabbing the SAME element within the window keeps its drag classes', () => {
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0 })
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getChosenClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+
+    // Drop item1 with a settle animation pending…
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    // …then re-grab the SAME item before the stale timer fires. The new
+    // drag re-applies the chosen class; the stale cleanup must not strip
+    // it off a drag that is still running.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const chosenClass = internals.ghostManager.getChosenClass()
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+
+    vi.advanceTimersByTime(200)
+
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+    // And the second drag's ghost survives, as in the cross-element case.
+    expect(internals.ghostManager.getGhostElement()).not.toBeNull()
+  })
+
+  it('re-grab still in fallback-tolerance capture phase keeps chosenClass', () => {
+    // With `fallbackTolerance > 0` a pointerdown applies chosenClass at tap
+    // start but leaves `dragElement` null until the pointer travels the
+    // tolerance distance. A stale timer firing in that window must not
+    // strip the class off the in-flight capture phase.
+    const list = makeList('list', 4)
+    const sortable = mount(list, { animation: 0, fallbackTolerance: 5 })
+    const internals = sortable.dragManager as unknown as {
+      ghostManager: {
+        getGhostElement(): HTMLElement | null
+        getChosenClass(): string
+      }
+    }
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+    const chosenClass = internals.ghostManager.getChosenClass()
+
+    // First drag: commit past the tolerance, then drop with a settle
+    // animation pending.
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    document.dispatchEvent(pointer('pointermove', { id: 1, y: 30 }))
+    const staleGhost = internals.ghostManager.getGhostElement()
+    if (!staleGhost) throw new Error('expected a ghost element')
+    forceDropAnimation(staleGhost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    // Re-grab the SAME item: capture phase only — no movement, so the drag
+    // has not committed and `dragElement` is still null.
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+
+    vi.advanceTimersByTime(200)
+
+    expect(item1.classList.contains(chosenClass)).toBe(true)
+  })
+
+  it('transitionend cancels the fallback timer — cleanup runs once', () => {
+    const list = makeList('list', 4)
+    mount(list, { animation: 0 })
+
+    const item1 = list.children[0] as HTMLElement
+    const item3 = list.children[2] as HTMLElement
+
+    const destroySpy = vi.spyOn(GhostManager.prototype, 'destroy')
+
+    hover(item3)
+    item1.dispatchEvent(pointer('pointerdown', { id: 1 }))
+    const ghost = document.querySelector(
+      '[data-resortable-ghost]'
+    ) as HTMLElement
+    forceDropAnimation(ghost, item1)
+    document.dispatchEvent(pointer('pointerup', { id: 1 }))
+
+    ghost.dispatchEvent(new Event('transitionend'))
+    expect(destroySpy).toHaveBeenCalledTimes(1)
+
+    // The fallback timeout must have been cleared by transitionend — it
+    // must not fire a second cleanup.
+    vi.advanceTimersByTime(200)
+    expect(destroySpy).toHaveBeenCalledTimes(1)
   })
 })

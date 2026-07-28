@@ -5,6 +5,7 @@ Modern TypeScript rewrite of Sortable.js — reorderable drag-and-drop lists.
 [![npm version](https://img.shields.io/npm/v/resortable?logo=npm&color=cb3837)](https://www.npmjs.com/package/resortable)
 [![npm downloads](https://img.shields.io/npm/dm/resortable?logo=npm&color=cb3837)](https://www.npmjs.com/package/resortable)
 [![CI](https://img.shields.io/github/actions/workflow/status/jjeff/resortable/ci.yml?branch=main&logo=github&label=CI)](https://github.com/jjeff/resortable/actions/workflows/ci.yml)
+[![browsers: Chromium | Firefox | WebKit](https://img.shields.io/badge/browsers-Chromium%20%7C%20Firefox%20%7C%20WebKit-45ba4b?logo=playwright&logoColor=white)](https://github.com/jjeff/resortable/actions/workflows/ci.yml)
 [![gzip size](https://img.shields.io/bundlephobia/minzip/resortable?label=gzip)](https://bundlephobia.com/package/resortable)
 [![TypeScript](https://img.shields.io/npm/types/resortable?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/npm/l/resortable?color=blue)](./LICENSE)
@@ -103,7 +104,8 @@ new Sortable(element, {
   delayOnTouchOnly: 0,              // Touch-specific delay
   touchStartThreshold: 5,            // Pixels of movement before cancelling delay
   direction: 'vertical',             // 'vertical' | 'horizontal' list axis
-  swapThreshold: 1,                  // Overlap fraction before an item swaps
+  // swapThreshold: 0.5,              // Min overlap fraction (0-1) before an item swaps;
+                                     // omit for the default (no overlap gate)
   duplicateKey: 'alt',               // Hold this modifier at drop time to duplicate instead of move
 
   // Drop targeting
