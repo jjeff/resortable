@@ -1,3 +1,7 @@
+## Unreleased
+
+* feat(core): add `duplicateKey` option to duplicate item(s) on drop instead of moving
+
 ## <small>2.1.5 (2026-07-26)</small>
 
 * fix(core): guard drop-animation cleanup against destroying a newer drag's ghost (#141) ([5454a40](https://github.com/jjeff/resortable/commit/5454a40)), closes [#141](https://github.com/jjeff/resortable/issues/141) [#131](https://github.com/jjeff/resortable/issues/131) [#141](https://github.com/jjeff/resortable/issues/141)

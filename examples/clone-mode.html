@@ -56,6 +56,11 @@
           The palette uses <code>pull: 'clone'</code> &mdash; dragging from it
           copies the item into the canvas while leaving the original in place.
         </p>
+        <p>
+          The canvas also sets <code>duplicateKey: 'alt'</code> &mdash; hold Alt
+          while reordering within it to copy the dragged item in place instead
+          of moving it.
+        </p>
       </header>
 
       <section class="demo">
@@ -90,11 +95,13 @@ new Sortable(document.getElementById('palette'), {
   sort: false, // disable reordering within the palette
 })
 
-// The canvas accepts items and supports normal reordering.
+// The canvas accepts items, supports normal reordering, and duplicates
+// in place when Alt is held at drop.
 new Sortable(document.getElementById('canvas'), {
   group: { name: 'components', pull: false, put: true },
   animation: 150,
   draggable: '.sortable-item',
+  duplicateKey: 'alt',
 })</code></pre>
         <div class="notes">
           <strong>Note:</strong> <code>group.revertClone</code> is accepted by
@@ -118,6 +125,7 @@ new Sortable(document.getElementById('canvas'), {
         group: { name: 'components', pull: false, put: true },
         animation: 150,
         draggable: '.sortable-item',
+        duplicateKey: 'alt',
       })
     </script>
   </body>

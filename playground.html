@@ -297,6 +297,57 @@
           </div>
         </div>
       </div>
+
+      <div class="test-container">
+        <h2>Duplicate on Key (duplicateKey)</h2>
+        <div class="test-grid">
+          <div>
+            <h3>Dup A (duplicateKey: 'alt')</h3>
+            <div class="sortable-list" id="dup-a">
+              <div class="test-item sortable-item" data-id="dup-a-1">
+                Dup A1
+              </div>
+              <div class="test-item sortable-item" data-id="dup-a-2">
+                Dup A2
+              </div>
+              <div class="test-item sortable-item" data-id="dup-a-3">
+                Dup A3
+              </div>
+              <div class="test-item sortable-item" data-id="dup-a-4">
+                Dup A4
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3>Dup B (duplicateKey: 'alt')</h3>
+            <div class="sortable-list" id="dup-b">
+              <div class="test-item sortable-item" data-id="dup-b-1">
+                Dup B1
+              </div>
+              <div class="test-item sortable-item" data-id="dup-b-2">
+                Dup B2
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3>Dup Shift (duplicateKey: 'shift')</h3>
+            <div class="sortable-list" id="dup-shift">
+              <div class="test-item sortable-item" data-id="dup-shift-1">
+                Shift 1
+              </div>
+              <div class="test-item sortable-item" data-id="dup-shift-2">
+                Shift 2
+              </div>
+              <div class="test-item sortable-item" data-id="dup-shift-3">
+                Shift 3
+              </div>
+              <div class="test-item sortable-item" data-id="dup-shift-4">
+                Shift 4
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script type="module">
@@ -400,6 +451,31 @@
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           onEnd: log('Fallback end'),
+        })
+
+        // Duplicate on key — hold Alt while dragging between Dup A/Dup B to
+        // copy instead of move (cross-zone behaves like group.pull:'clone');
+        // hold it while reordering WITHIN a single list to copy in place, with
+        // the original FLIP-animating back to its start index. Dup Shift
+        // exercises the 'shift' modifier instead of 'alt'.
+        const dupOpts = {
+          group: 'dup-test',
+          animation: 150,
+          duplicateKey: 'alt',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onClone: log('Dup clone'),
+          onAdd: log('Dup add'),
+        }
+        push('dup-a', dupOpts)
+        push('dup-b', dupOpts)
+
+        push('dup-shift', {
+          animation: 150,
+          duplicateKey: 'shift',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          onClone: log('Dup-shift clone'),
         })
 
         document.getElementById('library-status').textContent =

@@ -120,6 +120,7 @@ new Sortable(element, {
   direction: 'vertical', // 'vertical' | 'horizontal' list axis
   // swapThreshold: 0.5,              // Min overlap fraction (0-1) before an item swaps;
   // omit for the default (no overlap gate)
+  duplicateKey: 'alt', // Hold this modifier at drop time to duplicate instead of move
 
   // Drop targeting
   emptyInsertThreshold: 5, // Px around an empty list that still counts as a drop

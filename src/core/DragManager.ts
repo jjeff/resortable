@@ -8,7 +8,13 @@ import {
 import { DropZone } from './DropZone.js'
 import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState, type ActiveDrag } from './GlobalDragState.js'
-import { hideControlled, restoreControlledHidden } from '../utils/dom.js'
+import {
+  hideControlled,
+  restoreControlledHidden,
+  isModifierHeld,
+  createDragClone,
+  DUPLICATE_CLASS,
+} from '../utils/dom.js'
 import { SelectionManager } from './SelectionManager.js'
 import { KeyboardManager } from './KeyboardManager.js'
 import { GhostManager } from './GhostManager.js'
@@ -155,6 +161,16 @@ export class DragManager implements DragManagerInterface {
   // the new scroll offset (#124). Null outside a pointer drag.
   private lastPointerMoveEvent: PointerEvent | null = null
 
+  // Modifier that arms duplicate-on-drop (see the `duplicateKey` option).
+  // Undefined = feature off. Evaluated live via `syncDuplicate` — the state
+  // at drop decides duplicate vs move, not the state at drag start.
+  private duplicateKey?: 'ctrl' | 'meta' | 'shift' | 'alt'
+  // Whether this zone's drags carry a whole multi-selection (`multiDrag`
+  // option). Kept so `isSelectionModifierHeld` can tell selection-toggle
+  // modifiers (ctrl/meta/shift) from a configured `duplicateKey` — only
+  // relevant when multiSelect is off (see that method for why).
+  private multiSelect: boolean
+
   // rAF handle for a pending scroll-replay (#134). Autoscroll's rAF loop
   // fires `scrollBy` every frame, so the `scroll` listener below would
   // otherwise pay a full `onPointerMove` (hit-test + rect math) per frame.
@@ -162,6 +178,11 @@ export class DragManager implements DragManagerInterface {
   // target fresh without redoing that work on every scroll tick. Null when
   // no replay is scheduled.
   private scrollReplayFrame: number | null = null
+  // True while a scroll-replay re-runs onPointerMove with a STALE pointer
+  // event. syncDuplicate must ignore that event's modifier flags — a keyup
+  // handled between the real move and the replay would otherwise be
+  // clobbered by the old event's held-modifier state.
+  private isReplayingScroll = false
 
   private groupManager: GroupManager
 
@@ -221,6 +242,7 @@ export class DragManager implements DragManagerInterface {
       ) => boolean | -1 | 1 | void
       controlled?: boolean
       sort?: boolean
+      duplicateKey?: 'ctrl' | 'meta' | 'shift' | 'alt'
     }
   ) {
     // Initialize group manager
@@ -285,6 +307,8 @@ export class DragManager implements DragManagerInterface {
     this._onMove = options?.onMove
     this.controlled = options?.controlled ?? false
     this.sort = options?.sort ?? true
+    this.multiSelect = options?.multiSelect ?? false
+    this.duplicateKey = options?.duplicateKey
 
     // Initialize ghost manager with classes
     this.ghostManager = new GhostManager(
@@ -383,7 +407,9 @@ export class DragManager implements DragManagerInterface {
     // newly created ones) on every subsequent pointermove.
     //
     // Cleanup is non-reverting on purpose: it unbinds and clears state without
-    // moving DOM, so teardown stays behaviourally neutral.
+    // moving DOM, so teardown stays behaviourally neutral. Not passing
+    // `isDrop` is what keeps that promise for `duplicateKey` — a mid-drag
+    // destroy must not materialize a copy or fire `clone`.
     if (this.isPointerDragging) {
       // Drop any pending scroll-replay frame (#134) BEFORE cleanup: the
       // flush in cleanupPointerDrag re-resolves the drop target and moves
@@ -1287,6 +1313,29 @@ export class DragManager implements DragManagerInterface {
   }
 
   // Pointer-based drag and drop for modern touch/pen/mouse support
+  /**
+   * Whether ctrl/meta/shift on this pointerdown signal selection intent
+   * (Ctrl/Cmd+Click toggle, Shift+Click range) rather than drag intent, and
+   * so should block a drag from starting. `alt` was never a selection
+   * gesture and is never blocked here.
+   *
+   * When `duplicateKey` is configured and `multiSelect` is OFF, that one
+   * modifier is exempted so e.g. `duplicateKey: 'ctrl'` can still start a
+   * drag — the same modifier still arms duplicate mode if pressed after
+   * the drag begins (`syncDuplicate`). With `multiSelect` ON, ctrl/meta/
+   * shift stay selection gestures unconditionally, since they're needed
+   * for toggle/range selection there.
+   */
+  private isSelectionModifierHeld(e: PointerEvent): boolean {
+    if (this.multiSelect) {
+      return e.ctrlKey || e.metaKey || e.shiftKey
+    }
+    const selectionKeys = ['ctrl', 'meta', 'shift'] as const
+    return selectionKeys.some(
+      (key) => key !== this.duplicateKey && isModifierHeld(e, key)
+    )
+  }
+
   private onPointerDown = (e: PointerEvent): void => {
     // Find the closest draggable item
     const draggableSelector = this.draggable || '.sortable-item'
@@ -1313,7 +1362,7 @@ export class DragManager implements DragManagerInterface {
 
     // Skip drag when modifier keys are held — these indicate selection intent
     // (Ctrl/Cmd+Click for toggle, Shift+Click for range selection)
-    if (e.ctrlKey || e.metaKey || e.shiftKey) return
+    if (this.isSelectionModifierHeld(e)) return
 
     // Ignore pen input - pen should use native drag API or be explicitly handled
     if (e.pointerType === 'pen') return
@@ -1624,6 +1673,16 @@ export class DragManager implements DragManagerInterface {
       this.hiddenDisplays = hideControlled(this.draggedItems)
     }
 
+    // Live-track the configured duplicateKey for the rest of this drag —
+    // pressed/released between pointer moves, not just held at start.
+    if (this.duplicateKey) {
+      document.addEventListener('keydown', this.onDuplicateKeyChange)
+      document.addEventListener('keyup', this.onDuplicateKeyChange)
+      // Seed from whatever's held right now (e.g. Alt already down at
+      // pointerdown, or held through a fallbackTolerance capture phase).
+      this.syncDuplicate(e)
+    }
+
     // Then emit start event
     this.events.emit('start', evt)
   }
@@ -1651,6 +1710,8 @@ export class DragManager implements DragManagerInterface {
     const dragId = `pointer-${this.activePointerId}`
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
+
+    this.syncDuplicate(e)
 
     // Find the element under the mouse cursor. The cursor-following ghost
     // sits exactly there: its inline `pointer-events: none` normally keeps
@@ -2000,23 +2061,35 @@ export class DragManager implements DragManagerInterface {
     this.scrollReplayFrame = window.requestAnimationFrame(() => {
       this.scrollReplayFrame = null
       if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
-      this.onPointerMove(this.lastPointerMoveEvent)
+      this.isReplayingScroll = true
+      try {
+        this.onPointerMove(this.lastPointerMoveEvent)
+      } finally {
+        this.isReplayingScroll = false
+      }
     })
   }
 
   private onPointerUp = (e: PointerEvent): void => {
     if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 
-    this.cleanupPointerDrag()
+    // Drop-time truth: re-sync from the pointerup event itself (not just the
+    // last-seen keydown/keyup) before cleanup reads `duplicate` off the
+    // active drag.
+    this.syncDuplicate(e)
+    this.cleanupPointerDrag(false, true)
   }
 
   private onPointerCancel = (e: PointerEvent): void => {
     if (!this.isPointerDragging || e.pointerId !== this.activePointerId) return
 
+    // Not a drop — an interrupted gesture. No duplicate is materialized (see
+    // `isDrop` in cleanupPointerDrag); the DOM is left where the drag put it,
+    // as it always has been on cancel.
     this.cleanupPointerDrag()
   }
 
-  private cleanupPointerDrag(revert = false): void {
+  private cleanupPointerDrag(revert = false, isDrop = false): void {
     // A pointerup/pointercancel can land in the same frame as the last
     // autoscroll scroll tick, before the deferred scroll-replay (#134) has
     // run. Flush it synchronously here, before any other teardown, while
@@ -2031,8 +2104,19 @@ export class DragManager implements DragManagerInterface {
     ) {
       window.cancelAnimationFrame(this.scrollReplayFrame)
       this.scrollReplayFrame = null
-      this.onPointerMove(this.lastPointerMoveEvent)
+      this.isReplayingScroll = true
+      try {
+        this.onPointerMove(this.lastPointerMoveEvent)
+      } finally {
+        this.isReplayingScroll = false
+      }
     }
+
+    // Did this drag ever actually move? `lastPointerMoveEvent` is set by
+    // onPointerMove (past its guards) and nulled below, so null here means a
+    // modifier+click with zero pointermove — which must NOT duplicate. A drag
+    // that wandered off and came back still counts as moved.
+    const moved = this.lastPointerMoveEvent !== null
 
     // Remove multi-drag-source class from all items
     this.draggedItems.forEach((item) => {
@@ -2050,6 +2134,8 @@ export class DragManager implements DragManagerInterface {
     document.removeEventListener('scroll', this.onDocumentScrollDuringDrag, {
       capture: true,
     })
+    document.removeEventListener('keydown', this.onDuplicateKeyChange)
+    document.removeEventListener('keyup', this.onDuplicateKeyChange)
     if (this.scrollReplayFrame !== null) {
       window.cancelAnimationFrame(this.scrollReplayFrame)
       this.scrollReplayFrame = null
@@ -2129,6 +2215,19 @@ export class DragManager implements DragManagerInterface {
       }
     }
 
+    // duplicateKey was armed at drop: leave a clone in the drop slot and
+    // FLIP the original(s) back home. Must run BEFORE globalDragState.endDrag
+    // (below) so its events read the settled DOM, and before the ghost-settle
+    // block right after so the ghost lands on the copy, not the returned
+    // original. Gated on `isDrop` — ONLY a real pointerup materializes.
+    // Teardown paths (detach/destroy/`option()` rebuild), pointercancel and
+    // the multi-touch abort all reach here too, and none of them may mutate
+    // the DOM or fire a `clone` event. Skipped for controlled mode — no
+    // consumer DOM to mutate; GlobalDragState.endControlledDrag reports the
+    // same intent from `pending`/`duplicate` alone.
+    const duplicateSettleRect =
+      isDrop && moved && !this.controlled ? this.materializeDuplicate() : null
+
     // Animate ghost to final element position before destroying
     const ghost = this.ghostManager.getGhostElement()
     const dragEl = this.dragElement
@@ -2136,7 +2235,13 @@ export class DragManager implements DragManagerInterface {
       // Controlled mode: the item was restored to its original spot, so the
       // ghost settles onto where the placeholder sat (the drop position the
       // consumer is about to render) instead of the item's stale rect.
-      const finalRect = controlledSettleRect ?? dragEl.getBoundingClientRect()
+      // Duplicate: dragEl (the original) has already been moved back to its
+      // start index by materializeDuplicate, so its own rect is now the
+      // WRONG target — settle onto the clone's rect instead.
+      const finalRect =
+        controlledSettleRect ??
+        duplicateSettleRect ??
+        dragEl.getBoundingClientRect()
       const ghostRect = ghost.getBoundingClientRect()
       const deltaX = finalRect.left - ghostRect.left
       const deltaY = finalRect.top - ghostRect.top
@@ -2202,6 +2307,95 @@ export class DragManager implements DragManagerInterface {
     this.activePointerId = null
     this.dragElement = null
     this.draggedItems = []
+  }
+
+  // Bound once so add/removeEventListener target the same reference.
+  private onDuplicateKeyChange = (e: KeyboardEvent): void => {
+    this.syncDuplicate(e)
+  }
+
+  /**
+   * Live-evaluate the configured `duplicateKey` against `e` and push the
+   * result into `globalDragState`, so whichever event happens to be current
+   * at drop time (pointerup) is what decides duplicate vs move. No-op when
+   * the feature is off or no pointer drag is active.
+   */
+  private syncDuplicate(e: PointerEvent | KeyboardEvent): void {
+    if (!this.duplicateKey || this.activePointerId === null) return
+    // A scroll-replay re-runs onPointerMove with a stale event whose
+    // modifier flags predate any keydown/keyup handled since — never let it
+    // overwrite the live duplicate state.
+    if (this.isReplayingScroll) return
+    const active = isModifierHeld(e, this.duplicateKey)
+    const dragId = `pointer-${this.activePointerId}`
+    globalDragState.setDuplicate(dragId, active)
+    this.ghostManager
+      .getGhostElement()
+      ?.classList.toggle(DUPLICATE_CLASS, active)
+    this.ghostManager
+      .getPlaceholderElement()
+      ?.classList.toggle(DUPLICATE_CLASS, active)
+  }
+
+  /**
+   * `duplicateKey` was held at drop: leave a clone in the drop slot and
+   * FLIP the original(s) back to their start index in the source zone.
+   * Called from `cleanupPointerDrag`, after any revert and BEFORE
+   * `globalDragState.endDrag` — see the call site for why the ordering is
+   * load-bearing. Returns the anchor item's clone rect for the ghost-settle
+   * step (or null when nothing was materialized), since the original no
+   * longer sits at the drop position once this returns.
+   */
+  private materializeDuplicate(): DOMRect | null {
+    if (this.activePointerId === null) return null
+    const dragId = `pointer-${this.activePointerId}`
+    const activeDrag = globalDragState.getActiveDrag(dragId)
+    // Anti-double-clone: a cross-zone group `pull: 'clone'` drag already
+    // created `clones` in `setPutTarget` — don't clone again here.
+    if (!activeDrag?.duplicate || activeDrag.clones) return null
+
+    // An item orphaned mid-drag (external re-render, zone teardown) has no
+    // slot to clone into. Bail before touching anything: a partial
+    // materialization would hand `applyDuplicate` a detached clone and the
+    // `clone` event would report newIndex -1, which consumers splice on.
+    // The drop degrades to a plain move.
+    if (activeDrag.items.some((item) => !item.parentElement)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[resortable] materializeDuplicate: item has no parent, aborting duplicate'
+      )
+      return null
+    }
+
+    // The copy takes the drop slot wherever the original currently sits —
+    // works for both same-zone and cross-zone drops without extra branching.
+    const clones = activeDrag.items.map((item) => {
+      const clone = createDragClone(item)
+      item.parentElement?.insertBefore(clone, item)
+      return clone
+    })
+
+    activeDrag.items.forEach((item) => item.remove())
+
+    // Re-insert the originals into the source zone at their start indices,
+    // ascending, FLIP-animating the return. `this.zone` is this manager's
+    // own zone, which is always the drag's `fromZone` here: cleanup only
+    // ever runs on the manager that started the drag (it owns the document
+    // pointer listeners), regardless of which zone the drop landed in.
+    const order = activeDrag.items
+      .map((item, i) => ({ item, index: activeDrag.startIndices[i] }))
+      .sort((a, b) => a.index - b.index)
+    for (const { item, index } of order) {
+      this.zone.insertWithAnimation(item, this.zone.getItems()[index] ?? null)
+    }
+
+    globalDragState.applyDuplicate(dragId, clones)
+
+    const anchorIndex = activeDrag.items.indexOf(
+      this.dragElement as HTMLElement
+    )
+    const anchorClone = clones[anchorIndex] ?? clones[0]
+    return anchorClone?.getBoundingClientRect() ?? null
   }
 
   /** Find the DragManager instance that manages a specific zone */

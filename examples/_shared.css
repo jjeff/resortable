@@ -132,6 +132,12 @@ main {
   outline-offset: 2px;
 }
 
+/* Applied to the ghost/placeholder while duplicateKey's modifier is held */
+.sortable-duplicate {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
 /* Annotated code block */
 .code-section {
   margin-top: 32px;

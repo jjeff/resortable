@@ -479,6 +479,7 @@ export class Sortable {
       onMove: this.options.onMove,
       controlled: this.options.controlled,
       multiDragKey: this.options.multiDragKey,
+      duplicateKey: this.options.duplicateKey,
       sort: this.options.sort,
     }
   }
@@ -776,7 +777,8 @@ export class Sortable {
       case 'fallbackOnBody':
       case 'fallbackTolerance':
       case 'fallbackOffsetX':
-      case 'fallbackOffsetY': {
+      case 'fallbackOffsetY':
+      case 'duplicateKey': {
         // Re-create drag manager with new options. `forceFallback` changes
         // which DOM listeners get registered, so a setter at runtime must
         // tear down and rebuild — there is no in-place reconfigure path.

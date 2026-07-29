@@ -1,4 +1,5 @@
 import { type SortableEventSystem } from './EventSystem.js'
+import { createDragClone } from '../utils/dom.js'
 
 interface DragManager {
   zone: { getIndex: (item: HTMLElement) => number }
@@ -21,6 +22,7 @@ interface ActiveDrag {
   eventSystem: SortableEventSystem
   clones?: HTMLElement[] // Cloned elements for clone operations
   pullMode?: 'move' | 'clone' // How these items were pulled
+  duplicate?: boolean // duplicateKey held; state at drop decides
   controlled?: boolean // Controlled mode: no consumer-DOM mutation, intent-only events
   // Controlled mode: where the placeholder currently sits. Set/updated by the
   // drag pipelines; endDrag() emits indices from here instead of the DOM.
@@ -121,26 +123,23 @@ class GlobalDragStateManager {
             // update inserts the copy.
             if (pullMode === 'clone' && !activeDrag.controlled) {
               // Create clones of all dragged items
-              const clones = activeDrag.items.map((item) => {
-                const clone = item.cloneNode(true) as HTMLElement
-                // Clear any IDs to avoid duplicates
-                clone.removeAttribute('id')
-                // Remove any drag-related classes
-                clone.classList.remove(
-                  'sortable-chosen',
-                  'sortable-drag',
-                  'sortable-ghost'
-                )
-                return clone
-              })
-              activeDrag.clones = clones
+              activeDrag.clones = activeDrag.items.map((item) =>
+                createDragClone(item)
+              )
             }
           } else {
             // Fallback: assume move operation
             activeDrag.pullMode = 'move'
           }
-        } catch {
-          // Fallback: assume move operation
+        } catch (err) {
+          // Fallback: assume move operation. GroupManager.getPullMode throws
+          // deliberately for a config-blocked pull, so log it — silently
+          // demoting to a move hides a misconfigured `group.pull`.
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[resortable] getPullMode threw, falling back to move:',
+            err
+          )
           activeDrag.pullMode = 'move'
         }
       }
@@ -152,6 +151,24 @@ class GlobalDragStateManager {
   /** Clear the current drop target for a specific drag */
   public clearPutTarget(dragId: string): void {
     this.putTargets.delete(dragId)
+  }
+
+  /** Live-track whether the configured duplicateKey is currently held */
+  public setDuplicate(dragId: string, active: boolean): void {
+    const activeDrag = this.activeDrags.get(dragId)
+    if (activeDrag) activeDrag.duplicate = active
+  }
+
+  /**
+   * Record a drop-time duplicate. Called by DragManager AFTER it has already
+   * performed the DOM surgery (inserting `clones` alongside the originals),
+   * so endDrag sees the same state the group `pull: 'clone'` flow produces.
+   */
+  public applyDuplicate(dragId: string, clones: HTMLElement[]): void {
+    const activeDrag = this.activeDrags.get(dragId)
+    if (!activeDrag) return
+    activeDrag.pullMode = 'clone'
+    activeDrag.clones = clones
   }
 
   /** End drag operation and handle cross-zone drops */
@@ -233,6 +250,38 @@ class GlobalDragStateManager {
           })
         }
       }
+    } else if (activeDrag.duplicate && activeDrag.clones?.[0]) {
+      // Same-zone duplicate: DragManager has already inserted the copy into
+      // the DOM and called applyDuplicate(), so the index is read live from
+      // the zone rather than computed here. Gated on `duplicate`, NOT on the
+      // mere presence of `clones` — a group `pull: 'clone'` drag that
+      // crossed zones and was returned home also carries clones, and must
+      // not double-fire this branch.
+      const clone = activeDrag.clones[0]
+      // Read every copy's settled DOM index so multi-drag consumers get the
+      // same `oldIndexes`/`newIndexes` shape the controlled branch emits.
+      const newIndexes = activeDrag.clones.map((c) =>
+        activeDrag.fromDragManager.zone.getIndex(c)
+      )
+      const duplicateEvent = {
+        item: activeDrag.items[0],
+        items: activeDrag.items,
+        from: activeDrag.fromZone,
+        to: activeDrag.fromZone,
+        oldIndex: activeDrag.startIndices[0],
+        newIndex: newIndexes[0],
+        oldIndexes: [...activeDrag.startIndices],
+        newIndexes,
+        clone,
+        pullMode: 'clone' as const,
+      }
+      // Deliberately no 'add' event: this is the same instance/zone, so
+      // firing 'add' too would double-insert for consumers wired to both
+      // onClone and onAdd.
+      activeDrag.eventSystem.emit('clone', duplicateEvent)
+      activeDrag.eventSystem.emit('sort', duplicateEvent)
+      activeDrag.eventSystem.emit('update', duplicateEvent)
+      activeDrag.eventSystem.emit('change', duplicateEvent)
     }
 
     // Fire unchoose event before end
@@ -297,7 +346,8 @@ class GlobalDragStateManager {
     }
 
     if (isDifferentZone) {
-      const isClone = activeDrag.pullMode === 'clone'
+      const isClone =
+        activeDrag.pullMode === 'clone' || activeDrag.duplicate === true
       const pullMode = isClone
         ? ('clone' as const)
         : activeDrag.pullMode || true
@@ -318,6 +368,35 @@ class GlobalDragStateManager {
       if (targetEvents && targetEvents !== activeDrag.eventSystem) {
         targetEvents.emit('add', { ...base, pullMode })
       }
+    } else if (activeDrag.duplicate && pending) {
+      // Same-zone controlled duplicate: no DOM to read from, so the copy's
+      // final index has to account for the original still occupying a slot
+      // ahead of the drop point (only in-list originals count — this drag's
+      // own starting slots shift the copy's landing spot by one each).
+      // `pending.index` is an index into the REDUCED list (getControlledIndex
+      // skips the hidden dragged items), while `startIndices` are full-list
+      // indices — so compare like for like: `s - k` is the k-th dragged
+      // item's position once the k items before it are taken out.
+      // startIndices are sorted ascending (DragManager sorts the selection by
+      // zone index before starting the drag).
+      const offset = activeDrag.startIndices.filter(
+        (s, k) => s - k <= pending.index
+      ).length
+      const duplicateNewIndex = pending.index + offset
+      const duplicateNewIndexes = activeDrag.items.map(
+        (_, i) => pending.index + offset + i
+      )
+      const duplicateBase = {
+        ...base,
+        newIndex: duplicateNewIndex,
+        newIndexes: duplicateNewIndexes,
+        pullMode: 'clone' as const,
+      }
+      // No clone node exists in controlled mode.
+      activeDrag.eventSystem.emit('clone', duplicateBase)
+      activeDrag.eventSystem.emit('sort', duplicateBase)
+      activeDrag.eventSystem.emit('update', duplicateBase)
+      activeDrag.eventSystem.emit('change', duplicateBase)
     }
 
     activeDrag.eventSystem.emit('unchoose', { ...base, newIndex: -1 })

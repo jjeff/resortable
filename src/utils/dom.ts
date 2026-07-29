@@ -60,6 +60,52 @@ export function clone<T extends HTMLElement>(el: T): T {
   return el.cloneNode(true) as T
 }
 
+/**
+ * Whether the given modifier key is held on `e`. Shared by any input
+ * handler that needs to check a configured modifier (multi-drag selection,
+ * duplicate-on-drop) against either a `PointerEvent` or a `KeyboardEvent`.
+ */
+export function isModifierHeld(
+  e: { altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
+  key: 'ctrl' | 'meta' | 'shift' | 'alt'
+): boolean {
+  switch (key) {
+    case 'ctrl':
+      return e.ctrlKey
+    case 'meta':
+      return e.metaKey
+    case 'shift':
+      return e.shiftKey
+    case 'alt':
+      return e.altKey
+  }
+}
+
+/**
+ * Build a drag clone of `item`: a deep copy with its `id` stripped and any
+ * drag-state classes removed, so the copy doesn't carry stale identity or
+ * transient styling into its new home. `sortable-selected` is stripped too —
+ * SelectionManager never learns about the copy, so a highlight it can't
+ * clear (`deselectAll` walks its own set) would be stuck on forever.
+ *
+ * Only the DEFAULT class names are stripped. A consumer that renamed them
+ * (`selectedClass`, `chosenClass`, …) sees the custom class survive on the
+ * copy — a pre-existing limitation shared with the `group.pull: 'clone'`
+ * path, since this helper has no access to the instance's options.
+ */
+export function createDragClone(item: HTMLElement): HTMLElement {
+  const clone = item.cloneNode(true) as HTMLElement
+  clone.removeAttribute('id')
+  clone.classList.remove(
+    'sortable-chosen',
+    'sortable-drag',
+    'sortable-ghost',
+    'sortable-multi-drag-source',
+    'sortable-selected'
+  )
+  return clone
+}
+
 /** Get index of element within its parent */
 export function getIndex(el: HTMLElement): number {
   if (!el.parentElement) return -1
@@ -110,6 +156,12 @@ export function toArray(parent: HTMLElement, dataIdAttr = 'data-id'): string[] {
  * Index math (DropZone.getControlledIndex) excludes items carrying it.
  */
 export const CONTROLLED_HIDDEN_CLASS = 'sortable-controlled-hidden'
+
+/**
+ * CSS class applied to the ghost and placeholder while duplicate mode is
+ * armed (the configured `duplicateKey` is held during an active drag).
+ */
+export const DUPLICATE_CLASS = 'sortable-duplicate'
 
 /**
  * Hide elements for a controlled-mode drag (visual removal without touching

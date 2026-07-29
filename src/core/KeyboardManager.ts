@@ -3,24 +3,11 @@ import { DropZone } from './DropZone.js'
 import { SortableEventSystem } from './EventSystem.js'
 import { globalDragState } from './GlobalDragState.js'
 import { GhostManager } from './GhostManager.js'
-import { hideControlled, restoreControlledHidden } from '../utils/dom.js'
-
-/** Whether the configured multi-drag modifier is held on this event. */
-function isModifierHeld(
-  e: MouseEvent,
-  key: 'ctrl' | 'meta' | 'shift' | 'alt'
-): boolean {
-  switch (key) {
-    case 'ctrl':
-      return e.ctrlKey
-    case 'meta':
-      return e.metaKey
-    case 'shift':
-      return e.shiftKey
-    case 'alt':
-      return e.altKey
-  }
-}
+import {
+  hideControlled,
+  restoreControlledHidden,
+  isModifierHeld,
+} from '../utils/dom.js'
 
 /**
  * Handles keyboard navigation and operations for sortable lists
