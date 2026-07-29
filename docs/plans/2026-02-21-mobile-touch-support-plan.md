@@ -2,9 +2,12 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Enable drag-and-drop on mobile/touch devices by fixing the specific gaps preventing Pointer Events from working on touch.
+**Goal:** Enable drag-and-drop on mobile/touch devices by fixing the specific gaps preventing Pointer Events from
+working on touch.
 
-**Architecture:** Enhance the existing DragManager with touch-action CSS management, HTML5 DnD suppression on touch devices, hold-to-drag visual feedback, and fix AutoScrollPlugin to use pointer events instead of mouse events. No new abstractions — the Pointer Events API already unifies input types.
+**Architecture:** Enhance the existing DragManager with touch-action CSS management, HTML5 DnD suppression on touch
+devices, hold-to-drag visual feedback, and fix AutoScrollPlugin to use pointer events instead of mouse events. No new
+abstractions — the Pointer Events API already unifies input types.
 
 **Tech Stack:** TypeScript, Vitest (unit tests), Playwright (integration tests), Vite dev server
 
@@ -17,6 +20,7 @@
 Apply `touch-action: none` to draggable items so the browser doesn't intercept touches for scrolling/zooming.
 
 **Files:**
+
 - Modify: `src/core/DragManager.ts` — `attach()`, `detach()`, `updateDraggableItems()`
 - Test: `tests/unit/touch-support.test.ts`
 
@@ -111,19 +115,20 @@ describe('Touch Support', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: FAIL — `touch-action` is not being set
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: FAIL — `touch-action` is not being set
 
 **Step 3: Write minimal implementation**
 
 In `src/core/DragManager.ts`:
 
 1. Add a private field to store original touch-action values:
+
 ```typescript
 private originalTouchActions = new Map<HTMLElement, string>()
 ```
 
 2. In `updateDraggableItems()`, after setting `item.draggable = true`, also set `touch-action`:
+
 ```typescript
 // If handle is configured, set touch-action on handles instead
 if (this.handle) {
@@ -141,6 +146,7 @@ if (this.handle) {
 ```
 
 3. In `detach()`, restore original values:
+
 ```typescript
 // Restore original touch-action values
 this.originalTouchActions.forEach((originalValue, element) => {
@@ -151,8 +157,7 @@ this.originalTouchActions.clear()
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: PASS
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: PASS
 
 **Step 5: Commit**
 
@@ -168,6 +173,7 @@ git commit -m "feat: add touch-action CSS management for mobile support"
 Prevent `draggable="true"` and HTML5 drag events from interfering on touch-capable devices.
 
 **Files:**
+
 - Modify: `src/core/DragManager.ts` — `updateDraggableItems()`, `onDragStart()`
 - Test: `tests/unit/touch-support.test.ts`
 
@@ -217,8 +223,7 @@ describe('HTML5 DnD suppression', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: FAIL — draggable is always set to true
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: FAIL — draggable is always set to true
 
 **Step 3: Write minimal implementation**
 
@@ -270,8 +275,7 @@ private onDragStart = (e: DragEvent): void => {
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: PASS
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: PASS
 
 **Step 5: Commit**
 
@@ -287,6 +291,7 @@ git commit -m "feat: suppress HTML5 DnD on touch-capable devices"
 Show a scale+shadow visual cue during the delay period when touch-holding an item.
 
 **Files:**
+
 - Modify: `src/core/DragManager.ts` — `startDragDelay()`, `cancelDragDelay()`, `startPointerDrag()`
 - Test: `tests/unit/touch-support.test.ts`
 
@@ -396,8 +401,7 @@ describe('hold-to-drag feedback', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: FAIL — no holding class or styles applied
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: FAIL — no holding class or styles applied
 
 **Step 3: Write minimal implementation**
 
@@ -465,13 +469,13 @@ private clearHoldFeedback(): void {
 ```
 
 Call `clearHoldFeedback()` in:
+
 - `cancelDragDelay()` — when threshold exceeded or pointer up during delay
 - `startPointerDrag()` — when drag actually starts (clear feedback, ghost takes over)
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: PASS
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: PASS
 
 **Step 5: Commit**
 
@@ -487,6 +491,7 @@ git commit -m "feat: add hold-to-drag visual feedback for touch"
 Replace `mousemove` with `pointermove` so auto-scroll works on touch devices.
 
 **Files:**
+
 - Modify: `src/plugins/AutoScrollPlugin.ts` — `attachMouseTracking()`, `detachMouseTracking()`
 - Test: `tests/unit/touch-support.test.ts`
 
@@ -548,8 +553,8 @@ describe('AutoScrollPlugin touch support', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: FAIL — `_autoScrollMouseHandler` is defined, `_autoScrollPointerHandler` is not
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: FAIL — `_autoScrollMouseHandler` is defined,
+`_autoScrollPointerHandler` is not
 
 **Step 3: Write minimal implementation**
 
@@ -586,13 +591,11 @@ private detachMouseTracking(sortable: SortableInstance): void {
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: PASS
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: PASS
 
 **Step 5: Run all tests to verify no regressions**
 
-Run: `npx vitest run`
-Expected: All tests pass
+Run: `npx vitest run` Expected: All tests pass
 
 **Step 6: Commit**
 
@@ -608,6 +611,7 @@ git commit -m "fix: AutoScrollPlugin now uses pointermove instead of mousemove"
 Set a sensible default for `delayOnTouchOnly` so touch users get scroll-vs-drag disambiguation out of the box.
 
 **Files:**
+
 - Modify: `src/core/DragManager.ts` — constructor default
 - Modify: `src/index.ts` — option default (if options are processed there)
 - Test: `tests/unit/touch-support.test.ts`
@@ -650,8 +654,8 @@ describe('default touch options', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: FAIL — current default is `0` (from `options?.delay ?? 0`), so no delay, no holding class
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: FAIL — current default is `0` (from
+`options?.delay ?? 0`), so no delay, no holding class
 
 **Step 3: Write minimal implementation**
 
@@ -665,19 +669,18 @@ this.delayOnTouchOnly = options?.delayOnTouchOnly ?? 200
 ```
 
 This means:
+
 - If `delayOnTouchOnly` is explicitly set → use that value
 - If not set → default to 200ms (sensible for touch)
 - The `delay` option still controls mouse delay separately
 
 **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run tests/unit/touch-support.test.ts`
-Expected: PASS
+Run: `npx vitest run tests/unit/touch-support.test.ts` Expected: PASS
 
 **Step 5: Run all tests**
 
-Run: `npx vitest run`
-Expected: All tests pass (existing tests don't depend on the delay default being 0)
+Run: `npx vitest run` Expected: All tests pass (existing tests don't depend on the delay default being 0)
 
 **Step 6: Commit**
 
@@ -693,12 +696,12 @@ git commit -m "feat: default delayOnTouchOnly to 200ms for mobile UX"
 Ensure everything passes project quality gates.
 
 **Files:**
+
 - All modified files from Tasks 1-5
 
 **Step 1: Run linter**
 
-Run: `npm run lint`
-Expected: No errors
+Run: `npm run lint` Expected: No errors
 
 **Step 2: Fix any lint issues**
 
@@ -706,8 +709,7 @@ If there are lint issues, fix them in the relevant files.
 
 **Step 3: Run type checker**
 
-Run: `npm run type-check`
-Expected: No errors
+Run: `npm run type-check` Expected: No errors
 
 **Step 4: Fix any type issues**
 
@@ -715,8 +717,7 @@ If there are type errors, fix them.
 
 **Step 5: Run all unit tests**
 
-Run: `npx vitest run`
-Expected: All tests pass
+Run: `npx vitest run` Expected: All tests pass
 
 **Step 6: Commit any fixes**
 
@@ -732,6 +733,7 @@ git commit -m "chore: fix lint and type-check issues"
 Test on a real browser to verify touch simulation works.
 
 **Files:**
+
 - No new files — use Playwright MCP tools
 
 **Step 1: Start dev server**
@@ -745,6 +747,7 @@ Use Playwright MCP to open the dev server URL.
 **Step 3: Test touch interaction**
 
 Use Playwright's `touchscreen.tap()` and touch simulation to:
+
 1. Verify tap-and-hold shows the scale+shadow feedback
 2. Verify dragging after hold moves the item
 3. Verify quick taps don't start a drag (delay works)

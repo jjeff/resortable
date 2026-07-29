@@ -4,7 +4,9 @@ This project has been configured with GitHub Spec Kit for Spec-Driven Developmen
 
 ## What is Spec Kit?
 
-Spec Kit is a tool for Spec-Driven Development that helps build high-quality software faster by allowing organizations to focus on product scenarios rather than writing undifferentiated code. It generates executable specifications that directly create working implementations.
+Spec Kit is a tool for Spec-Driven Development that helps build high-quality software faster by allowing organizations
+to focus on product scenarios rather than writing undifferentiated code. It generates executable specifications that
+directly create working implementations.
 
 ## Directory Structure
 
@@ -53,6 +55,7 @@ The project follows the Resortable Constitution defined in `memory/constitution.
 ## Examples
 
 See the `templates/` directory for examples of:
+
 - Feature specifications (`spec-template.md`)
 - Implementation plans (`plan-template.md`)
 - Task breakdowns (`tasks-template.md`)
@@ -60,6 +63,7 @@ See the `templates/` directory for examples of:
 ## Integration
 
 This Spec Kit setup integrates with the existing Resortable project infrastructure:
+
 - Uses the same TypeScript/ESLint/Prettier configuration
 - Follows the established testing framework (Vitest + Playwright)
 - Respects the current build system and CI/CD pipeline

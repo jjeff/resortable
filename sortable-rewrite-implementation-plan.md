@@ -252,7 +252,8 @@ mapped to implementation phases.
 - [x] **forceFallback** - Force fallback behavior ✅ Wired in DragManager (#29 PR1, #53)
 - [x] **fallbackClass** - Class for cloned DOM element in fallback ✅ Wired in DragManager (#29 PR1, #53)
 - [x] **fallbackOnBody** - Append cloned element to document body ✅ Wired in DragManager (#29 PR2, #54)
-- [x] **fallbackOffsetX / fallbackOffsetY** - Pixel offset for ghost relative to cursor ✅ Wired in DragManager (#29 PR2, #54)
+- [x] **fallbackOffsetX / fallbackOffsetY** - Pixel offset for ghost relative to cursor ✅ Wired in DragManager (#29
+      PR2, #54)
 - [x] **fallbackTolerance** - Pixels mouse should move before drag ✅ Wired in DragManager (#29 PR3, #55)
 - [x] **dragoverBubble** - Allow dragover event to bubble (Phase 2.5) ✅ Implemented (property)
 - [x] **removeCloneOnHide** - Remove clone when not showing (Phase 2.5) ✅ Implemented (property)
@@ -320,7 +321,8 @@ mapped to implementation phases.
 
 - [x] **Modern Pointer Events** - Mouse, touch, and pen input support (Phase 2.2) ✅ Implemented
 - [x] **Multi-touch Support** - Multiple simultaneous touch gestures (Phase 2.2) ✅ Implemented
-- [x] **HTML5 Drag and Drop Fallback** - Pointer-driven fallback drag system ✅ Implemented (#29: PRs #53, #54, #55, PR4)
+- [x] **HTML5 Drag and Drop Fallback** - Pointer-driven fallback drag system ✅ Implemented (#29: PRs #53, #54, #55,
+      PR4)
 - [ ] **Touch Device Optimization** - Enhanced touch device experience (Phase 2.5)
 
 ### Accessibility Features ✅ NEW IN V2.0
@@ -355,34 +357,44 @@ mapped to implementation phases.
 
 **✅ Phase 2.2 Complete (Touch/Pen Support)**: Modern pointer events, multi-touch, cross-platform testing
 
-**✅ Phase 2.3 Complete (Accessibility)**: Keyboard navigation, ARIA support, screen reader compatibility, multi-selection
+**✅ Phase 2.3 Complete (Accessibility)**: Keyboard navigation, ARIA support, screen reader compatibility,
+multi-selection
 
-**✅ Phase 2.4 Complete (Handle, Filter & Core Utilities)**: Handle/filter options, delay settings, draggable selector, utility methods
+**✅ Phase 2.4 Complete (Handle, Filter & Core Utilities)**: Handle/filter options, delay settings, draggable selector,
+utility methods
 
-**✅ Phase 2.5 Complete (Advanced Behavior)**: Swap thresholds, direction detection, event callbacks, data management, visual options, fallback structure
+**✅ Phase 2.5 Complete (Advanced Behavior)**: Swap thresholds, direction detection, event callbacks, data management,
+visual options, fallback structure
 
-**✅ Phase 3 Complete (Animation System)**: FLIP animations, configurable duration/easing, E2E test synchronization, cross-browser compatibility
+**✅ Phase 3 Complete (Animation System)**: FLIP animations, configurable duration/easing, E2E test synchronization,
+cross-browser compatibility
 
 **✅ Phase 4.1 Complete (Clone Feature)**: `pull: 'clone'` and `revertClone` implemented
 
-**✅ Phase 4.2 Complete (Plugin Architecture)**: AutoScroll, MultiDrag (core-native), Swap, MarqueeSelect plugins implemented
+**✅ Phase 4.2 Complete (Plugin Architecture)**: AutoScroll, MultiDrag (core-native), Swap, MarqueeSelect plugins
+implemented
 
 **✅ Phase 5 Complete (API Compatibility)**:
+
 - `Sortable.mount(plugin)` — static plugin registration ✅
 - `save()` / `store` option — persistence/serialization ✅
 - `setData` — custom dataTransfer configuration ✅
 - **OnSpill** plugin — revert/remove on drag outside sortable areas ✅
 
 **📋 Post-v2.0 (Future)**:
+
 - Framework integrations (React, Vue, Angular)
 
 **Current Status**:
+
 - **397 E2E tests passing, 198 unit tests passing** - Comprehensive test coverage
 - **Production-ready core functionality** with smooth FLIP animations
 - **Full v1.x feature parity achieved** — all SortableJS options, methods, events, and plugins implemented
-- **Modern features beyond v1.x**: Full accessibility, TypeScript types, pointer events, multi-touch, marquee selection, mobile touch UX
+- **Modern features beyond v1.x**: Full accessibility, TypeScript types, pointer events, multi-touch, marquee selection,
+  mobile touch UX
 
-**Key Achievement**: Complete feature parity with SortableJS v1.x plus modern TypeScript-first features not available in the original
+**Key Achievement**: Complete feature parity with SortableJS v1.x plus modern TypeScript-first features not available in
+the original
 
 ## Migration Strategy
 
@@ -637,20 +649,29 @@ behavior.
 #### Implementation Notes (December 2024):
 
 **Completed Features:**
-1. **Swap Threshold System**: Implemented opt-in swap threshold logic that defaults to undefined for backward compatibility. When set, calculates overlap percentage based on direction (vertical/horizontal) and respects invertSwap and invertedSwapThreshold options.
 
-2. **Event Callbacks**: Added onChoose, onSort, onChange, and onMove callbacks with proper event data. Created MoveEvent interface with detailed position information (draggedRect, targetRect, relatedRect).
+1. **Swap Threshold System**: Implemented opt-in swap threshold logic that defaults to undefined for backward
+   compatibility. When set, calculates overlap percentage based on direction (vertical/horizontal) and respects
+   invertSwap and invertedSwapThreshold options.
+
+2. **Event Callbacks**: Added onChoose, onSort, onChange, and onMove callbacks with proper event data. Created MoveEvent
+   interface with detailed position information (draggedRect, targetRect, relatedRect).
 
 3. **Direction Detection**: Supports both automatic detection and manual override through the `direction` option.
 
 **Key Learnings:**
-- **Backward Compatibility**: Made swap threshold undefined by default rather than defaulting to 1.0, ensuring existing behavior isn't changed unless explicitly configured.
-- **Test Challenges**: E2E tests for swap behavior and events require proper CSS positioning for getBoundingClientRect to work correctly. Tests are currently skipped with detailed TODO comments.
-- **TypeScript in Tests**: Required extensive ESLint disable comments and type assertions in test files. Created `types.d.ts` for Window interface extensions.
+
+- **Backward Compatibility**: Made swap threshold undefined by default rather than defaulting to 1.0, ensuring existing
+  behavior isn't changed unless explicitly configured.
+- **Test Challenges**: E2E tests for swap behavior and events require proper CSS positioning for getBoundingClientRect
+  to work correctly. Tests are currently skipped with detailed TODO comments.
+- **TypeScript in Tests**: Required extensive ESLint disable comments and type assertions in test files. Created
+  `types.d.ts` for Window interface extensions.
 
 #### Phase 2.5 Final Status (December 2024):
 
 **Completed in Latest PR #12:**
+
 1. **Event Callbacks**: Added onUnchoose callback and prepared onClone hook
 2. **Data Management**: Implemented customizable dataIdAttr for toArray() method
 3. **Visual Options**: Added all visual customization properties to configuration
@@ -658,6 +679,7 @@ behavior.
 5. **Fallback Structure**: All fallback properties in place, ready for future implementation
 
 **Deferred to Future Phases:**
+
 - Full fallback system implementation (complex clone-based dragging)
 - setData method for DataTransfer customization (Phase 5)
 - Store functionality for persistence (Phase 5)
@@ -668,7 +690,8 @@ behavior.
 
 #### Current Status: ✅ COMPLETED & MERGED TO MAIN
 
-Animation system successfully implemented and deployed with FLIP technique for smooth transitions. All core animation features are working with comprehensive test coverage and E2E tests passing.
+Animation system successfully implemented and deployed with FLIP technique for smooth transitions. All core animation
+features are working with comprehensive test coverage and E2E tests passing.
 
 #### Final Accomplishments:
 
@@ -722,13 +745,16 @@ Animation system successfully implemented and deployed with FLIP technique for s
 
 #### Current Status: ✅ Phase 4.1 COMPLETE (September 2025)
 
-Phase 4.1 clone functionality has been successfully implemented with comprehensive architecture and testing. The core clone feature is production-ready with one remaining HTML5 drag integration issue to resolve.
+Phase 4.1 clone functionality has been successfully implemented with comprehensive architecture and testing. The core
+clone feature is production-ready with one remaining HTML5 drag integration issue to resolve.
 
 #### Phase 4.1: Clone Functionality Implementation ✅ COMPLETED
 
-**Why Priority**: The demo page shows "Coming Soon" for clone functionality, and this is a core Sortable.js feature that many users rely on for copying items between lists.
+**Why Priority**: The demo page shows "Coming Soon" for clone functionality, and this is a core Sortable.js feature that
+many users rely on for copying items between lists.
 
 **Tasks Completed:**
+
 - [x] **Core Clone Logic Architecture** ✅ COMPLETED
   - [x] Created GroupManager class for group configuration and clone detection
   - [x] Added support for `group.pull: 'clone'` option in group configuration
@@ -759,19 +785,22 @@ Phase 4.1 clone functionality has been successfully implemented with comprehensi
 #### Key Achievements:
 
 **✅ Robust Clone Architecture:**
+
 - **GroupManager**: Comprehensive group configuration management with clone detection
 - **Type Safety**: Full TypeScript support for clone operations and group configurations
 - **Event System**: Complete clone event integration with pullMode tracking
 - **Memory Management**: Proper clone cleanup and lifecycle management
 
 **✅ Production-Ready Core:**
+
 - All unit tests pass (87 total, +4 new tests)
-- No regressions in existing functionality 
+- No regressions in existing functionality
 - Independent groups work correctly (5/5 E2E tests passing)
 - Shared groups maintain functionality (7/7 E2E tests passing)
 - Basic sortable operations unaffected (6/6 E2E tests passing)
 
 **🔧 Critical Fix Applied:**
+
 - **GroupManager Logic**: Fixed regression where simple string groups were too permissive
 - **Independent Groups**: Restored proper isolation between different group names
 - **Backward Compatibility**: Maintains original Sortable.js group behavior
@@ -1438,34 +1467,41 @@ long-term maintenance.
 
 ### 🎉 Major Milestone Achieved
 
-**Phase 4.2 Complete**: Comprehensive plugin architecture system successfully implemented with full plugin lifecycle management, type safety, and production-ready plugins.
+**Phase 4.2 Complete**: Comprehensive plugin architecture system successfully implemented with full plugin lifecycle
+management, type safety, and production-ready plugins.
 
 ### 🚀 Recently Completed: Plugin Architecture System
 
-**Major Achievement**: Successfully transitioned from a monolithic architecture to a modern, extensible plugin-based system that maintains backward compatibility while enabling powerful extensibility.
+**Major Achievement**: Successfully transitioned from a monolithic architecture to a modern, extensible plugin-based
+system that maintains backward compatibility while enabling powerful extensibility.
 
-**What Was Delivered**: Complete plugin management system with PluginSystem class, three core plugins (AutoScrollPlugin, MultiDragPlugin, SwapPlugin), and comprehensive TypeScript support.
+**What Was Delivered**: Complete plugin management system with PluginSystem class, three core plugins (AutoScrollPlugin,
+MultiDragPlugin, SwapPlugin), and comprehensive TypeScript support.
 
 #### Phase 4.2 Technical Achievements:
 
 **🏗️ Architecture Transformation**:
+
 - Successfully transitioned from monolithic codebase to modular plugin architecture
 - Maintained 100% backward compatibility while enabling modern extensibility
 - Plugin system supports instance-specific installations with proper isolation
 - Memory-safe implementation using WeakMap for instance tracking
 
 **🔧 Core Plugin Development**:
+
 - **AutoScrollPlugin**: Intelligent edge detection with configurable sensitivity and speed
 - **MultiDragPlugin**: Complete multi-item selection and dragging with keyboard and mouse support
 - **SwapPlugin**: Advanced swap-based sorting with threshold detection and animation support
 
 **🎯 Developer Experience**:
+
 - Comprehensive TypeScript support with strict type checking
 - Rich IntelliSense with method signatures and documentation
 - Plugin development utilities and base classes
 - Extensive JSDoc documentation with examples
 
 **🧪 Quality & Testing**:
+
 - 127 total unit tests (106 existing + 21 new plugin tests) - all passing
 - Comprehensive E2E test coverage for plugin scenarios
 - CI/CD pipeline with automated type checking and linting
@@ -1500,6 +1536,7 @@ long-term maintenance.
 ### 📋 Current Status Summary
 
 **✅ Production-Ready Features**:
+
 - Core drag-and-drop functionality with FLIP animations
 - Complete accessibility support (keyboard navigation, ARIA, screen readers)
 - Modern input handling (mouse, touch, pen, multi-touch)
@@ -1510,6 +1547,7 @@ long-term maintenance.
 - Comprehensive TypeScript support
 
 **✅ Quality Metrics**:
+
 - **127 unit tests passing** (106 core + 21 plugin tests)
 - **0 TypeScript compilation errors**
 - **0 ESLint violations**
@@ -1517,6 +1555,7 @@ long-term maintenance.
 - **Cross-browser compatibility** verified (Chrome, Firefox, Safari)
 
 **✅ Developer Experience**:
+
 - Rich TypeScript IntelliSense with comprehensive type definitions
 - Extensive JSDoc documentation with examples
 - Modern build system (Vite + Rollup)
@@ -1525,6 +1564,7 @@ long-term maintenance.
 ### 🚀 Next Steps & Future Phases
 
 **🎯 Immediate Priority: Production Readiness (Phase 5)**
+
 - Performance optimization and benchmarking
 - Bundle size optimization (target <25KB gzipped)
 - Framework integration examples (React, Vue, Angular)
@@ -1532,6 +1572,7 @@ long-term maintenance.
 - Beta testing with key users
 
 **📋 Phase 5: API Compatibility & Production Release**
+
 - [ ] Legacy API compatibility layer for seamless migration
 - [ ] Comprehensive migration tools and documentation
 - [ ] Performance comparison with v1.x (target 30% improvement)
@@ -1539,6 +1580,7 @@ long-term maintenance.
 - [ ] Production release candidate preparation
 
 **🔮 Post-Release Enhancements**
+
 - [ ] Framework-specific packages (React, Vue, Angular wrappers)
 - [ ] Advanced plugin development tools and scaffolding
 - [ ] Performance monitoring and analytics integration
@@ -1557,4 +1599,6 @@ long-term maintenance.
 6. **✅ Developer Experience**: Rich IntelliSense, documentation, and modern development tools
 7. **✅ Quality**: Comprehensive testing, CI/CD automation, and code quality enforcement
 
-**Ready for Production**: With Phase 4.2 complete, Resortable now offers a more maintainable, performant, and developer-friendly alternative to Sortable.js v1.x while maintaining API compatibility and adding significant modern features.
+**Ready for Production**: With Phase 4.2 complete, Resortable now offers a more maintainable, performant, and
+developer-friendly alternative to Sortable.js v1.x while maintaining API compatibility and adding significant modern
+features.

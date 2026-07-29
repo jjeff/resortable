@@ -1,30 +1,32 @@
 # Documentation Guidelines for Resortable
 
-This document provides guidelines for writing excellent JSDoc comments that generate both great VS Code IntelliSense and comprehensive documentation.
+This document provides guidelines for writing excellent JSDoc comments that generate both great VS Code IntelliSense and
+comprehensive documentation.
 
 ## JSDoc Comment Structure
 
 ### Basic Structure
-```typescript
+
+````typescript
 /**
  * Brief one-line description
- * 
+ *
  * @remarks
  * Detailed explanation of the functionality, including important notes,
  * behavioral details, and any caveats developers should know about.
- * 
+ *
  * @param paramName - Description of the parameter
  * @returns Description of what is returned
- * 
+ *
  * @throws {@link ErrorClass}
  * When this error occurs and why
- * 
+ *
  * @example Basic usage
  * ```typescript
  * // Simple example showing basic usage
  * const result = myFunction('example');
  * ```
- * 
+ *
  * @example Advanced usage
  * ```typescript
  * // More complex example with full configuration
@@ -33,16 +35,17 @@ This document provides guidelines for writing excellent JSDoc comments that gene
  *   option2: 'value'
  * });
  * ```
- * 
+ *
  * @see {@link RelatedFunction} for related functionality
  * @since 2.0.0
  * @public
  */
-```
+````
 
 ## Key Tags to Use
 
 ### Visibility Tags
+
 - `@public` - Public API (appears in docs)
 - `@internal` - Internal use only (hidden from docs)
 - `@beta` - Beta/experimental features
@@ -50,6 +53,7 @@ This document provides guidelines for writing excellent JSDoc comments that gene
 - `@deprecated` - Mark deprecated features
 
 ### Documentation Tags
+
 - `@param` - Parameter descriptions
 - `@returns` - Return value description
 - `@throws` - Exceptions that may be thrown
@@ -59,6 +63,7 @@ This document provides guidelines for writing excellent JSDoc comments that gene
 - `@since` - Version when feature was added
 
 ### Type-Related Tags
+
 - `@defaultValue` - Default values for parameters
 - `@readonly` - Read-only properties
 - `@override` - Overridden methods
@@ -66,19 +71,21 @@ This document provides guidelines for writing excellent JSDoc comments that gene
 ## Best Practices
 
 ### 1. Write for Your Audience
+
 - **VS Code Users**: Focus on parameter types, return values, and brief descriptions
 - **Documentation Readers**: Provide comprehensive examples and explanations
 
 ### 2. Use Examples Liberally
-```typescript
+
+````typescript
 /**
  * Creates a new sortable list
- * 
+ *
  * @example Basic sortable list
  * ```typescript
  * const sortable = new Sortable(document.getElementById('list'));
  * ```
- * 
+ *
  * @example With configuration options
  * ```typescript
  * const sortable = new Sortable(element, {
@@ -87,7 +94,7 @@ This document provides guidelines for writing excellent JSDoc comments that gene
  *   onEnd: (evt) => console.log('Sorting complete')
  * });
  * ```
- * 
+ *
  * @example Multi-drag enabled
  * ```typescript
  * const multiDragSortable = new Sortable(element, {
@@ -96,10 +103,12 @@ This document provides guidelines for writing excellent JSDoc comments that gene
  * });
  * ```
  */
-```
+````
 
 ### 3. Link Related Items
+
 Use `{@link}` tags to create connections:
+
 ```typescript
 /**
  * @see {@link SortableOptions} for configuration details
@@ -109,47 +118,52 @@ Use `{@link}` tags to create connections:
 ```
 
 ### 4. Document State and Side Effects
+
 ```typescript
 /**
  * Destroys the sortable instance
- * 
+ *
  * @remarks
  * After calling this method:
  * - All event listeners will be removed
  * - The instance should not be used again
  * - The DOM element returns to its original state
- * 
+ *
  * This method is safe to call multiple times.
  */
 ```
 
 ### 5. Use Proper Categorization
+
 Organize related functionality with `@category` tags:
+
 ```typescript
 /**
  * @category Core
  */
-export class Sortable { }
+export class Sortable {}
 
 /**
  * @category Animation
  */
-export class AnimationManager { }
+export class AnimationManager {}
 
 /**
  * @category Utils
  */
-export function debounce() { }
+export function debounce() {}
 ```
 
 ## Documentation Testing
 
 ### VS Code Testing
+
 1. Hover over functions to see IntelliSense
 2. Check parameter hints while typing
 3. Verify examples render correctly
 
 ### Generated Docs Testing
+
 ```bash
 # Build documentation
 npm run docs:build
@@ -161,15 +175,16 @@ npm run docs:serve
 ## Common Patterns
 
 ### Options Objects
-```typescript
+
+````typescript
 /**
  * Configuration options for sortable behavior
- * 
+ *
  * @example Minimal configuration
  * ```typescript
  * { animation: 150 }
  * ```
- * 
+ *
  * @example Complete configuration
  * ```typescript
  * {
@@ -185,17 +200,18 @@ interface SortableOptions {
    * Animation duration in milliseconds
    * @defaultValue 150
    */
-  animation?: number;
+  animation?: number
 }
-```
+````
 
 ### Event Handlers
-```typescript
+
+````typescript
 /**
  * Callback fired when sorting ends
- * 
+ *
  * @param event - Event object containing drag details
- * 
+ *
  * @example
  * ```typescript
  * onEnd: (evt) => {
@@ -205,9 +221,10 @@ interface SortableOptions {
  * ```
  */
 onEnd?: (event: SortableEvent) => void;
-```
+````
 
 ### Error Documentation
+
 ```typescript
 /**
  * @throws {@link SortableError}
@@ -218,4 +235,5 @@ onEnd?: (event: SortableEvent) => void;
  */
 ```
 
-This documentation system ensures developers get excellent IntelliSense support while also generating comprehensive API documentation for the project website.
+This documentation system ensures developers get excellent IntelliSense support while also generating comprehensive API
+documentation for the project website.

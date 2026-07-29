@@ -14,14 +14,7 @@
   "excludeInternal": false,
   "categorizeByGroup": true,
   "defaultCategory": "Other",
-  "categoryOrder": [
-    "Core",
-    "Animation",
-    "Plugins", 
-    "Utils",
-    "Types",
-    "Other"
-  ],
+  "categoryOrder": ["Core", "Animation", "Plugins", "Utils", "Types", "Other"],
   "sort": ["source-order"],
   "kindSortOrder": [
     "Document",
@@ -83,12 +76,7 @@
     "@defaultValue",
     "@typeParam"
   ],
-  "inlineTags": [
-    "@link",
-    "@linkcode",
-    "@linkplain",
-    "@inheritDoc"
-  ],
+  "inlineTags": ["@link", "@linkcode", "@linkplain", "@inheritDoc"],
   "modifierTags": [
     "@override",
     "@virtual",
