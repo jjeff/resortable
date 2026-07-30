@@ -1,3 +1,10 @@
+## 2.2.0 (2026-07-30)
+
+* feat(core): duplicateKey option — hold a modifier to duplicate on drop (#146) ([6e94d0d](https://github.com/jjeff/resortable/commit/6e94d0d)), closes [#146](https://github.com/jjeff/resortable/issues/146)
+* chore: make format:check actually run Prettier (#147) ([378a14e](https://github.com/jjeff/resortable/commit/378a14e)), closes [#147](https://github.com/jjeff/resortable/issues/147)
+* ci: run the full Chromium/Firefox/WebKit matrix on Linux for every PR (#143) ([7fbd137](https://github.com/jjeff/resortable/commit/7fbd137)), closes [#143](https://github.com/jjeff/resortable/issues/143)
+* ci: run the macOS e2e leg on PRs, add ci-ok gate, fix the autoscroll fixture (#145) ([6dd4a10](https://github.com/jjeff/resortable/commit/6dd4a10)), closes [#140](https://github.com/jjeff/resortable/issues/140) [#140](https://github.com/jjeff/resortable/issues/140) [#134](https://github.com/jjeff/resortable/issues/134) [#140](https://github.com/jjeff/resortable/issues/140) [#143](https://github.com/jjeff/resortable/issues/143) [#140](https://github.com/jjeff/resortable/issues/140) [#140](https://github.com/jjeff/resortable/issues/140)
+
 ## Unreleased
 
 * feat(core): add `duplicateKey` option to duplicate item(s) on drop instead of moving
