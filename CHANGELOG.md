@@ -1,3 +1,7 @@
+## <small>2.2.2 (2026-07-31)</small>
+
+* fix(duplicate): preview the copy and show a copy cursor while duplicateKey is held (#150) ([62d0639](https://github.com/jjeff/resortable/commit/62d0639)), closes [#150](https://github.com/jjeff/resortable/issues/150) [#150](https://github.com/jjeff/resortable/issues/150)
+
 ## <small>2.2.1 (2026-07-31)</small>
 
 * Merge pull request #149 from jjeff/fix/end-event-pullmode ([66e137b](https://github.com/jjeff/resortable/commit/66e137b)), closes [#149](https://github.com/jjeff/resortable/issues/149)
