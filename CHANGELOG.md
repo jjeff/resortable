@@ -1,3 +1,8 @@
+## <small>2.2.1 (2026-07-31)</small>
+
+* Merge pull request #149 from jjeff/fix/end-event-pullmode ([66e137b](https://github.com/jjeff/resortable/commit/66e137b)), closes [#149](https://github.com/jjeff/resortable/issues/149)
+* fix: report pullMode on the end event so duplicate drops reach onEnd consumers ([15438cf](https://github.com/jjeff/resortable/commit/15438cf))
+
 ## 2.2.0 (2026-07-30)
 
 * feat(core): duplicateKey option — hold a modifier to duplicate on drop (#146) ([6e94d0d](https://github.com/jjeff/resortable/commit/6e94d0d)), closes [#146](https://github.com/jjeff/resortable/issues/146)
