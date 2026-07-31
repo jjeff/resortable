@@ -103,12 +103,14 @@ describe('duplicateKey', () => {
   it('same-zone alt-drag duplicates: original stays put, copy lands at the drop slot', () => {
     const ul = makeList(4)
     const cloneSpy = vi.fn()
+    const endSpy = vi.fn()
     sortable = new Sortable(ul, {
       draggable: '.item',
       animation: 0,
       fallbackTolerance: 0,
       duplicateKey: 'alt',
       onClone: cloneSpy,
+      onEnd: endSpy,
     })
 
     const dragged = ul.children[0] as HTMLElement
@@ -142,17 +144,24 @@ describe('duplicateKey', () => {
     )
     expect(copy).toBeTruthy()
     expect(payload.clone).toBe(copy)
+
+    // `end` reports the outcome too — consumers wired only to onEnd (the
+    // React adapter) must be able to tell this was a duplicate.
+    expect(endSpy).toHaveBeenCalledTimes(1)
+    expect((endSpy.mock.calls[0][0] as SortableEvent).pullMode).toBe('clone')
   })
 
   it('same-zone drag without the modifier is a plain move (regression)', () => {
     const ul = makeList(4)
     const cloneSpy = vi.fn()
+    const endSpy = vi.fn()
     sortable = new Sortable(ul, {
       draggable: '.item',
       animation: 0,
       fallbackTolerance: 0,
       duplicateKey: 'alt',
       onClone: cloneSpy,
+      onEnd: endSpy,
     })
 
     const dragged = ul.children[0] as HTMLElement
@@ -165,6 +174,9 @@ describe('duplicateKey', () => {
 
     expect(ul.children.length).toBe(4)
     expect(cloneSpy).not.toHaveBeenCalled()
+    // Plain same-zone reorder: end carries no pullMode.
+    expect(endSpy).toHaveBeenCalledTimes(1)
+    expect((endSpy.mock.calls[0][0] as SortableEvent).pullMode).toBeUndefined()
   })
 
   it('arms duplicate mid-drag on a keydown alone, no pointermove required', () => {
@@ -298,6 +310,7 @@ describe('duplicateKey', () => {
   it('controlled mode same-zone duplicate: zero consumer-DOM mutation, offset-adjusted newIndex', () => {
     const ul = makeList(4)
     const cloneSpy = vi.fn()
+    const endSpy = vi.fn()
     sortable = new Sortable(ul, {
       controlled: true,
       draggable: '.item',
@@ -305,6 +318,7 @@ describe('duplicateKey', () => {
       fallbackTolerance: 0,
       duplicateKey: 'alt',
       onClone: cloneSpy,
+      onEnd: endSpy,
     })
 
     const idsBefore = Array.from(ul.children).map(
@@ -331,6 +345,15 @@ describe('duplicateKey', () => {
     // pending.index (2, hovering children[2]) + offset (1, since the drag's
     // own start index 0 sits <= 2 and so shifts the landing spot by one).
     expect(payload.newIndex).toBe(3)
+
+    // `end` carries the same outcome — controlled consumers (the React
+    // adapter) build their commit intent from this one event, so it must
+    // report pullMode AND the adjusted landing index, not the raw pending.
+    expect(endSpy).toHaveBeenCalledTimes(1)
+    const endPayload = endSpy.mock.calls[0][0] as SortableEvent
+    expect(endPayload.pullMode).toBe('clone')
+    expect(endPayload.newIndex).toBe(3)
+    expect(endPayload.newIndexes).toEqual([3])
   })
 
   it('duplicateKey unset: alt held has no effect (fully inert, plain move)', () => {

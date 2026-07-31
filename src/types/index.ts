@@ -789,6 +789,10 @@ export interface SortableEvent {
    *
    * On a `clone` event fired by `duplicateKey`, `to === from` marks an
    * in-place (same-list) duplicate rather than a cross-zone copy.
+   *
+   * The `end` event reports the drag's outcome here too: `'clone'` for any
+   * duplicate/clone drop (same-list or cross-zone), the source's pull mode
+   * for a cross-zone move, and undefined for a plain same-list reorder.
    */
   pullMode?: boolean | 'clone' | 'move'
 
