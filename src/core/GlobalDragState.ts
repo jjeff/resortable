@@ -301,6 +301,18 @@ class GlobalDragStateManager {
         )
       : -1
 
+    // Same outcome-reporting contract as the controlled path: `end` carries
+    // `pullMode` so a consumer wired only to onEnd can tell a duplicate/clone
+    // drop from a move without also subscribing to clone/remove.
+    const endPullMode =
+      isDifferentZone && putTarget
+        ? activeDrag.pullMode === 'clone'
+          ? ('clone' as const)
+          : activeDrag.pullMode || true
+        : activeDrag.duplicate && activeDrag.clones?.[0]
+          ? ('clone' as const)
+          : undefined
+
     activeDrag.eventSystem.emit('end', {
       item: activeDrag.items[0],
       items: activeDrag.items,
@@ -308,6 +320,7 @@ class GlobalDragStateManager {
       to: putTarget?.zone || activeDrag.fromZone,
       oldIndex: activeDrag.startIndices[0],
       newIndex: finalIndex,
+      ...(endPullMode !== undefined && { pullMode: endPullMode }),
     })
 
     this.activeDrags.delete(dragId)
@@ -345,18 +358,25 @@ class GlobalDragStateManager {
       newIndexes,
     }
 
+    // `end` must report the drag's OUTCOME (`pullMode`, and for a same-zone
+    // duplicate the offset-adjusted indexes) — it is the one event the React
+    // adapter builds its SortIntent from, so a bare `base` here silently
+    // downgraded every controlled duplicate to a move.
+    let endEvent: typeof base & { pullMode?: boolean | 'clone' | 'move' } = base
+
     if (isDifferentZone) {
       const isClone =
         activeDrag.pullMode === 'clone' || activeDrag.duplicate === true
       const pullMode = isClone
         ? ('clone' as const)
         : activeDrag.pullMode || true
+      endEvent = { ...base, pullMode }
       if (isClone) {
         // No clone node exists in controlled mode — the event reports the
         // intent and the consumer's state insert IS the clone.
-        activeDrag.eventSystem.emit('clone', { ...base, pullMode })
+        activeDrag.eventSystem.emit('clone', endEvent)
       } else {
-        activeDrag.eventSystem.emit('remove', { ...base, pullMode })
+        activeDrag.eventSystem.emit('remove', endEvent)
       }
       // Fire add on the target's event system (skip if the placeholder
       // ended somewhere we never registered — shouldn't happen, but don't
@@ -366,7 +386,7 @@ class GlobalDragStateManager {
           ? putTarget.dragManager.events
           : null
       if (targetEvents && targetEvents !== activeDrag.eventSystem) {
-        targetEvents.emit('add', { ...base, pullMode })
+        targetEvents.emit('add', endEvent)
       }
     } else if (activeDrag.duplicate && pending) {
       // Same-zone controlled duplicate: no DOM to read from, so the copy's
@@ -392,6 +412,7 @@ class GlobalDragStateManager {
         newIndexes: duplicateNewIndexes,
         pullMode: 'clone' as const,
       }
+      endEvent = duplicateBase
       // No clone node exists in controlled mode.
       activeDrag.eventSystem.emit('clone', duplicateBase)
       activeDrag.eventSystem.emit('sort', duplicateBase)
@@ -400,7 +421,7 @@ class GlobalDragStateManager {
     }
 
     activeDrag.eventSystem.emit('unchoose', { ...base, newIndex: -1 })
-    activeDrag.eventSystem.emit('end', base)
+    activeDrag.eventSystem.emit('end', endEvent)
   }
 
   /** Check if a specific drag can be accepted by a group */
