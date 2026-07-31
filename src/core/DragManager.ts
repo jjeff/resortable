@@ -10,6 +10,7 @@ import { type SortableEventSystem } from './EventSystem.js'
 import { globalDragState, type ActiveDrag } from './GlobalDragState.js'
 import {
   hideControlled,
+  setControlledHidden,
   restoreControlledHidden,
   isModifierHeld,
   createDragClone,
@@ -35,6 +36,11 @@ export class DragManager implements DragManagerInterface {
   // the drag has NOT yet committed (gated by `fallbackTolerance`). Distinct
   // from `dragElement`, which only becomes non-null at commit. PR3 #29.
   private pointerCaptureTarget: HTMLElement | null = null
+  // `dragElement` holds pointer capture, and the browser draws the cursor
+  // from the capture target for the whole drag — so its inline `cursor` is
+  // the only one that shows while dragging. Stash the pre-drag value so
+  // duplicate mode can swap in `copy` and put it back afterwards.
+  private dragElementPreviousCursor = ''
   // True when `choose` was already emitted during the capture phase (legacy
   // parity: choose fires at tap start). commitPointerDrag must then not
   // re-emit it, and a tolerance-abandoned tap must emit `unchoose`.
@@ -1590,6 +1596,10 @@ export class DragManager implements DragManagerInterface {
     } catch (_err) {
       // This is expected for synthetic pointer events in Firefox - continue without capture
     }
+    // `target` now holds pointer capture, which makes it the element the
+    // browser draws the cursor from for the rest of the drag — see
+    // syncDuplicate, which swaps in `copy` while duplicate mode is armed.
+    this.dragElementPreviousCursor = target.style.cursor
     this.dragElement = target
     this.isPointerDragging = true
     this.activePointerId = e.pointerId
@@ -2090,6 +2100,14 @@ export class DragManager implements DragManagerInterface {
   }
 
   private cleanupPointerDrag(revert = false, isDrop = false): void {
+    // Undo the drag-time cursor before anything else can bail out early — a
+    // stuck `cursor: copy` on the item would outlive the drag, and with the
+    // gesture over there'd be nothing left to clear it.
+    if (this.dragElement) {
+      this.dragElement.style.cursor = this.dragElementPreviousCursor
+      this.dragElementPreviousCursor = ''
+    }
+
     // A pointerup/pointercancel can land in the same frame as the last
     // autoscroll scroll tick, before the deferred scroll-replay (#134) has
     // run. Flush it synchronously here, before any other teardown, while
@@ -2335,6 +2353,41 @@ export class DragManager implements DragManagerInterface {
     this.ghostManager
       .getPlaceholderElement()
       ?.classList.toggle(DUPLICATE_CLASS, active)
+    // Preview what the drop will actually do. A move takes the item out of
+    // its home slot, so controlled mode hides it there and the placeholder
+    // shows where it lands. A duplicate LEAVES the original in place, so
+    // while the modifier is armed the original is un-hidden and the
+    // placeholder previews the incoming copy instead — the preview now
+    // matches the post-drop state in both modes, and flips live as the
+    // modifier is pressed and released.
+    //
+    // ponytail: the un-hide/re-hide is a raw style write, so the list
+    // reflows by one item-height without a FLIP animation. Route through
+    // AnimationManager.animateReorder if that reads as a jump in practice.
+    if (this.controlled && this.hiddenDisplays) {
+      setControlledHidden(this.hiddenDisplays, !active)
+    }
+    // Cursor feedback, on the dragged item because it holds pointer capture
+    // and the browser draws the cursor from the capture target — styling
+    // anything else (ghost, placeholder, the element under the pointer) is
+    // simply not visible mid-drag.
+    //
+    // This works precisely BECAUSE of the un-hide above: a capture target
+    // with `display: none` has no layout box and paints no cursor at all, so
+    // in controlled mode the copy cursor only becomes drawable once the
+    // original is visible again. The two halves of duplicate feedback are the
+    // same mechanism. (Uncontrolled drags never hide the item, so the cursor
+    // works there without the un-hide.)
+    //
+    // Inline rather than a class so `duplicateKey` signals itself with no
+    // stylesheet required from the consumer; restored in cleanupPointerDrag.
+    // Guarded on change because syncDuplicate runs on every pointermove.
+    if (this.dragElement) {
+      const next = active ? 'copy' : this.dragElementPreviousCursor
+      if (this.dragElement.style.cursor !== next) {
+        this.dragElement.style.cursor = next
+      }
+    }
   }
 
   /**

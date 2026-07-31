@@ -178,6 +178,30 @@ export function hideControlled(items: HTMLElement[]): Map<HTMLElement, string> {
   return saved
 }
 
+/**
+ * Re-hide or un-hide the elements tracked by a {@link hideControlled} map,
+ * keeping the saved `display` values so the drag can toggle repeatedly and
+ * still restore exactly at the end.
+ *
+ * This previews duplicate mode: while the `duplicateKey` modifier is held the
+ * drop will LEAVE the original where it is, so the original must stay visible
+ * in its home slot and the placeholder alone previews the incoming copy.
+ * Releasing the modifier re-hides it and the preview reverts to a move.
+ *
+ * Index math is unaffected — `DropZone.getVisibleItems` is always passed the
+ * dragged items as an explicit `exclude` argument, so a visible original is
+ * still excluded from `getControlledIndex`.
+ */
+export function setControlledHidden(
+  saved: Map<HTMLElement, string>,
+  hidden: boolean
+): void {
+  saved.forEach((display, item) => {
+    item.classList.toggle(CONTROLLED_HIDDEN_CLASS, hidden)
+    item.style.display = hidden ? 'none' : display
+  })
+}
+
 /** Restore elements hidden by {@link hideControlled}. */
 export function restoreControlledHidden(saved: Map<HTMLElement, string>): void {
   saved.forEach((display, item) => {
