@@ -1,3 +1,7 @@
+## 2.3.0 (2026-08-01)
+
+* feat(marquee): auto-scroll each scoped list's own container (#151) ([9c46f99](https://github.com/jjeff/resortable/commit/9c46f99)), closes [#151](https://github.com/jjeff/resortable/issues/151)
+
 ## <small>2.2.2 (2026-07-31)</small>
 
 * fix(duplicate): preview the copy and show a copy cursor while duplicateKey is held (#150) ([62d0639](https://github.com/jjeff/resortable/commit/62d0639)), closes [#150](https://github.com/jjeff/resortable/issues/150) [#150](https://github.com/jjeff/resortable/issues/150)

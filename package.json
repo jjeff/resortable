@@ -1,6 +1,6 @@
 {
   "name": "resortable",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "description": "Modern TypeScript rewrite of Sortable.js - reorderable drag-and-drop lists",
   "type": "module",
   "main": "dist/sortable.cjs",
