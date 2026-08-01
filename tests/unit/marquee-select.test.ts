@@ -1154,6 +1154,278 @@ describe('MarqueeSelectPlugin', () => {
     })
   })
 
+  describe('Per-list edge auto-scroll for multi-list scope', () => {
+    let wrapper: HTMLElement
+    let itemsA: HTMLElement[]
+    let itemsB: HTMLElement[]
+    let sortableA: SortableInstance
+    let sortableB: SortableInstance
+    let scrollByA: ReturnType<typeof vi.fn>
+    let scrollByB: ReturnType<typeof vi.fn>
+
+    /**
+     * Make `el` behave like a real overflow-y:auto column with room to
+     * scroll: a fixed viewport rect, scrollHeight > clientHeight, and a
+     * spy-able `scrollBy` (jsdom doesn't implement it at all).
+     */
+    function makeScrollable(
+      el: HTMLElement,
+      rect: DOMRect
+    ): ReturnType<typeof vi.fn> {
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(rect)
+      Object.defineProperty(el, 'scrollHeight', {
+        value: 600,
+        configurable: true,
+      })
+      Object.defineProperty(el, 'clientHeight', {
+        value: 200,
+        configurable: true,
+      })
+      el.scrollTop = 0
+      const scrollBy = vi.fn()
+      ;(el as unknown as { scrollBy: typeof scrollBy }).scrollBy = scrollBy
+      return scrollBy
+    }
+
+    beforeEach(async () => {
+      vi.useFakeTimers()
+      const { registerInstance } = await import(
+        '../../src/core/InstanceRegistry.js'
+      )
+
+      // Two independently-scrolling columns side by side under one
+      // marquee area (the Visibox two-column use case): A spans x 0-200,
+      // B spans x 210-410, same vertical band.
+      wrapper = document.createElement('div')
+      document.body.appendChild(wrapper)
+
+      itemsA = createItems(3)
+      itemsB = createItems(3)
+      sortableA = createMockSortable(itemsA)
+      sortableB = createMockSortable(itemsB)
+
+      wrapper.appendChild(sortableA.element)
+      wrapper.appendChild(sortableB.element)
+      registerInstance(sortableA.element, sortableA)
+      registerInstance(sortableB.element, sortableB)
+
+      scrollByA = makeScrollable(sortableA.element, new DOMRect(0, 0, 200, 200))
+      scrollByB = makeScrollable(
+        sortableB.element,
+        new DOMRect(210, 0, 200, 200)
+      )
+
+      mockItemRects(
+        itemsA,
+        itemsA.map((_, i) => ({
+          x: 10,
+          y: 10 + i * 50,
+          width: 180,
+          height: 40,
+        }))
+      )
+      mockItemRects(
+        itemsB,
+        itemsB.map((_, i) => ({
+          x: 220,
+          y: 10 + i * 50,
+          width: 180,
+          height: 40,
+        }))
+      )
+
+      vi.spyOn(window, 'getComputedStyle').mockImplementation(
+        (el: Element) =>
+          ({
+            display: 'block',
+            visibility: 'visible',
+            opacity: '1',
+            overflowY:
+              el === sortableA.element || el === sortableB.element
+                ? 'auto'
+                : 'visible',
+          }) as CSSStyleDeclaration
+      )
+
+      plugin = MarqueeSelectPlugin.create({
+        marqueeArea: wrapper,
+        scope: [{ itemSelector: '.sortable-item' }],
+      })
+      plugin.install(sortableA)
+    })
+
+    afterEach(() => {
+      plugin.uninstall(sortableA)
+      wrapper.remove()
+      vi.useRealTimers()
+    })
+
+    it("auto-resolves each scoped list's own container, zero-config, and scrolls only the one near the pointer", () => {
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 5, clientY: 5 })
+      )
+      // Pointer over column A (x=100, inside 0-200), near its bottom edge
+      // (y=185, within the default 30px autoScrollDistance of rect.bottom=200).
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 100, clientY: 185 })
+      )
+
+      vi.advanceTimersByTime(16)
+      vi.advanceTimersByTime(16)
+
+      expect(scrollByA).toHaveBeenCalled()
+      expect(scrollByB).not.toHaveBeenCalled()
+      const calls = scrollByA.mock.calls as [number, number][]
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[1]).toBeGreaterThan(0) // scrolling down
+    })
+
+    it('scrolls the OTHER column when the pointer is near its edge instead', () => {
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 300, clientY: 5 })
+      )
+      // Pointer over column B (x=300, inside 210-410), near its bottom edge.
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 300, clientY: 185 })
+      )
+
+      vi.advanceTimersByTime(16)
+      vi.advanceTimersByTime(16)
+
+      expect(scrollByB).toHaveBeenCalled()
+      expect(scrollByA).not.toHaveBeenCalled()
+    })
+
+    it('re-runs hit-testing as a scoped column scrolls, selecting items the scroll reveals', () => {
+      // A 4th item in column A starts below the marquee's reach (y=250) —
+      // not selected yet. The scrollBy mock simulates it scrolling into
+      // view, the same way a real auto-scroll moves content under a
+      // stationary pointer; the plugin must re-hit-test to catch it.
+      const itemA4 = createItems(1)[0]
+      sortableA.element.appendChild(itemA4)
+      vi.spyOn(itemA4, 'getBoundingClientRect').mockReturnValue(
+        new DOMRect(10, 250, 180, 40)
+      )
+      scrollByA.mockImplementation(() => {
+        vi.spyOn(itemA4, 'getBoundingClientRect').mockReturnValue(
+          new DOMRect(10, 150, 180, 40)
+        )
+      })
+
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 5, clientY: 5 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 100, clientY: 185 })
+      )
+
+      for (let i = 0; i < 5; i++) vi.advanceTimersByTime(16)
+
+      const smA = sortableA.dragManager!.selectionManager
+      expect(smA.selectedElements.has(itemA4)).toBe(true)
+    })
+
+    it('does not double-drive a container that is BOTH the explicit scrollContainer and a scope-resolved target', () => {
+      plugin.uninstall(sortableA)
+      plugin = MarqueeSelectPlugin.create({
+        marqueeArea: wrapper,
+        scope: [{ itemSelector: '.sortable-item' }],
+        scrollContainer: sortableA.element,
+      })
+      plugin.install(sortableA)
+
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 5, clientY: 5 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 100, clientY: 185 })
+      )
+
+      vi.advanceTimersByTime(16)
+      vi.advanceTimersByTime(16)
+
+      // One scrollBy call per animation frame (anchored path only) — the
+      // scope resolver excludes a target that's already the explicit
+      // scrollContainer, so it must never be driven twice per frame.
+      expect(scrollByA.mock.calls.length).toBe(2)
+    })
+  })
+
+  describe('scrollContainer edge auto-scroll (regression)', () => {
+    let container: HTMLElement
+    let scrollBy: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      items = createItems(3)
+      sortable = createMockSortable(items)
+      container = sortable.element
+
+      vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(
+        new DOMRect(0, 0, 300, 200)
+      )
+      Object.defineProperty(container, 'scrollHeight', {
+        value: 600,
+        configurable: true,
+      })
+      Object.defineProperty(container, 'clientHeight', {
+        value: 200,
+        configurable: true,
+      })
+      Object.defineProperty(container, 'scrollWidth', {
+        value: 300,
+        configurable: true,
+      })
+      container.scrollTop = 0
+      scrollBy = vi.fn()
+      ;(container as unknown as { scrollBy: typeof scrollBy }).scrollBy =
+        scrollBy
+
+      mockItemRects(
+        items,
+        items.map((_, i) => ({ x: 10, y: 10 + i * 50, width: 180, height: 40 }))
+      )
+
+      vi.spyOn(window, 'getComputedStyle').mockImplementation(
+        () =>
+          ({
+            display: 'block',
+            visibility: 'visible',
+            opacity: '1',
+            position: 'relative',
+          }) as CSSStyleDeclaration
+      )
+
+      plugin = MarqueeSelectPlugin.create({
+        marqueeArea: container,
+        scrollContainer: container,
+      })
+      plugin.install(sortable)
+    })
+
+    afterEach(() => {
+      plugin.uninstall(sortable)
+      vi.useRealTimers()
+    })
+
+    it('still anchors the marquee to the container and auto-scrolls it near the bottom edge', () => {
+      container.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 5, clientY: 5 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 100, clientY: 185 })
+      )
+
+      vi.advanceTimersByTime(16)
+      vi.advanceTimersByTime(16)
+
+      expect(scrollBy).toHaveBeenCalled()
+      const calls = scrollBy.mock.calls as [number, number][]
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[1]).toBeGreaterThan(0)
+    })
+  })
+
   describe('Global area (html) behavior', () => {
     it('defers user-select disabling until threshold for global areas', () => {
       plugin = MarqueeSelectPlugin.create() // defaults to html

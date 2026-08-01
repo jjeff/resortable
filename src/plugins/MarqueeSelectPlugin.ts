@@ -14,6 +14,12 @@
  *  - Optional `scrollContainer`: the marquee anchors to the container's
  *    content (it stretches while the container scrolls) and dragging near
  *    the container's top/bottom edge auto-scrolls it
+ *  - Multi-list `scope` also edge-auto-scrolls each participating list's
+ *    OWN scrollable container, zero-config — every scoped instance's
+ *    nearest scrollable ancestor is resolved automatically and scrolls
+ *    independently as the pointer nears its top/bottom edge, so several
+ *    independently-scrolling columns under one marquee all edge-scroll
+ *    together. Works alongside (and separately from) `scrollContainer`.
  */
 
 import type {
@@ -72,6 +78,13 @@ export interface MarqueeSelectOptions {
    * each item's owning Sortable instance, and applies selection through
    * that instance (so per-instance `select` events fire normally). When
    * omitted, only the installing instance's own items participate.
+   *
+   * Also enables zero-config per-list edge auto-scroll: each participating
+   * instance's own nearest scrollable ancestor is resolved automatically
+   * and auto-scrolls independently as the pointer nears its top/bottom
+   * edge — no extra option needed, and it composes with `scrollContainer`
+   * (which continues to anchor the marquee to one specific container). Use
+   * `autoScrollDistance` / `autoScrollSpeed` to tune it.
    */
   scope?: MarqueeScopeEntry[]
   /**
@@ -79,11 +92,23 @@ export interface MarqueeSelectOptions {
    * appended inside it (content coordinates, so it stretches while the
    * container scrolls) and pointer positions near the container's top or
    * bottom edge auto-scroll it. HTMLElement or CSS selector.
+   *
+   * This is independent of the per-list auto-scroll `scope` enables: only
+   * this one container gets the content-coordinate anchoring (needed so
+   * the marquee rectangle stretches correctly while it scrolls); scoped
+   * instances' own containers auto-scroll without being anchored to.
    */
   scrollContainer?: HTMLElement | string
-  /** Distance (px) from the scrollContainer edge that triggers auto-scroll. Default: 30 */
+  /**
+   * Distance (px) from a container's edge that triggers auto-scroll —
+   * applies to `scrollContainer` and to every container auto-resolved via
+   * `scope`. Default: 30
+   */
   autoScrollDistance?: number
-  /** Auto-scroll speed in px per millisecond. Default: 0.3 */
+  /**
+   * Auto-scroll speed in px per millisecond — applies to `scrollContainer`
+   * and to every container auto-resolved via `scope`. Default: 0.3
+   */
   autoScrollSpeed?: number
 }
 
@@ -118,8 +143,12 @@ interface MarqueeState {
   subtractive: boolean
   /** Scope-entry index the marquee is locked to (null until first hit) */
   lockedKind: number | null
-  /** Edge auto-scroll direction currently engaged */
-  scrolling: 'up' | 'down' | false
+  /**
+   * Per-instance scrollable containers auto-resolved from a multi-list
+   * `scope`, captured at marquee start. Each edge-scrolls independently
+   * of (and in addition to) the explicit `scrollContainer` anchor.
+   */
+  scopeScrollTargets: HTMLElement[]
   scrollRaf: number | null
   /**
    * Scroll container's content size captured at marquee start. The marquee
@@ -176,7 +205,7 @@ function createDefaultState(): MarqueeState {
     additive: false,
     subtractive: false,
     lockedKind: null,
-    scrolling: false,
+    scopeScrollTargets: [],
     scrollRaf: null,
     contentLimit: null,
     holdTimer: null,
@@ -375,6 +404,56 @@ export class MarqueeSelectPlugin extends BasePlugin {
     return out
   }
 
+  /**
+   * Auto-resolve each participating scoped instance's own nearest
+   * scrollable container — zero-config per-list edge auto-scroll for
+   * multi-list `scope`. Only runs when `scope` is configured; single-list
+   * marquees rely on the explicit `scrollContainer` option instead. The
+   * explicit `scrollContainer`, if any, is excluded here since it's
+   * already driven separately (and additionally anchors the marquee
+   * rectangle — see `toMarqueePoint`).
+   */
+  private resolveScopeScrollTargets(
+    sortable: SortableInstance,
+    snapshot: Map<SortableInstance, Set<HTMLElement>>
+  ): HTMLElement[] {
+    if (!this.opts.scope) return []
+    const anchored = this.scrollElement.get(sortable)
+    const seen = new Set<HTMLElement>()
+    const targets: HTMLElement[] = []
+    for (const instance of snapshot.keys()) {
+      const container = this.nearestScrollableAncestor(instance.element)
+      if (!container || container === anchored || seen.has(container)) continue
+      seen.add(container)
+      targets.push(container)
+    }
+    return targets
+  }
+
+  /**
+   * Nearest scrollable ancestor of `root`, starting at `root` itself (a
+   * scoped list's own container is very commonly the scrollable element —
+   * e.g. an independently-scrolling column). Same overflow-and
+   * -actually-overflowing check `AutoScrollPlugin` uses for drag-time edge
+   * scroll, vertical-only to match this plugin's existing edge auto-scroll.
+   */
+  private nearestScrollableAncestor(
+    root: HTMLElement
+  ): HTMLElement | undefined {
+    let el: HTMLElement | null = root
+    while (el && el !== document.body && el !== document.documentElement) {
+      const style = window.getComputedStyle(el)
+      if (
+        (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+        el.scrollHeight > el.clientHeight
+      ) {
+        return el
+      }
+      el = el.parentElement
+    }
+    return undefined
+  }
+
   /** Selector matching ANY scoped item (alt+drag-on-item path). */
   private scopedItemSelector(sortable: SortableInstance): string {
     return this.scopeEntries(sortable)
@@ -446,6 +525,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
     e.preventDefault()
 
     const touchScroll = this.scrollElement.get(sortable)
+    const touchSnapshot = this.takeSnapshot(sortable)
     const state: MarqueeState = {
       ...createDefaultState(),
       contentLimit: touchScroll
@@ -458,7 +538,11 @@ export class MarqueeSelectPlugin extends BasePlugin {
       lastClientX: startX,
       lastClientY: startY,
       pointerId,
-      snapshot: this.takeSnapshot(sortable),
+      snapshot: touchSnapshot,
+      scopeScrollTargets: this.resolveScopeScrollTargets(
+        sortable,
+        touchSnapshot
+      ),
       isTouchHold: true,
     }
     state.lockedKind = this.kindOfSnapshot(sortable, state.snapshot)
@@ -721,6 +805,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       : null
 
     const start = this.toMarqueePoint(sortable, e.clientX, e.clientY)
+    const snapshot = this.takeSnapshot(sortable)
     const state: MarqueeState = {
       ...createDefaultState(),
       contentLimit,
@@ -731,7 +816,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
       lastClientX: e.clientX,
       lastClientY: e.clientY,
       pointerId: e.pointerId,
-      snapshot: this.takeSnapshot(sortable),
+      snapshot,
+      scopeScrollTargets: this.resolveScopeScrollTargets(sortable, snapshot),
       // Modifiers are cached at start (legacy parity): releasing shift/alt
       // mid-drag must not flip the mode and blow away the selection.
       additive: e.shiftKey,
@@ -869,7 +955,6 @@ export class MarqueeSelectPlugin extends BasePlugin {
       window.cancelAnimationFrame(state.scrollRaf)
       state.scrollRaf = null
     }
-    state.scrolling = false
 
     // Remove marquee element
     if (state.marqueeEl) {
@@ -915,50 +1000,96 @@ export class MarqueeSelectPlugin extends BasePlugin {
     }
   }
 
-  // ── Edge auto-scroll (scrollContainer only) ────────────────
+  // ── Edge auto-scroll (scrollContainer + scoped per-instance) ────────
 
   /**
-   * Auto-scroll the anchored container while the pointer sits near its
-   * top/bottom edge, stretching the marquee and re-hit-testing as content
-   * moves. Time-based speed (px/ms), not per-event steps.
+   * Auto-scroll every relevant container while the pointer sits near its
+   * top/bottom edge: the explicit anchored `scrollContainer` (unchanged
+   * behavior — it also re-anchors the marquee rectangle since the marquee
+   * lives inside it) PLUS every per-instance container auto-resolved from
+   * a multi-list `scope` (`state.scopeScrollTargets`), each scrolling
+   * independently so side-by-side columns can edge-scroll at the same
+   * time. Time-based speed (px/ms), not per-event steps.
    */
   private updateAutoScroll(
     sortable: SortableInstance,
     state: MarqueeState
   ): void {
-    const scroll = this.scrollElement.get(sortable)
-    if (!scroll || !state.active) return
+    if (!state.active) return
+    const anchored = this.scrollElement.get(sortable)
+    if (!anchored && state.scopeScrollTargets.length === 0) return
+    if (state.scrollRaf !== null) return
 
-    state.scrolling = this.scrollDirection(state, scroll)
-    if (!state.scrolling || state.scrollRaf !== null) return
+    // "Room to scroll down" on the anchored container is measured against
+    // the content captured at marquee start — the marquee element lives
+    // inside it and inflates the live scrollHeight, which made this chase
+    // a bottom edge of its own making. Scoped targets never host the
+    // marquee element, so their live scrollHeight is safe to read as-is.
+    const anchoredDirection = (): 'up' | 'down' | false =>
+      anchored
+        ? this.scrollDirection(
+            state.lastClientY,
+            anchored,
+            state.contentLimit?.h ?? anchored.scrollHeight
+          )
+        : false
 
-    // One loop at a time (guarded by scrollRaf). The frame timestamp lives
-    // in the closure — the loop is the only writer, so re-evaluating the
-    // direction each frame can never reset the clock (a reset made every
-    // elapsed read 0 and the marquee never actually scrolled).
+    const wantsScroll =
+      Boolean(anchoredDirection()) ||
+      state.scopeScrollTargets.some(
+        (target) => this.scopeAutoScrollDirection(state, target) !== false
+      )
+    if (!wantsScroll) return
+
+    // One loop at a time (guarded by scrollRaf), driving every target
+    // together. The frame timestamp lives in the closure — the loop is the
+    // only writer, so re-evaluating direction each frame can never reset
+    // the clock (a reset made every elapsed read 0 and nothing scrolled).
     let last = 0
     const tick = (now: number): void => {
       state.scrollRaf = null
       if (!state.active) return
-      state.scrolling = this.scrollDirection(state, scroll)
-      if (!state.scrolling) return
 
       const elapsed = last === 0 ? 0 : now - last
       last = now
       const delta = Math.round(elapsed * this.opts.autoScrollSpeed)
-      scroll.scrollBy(0, state.scrolling === 'up' ? -delta : delta)
 
-      // The container moved under a stationary pointer: recompute the
-      // current corner from the last raw pointer position, redraw, and
-      // re-run the (throttled) hit test.
-      const point = this.toMarqueePoint(
-        sortable,
-        state.lastClientX,
-        state.lastClientY
-      )
-      state.currentX = point.x
-      state.currentY = point.y
-      this.updateMarqueeVisual(state)
+      let scrolledAnchored = false
+      let scrolledAny = false
+
+      const aDir = anchoredDirection()
+      if (aDir && anchored) {
+        scrolledAny = true
+        scrolledAnchored = true
+        anchored.scrollBy(0, aDir === 'up' ? -delta : delta)
+      }
+
+      for (const target of state.scopeScrollTargets) {
+        const dir = this.scopeAutoScrollDirection(state, target)
+        if (dir) {
+          scrolledAny = true
+          target.scrollBy(0, dir === 'up' ? -delta : delta)
+        }
+      }
+
+      if (!scrolledAny) return
+
+      // A container moved under a stationary pointer: re-run the
+      // (throttled) hit test so every scoped list's items are
+      // re-evaluated against their new rects. Only the anchored
+      // container's scroll requires recomputing the marquee's own
+      // position — scoped targets never host the marquee element, so it
+      // doesn't move when they scroll.
+      if (scrolledAnchored) {
+        const point = this.toMarqueePoint(
+          sortable,
+          state.lastClientX,
+          state.lastClientY
+        )
+        state.currentX = point.x
+        state.currentY = point.y
+        this.updateMarqueeVisual(state)
+      }
       this.throttledUpdateSelection.get(sortable)?.(sortable, state)
 
       state.scrollRaf = window.requestAnimationFrame(tick)
@@ -966,24 +1097,41 @@ export class MarqueeSelectPlugin extends BasePlugin {
     state.scrollRaf = window.requestAnimationFrame(tick)
   }
 
+  /**
+   * Edge test for an auto-resolved per-instance container: same up/down
+   * logic as the anchored `scrollContainer`, gated on the pointer being
+   * horizontally over THIS container. Side-by-side columns share a
+   * vertical band near the top/bottom of the marquee area — without the
+   * horizontal gate, being near one column's edge would scroll ALL of
+   * them. The anchored `scrollContainer` never needed this (there's only
+   * ever one), so it's intentionally NOT applied there.
+   */
+  private scopeAutoScrollDirection(
+    state: MarqueeState,
+    target: HTMLElement
+  ): 'up' | 'down' | false {
+    const rect = target.getBoundingClientRect()
+    if (state.lastClientX < rect.left || state.lastClientX > rect.right) {
+      return false
+    }
+    return this.scrollDirection(state.lastClientY, target, target.scrollHeight)
+  }
+
   /** Edge test: which way should the container scroll for the pointer's
    *  current position — with room left to actually scroll that way. */
   private scrollDirection(
-    state: MarqueeState,
-    scroll: HTMLElement
+    clientY: number,
+    container: HTMLElement,
+    contentHeight: number
   ): 'up' | 'down' | false {
-    const rect = scroll.getBoundingClientRect()
+    const rect = container.getBoundingClientRect()
     const distance = this.opts.autoScrollDistance
-    if (state.lastClientY < rect.top + distance && scroll.scrollTop > 0) {
+    if (clientY < rect.top + distance && container.scrollTop > 0) {
       return 'up'
     }
-    // "Room to scroll down" is measured against the content captured at
-    // marquee start — the marquee element inflates the live scrollHeight,
-    // which made this chase a bottom edge of its own making.
-    const contentHeight = state.contentLimit?.h ?? scroll.scrollHeight
     if (
-      state.lastClientY > rect.bottom - distance &&
-      scroll.scrollTop + scroll.clientHeight < contentHeight
+      clientY > rect.bottom - distance &&
+      container.scrollTop + container.clientHeight < contentHeight
     ) {
       return 'down'
     }
