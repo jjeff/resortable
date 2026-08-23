@@ -76,7 +76,7 @@ function rect(top: number, bottom: number): DOMRect {
     x: 0,
     y: top,
     toJSON: () => ({}),
-  } as DOMRect
+  }
 }
 
 // A 100x60 box in a row — every item shares the same top/bottom, which is
@@ -92,7 +92,7 @@ function hRect(left: number): DOMRect {
     x: left,
     y: 0,
     toJSON: () => ({}),
-  } as DOMRect
+  }
 }
 
 describe('pointer/HTML5 event parity (#121)', () => {

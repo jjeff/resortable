@@ -298,10 +298,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       const [s, st] = args as [SortableInstance, MarqueeState]
       this.updateSelection(s, st)
     }, 16)
-    this.throttledUpdateSelection.set(
-      sortable,
-      throttled as (s: SortableInstance, st: MarqueeState) => void
-    )
+    this.throttledUpdateSelection.set(sortable, throttled)
 
     // Resolve and store the marquee area element
     const area = resolveElement(this.opts.marqueeArea, 'marqueeArea')

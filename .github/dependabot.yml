@@ -1,0 +1,28 @@
+# Dependabot was running in security-alerts-only mode, which is why routine
+# updates never opened and 30-odd packages drifted out of date. This adds
+# scheduled version updates, grouped so a normal week is one or two PRs.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Minor and patch bumps are almost always safe to merge together.
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+      # Majors land in their own PR so a breaking change is easy to revert.
+      npm-major:
+        patterns:
+          - '*'
+        update-types:
+          - major

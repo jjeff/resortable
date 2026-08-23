@@ -21,18 +21,17 @@ function stubRect(
   el: HTMLElement,
   { top = 0, left = 0, width = 100, height = 60 } = {}
 ): void {
-  el.getBoundingClientRect = () =>
-    ({
-      top,
-      left,
-      width,
-      height,
-      right: left + width,
-      bottom: top + height,
-      x: left,
-      y: top,
-      toJSON: () => ({}),
-    }) as DOMRect
+  el.getBoundingClientRect = () => ({
+    top,
+    left,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+  })
 }
 
 interface Layout {

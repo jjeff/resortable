@@ -43,9 +43,9 @@ it should be handled.
 - DOM expando usage (el[expando] = instance): remove and use WeakMap to avoid DOM pollution and memory leaks; only use
   data-\* attributes for public IDs. (Phase 1)
 
-- Monolithic files and circular dependencies (Sortable.js ↔ Animation.js ↔ utils.js): split into focused modules
-  (core, DragManager, AnimationManager, utils/dom/geometry) and invert dependencies so animation code receives state
-  rather than importing Sortable. (Phase 1–2)
+- Monolithic files and circular dependencies (Sortable.js ↔ Animation.js ↔ utils.js): split into focused modules (core,
+  DragManager, AnimationManager, utils/dom/geometry) and invert dependencies so animation code receives state rather
+  than importing Sortable. (Phase 1–2)
 
 - Browser UA sniffing (IE11OrLess, Edge, Safari, etc.): replace with feature detection (pointer events, CSS.supports)
   and capability gates; document dropped legacy browser support. (Phase 1)

@@ -65,7 +65,7 @@ function createMockSortable(
     options,
     eventSystem: new EventSystem<SortableEvents>(),
     dropZone: { element: container, move: originalMove },
-  } as unknown as MockSortable
+  }
 }
 
 function mockRect(

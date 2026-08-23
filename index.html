@@ -828,9 +828,8 @@
     <script type="module">
       try {
         const { Sortable, PluginSystem } = await import('./src/index.ts')
-        const { MarqueeSelectPlugin } = await import(
-          './src/plugins/MarqueeSelectPlugin.ts'
-        )
+        const { MarqueeSelectPlugin } =
+          await import('./src/plugins/MarqueeSelectPlugin.ts')
 
         PluginSystem.register(
           MarqueeSelectPlugin.create({ marqueeArea: '#marquee-demo' })

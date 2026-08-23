@@ -197,8 +197,7 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
     const coreOptions: Partial<SortableOptions> = {}
     for (const [key, value] of Object.entries(initial)) {
       if (ADAPTER_KEYS.has(key)) continue
-      if (typeof value === 'function')
-        continue // wrapped below
+      if (typeof value === 'function') continue // wrapped below
       ;(coreOptions as Record<string, unknown>)[key] = value
     }
 
@@ -261,7 +260,7 @@ export function useSortable<T extends HTMLElement = HTMLElement>(
           }
         }
       },
-    } as SortableOptions)
+    })
 
     // Selection bridge: elements → data-ids at the boundary.
     sortable.eventSystem.on('select', (event) => {

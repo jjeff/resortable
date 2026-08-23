@@ -218,8 +218,12 @@ describe('hitArea option (#126)', () => {
     const { clipsA, clipsB, bodyB } = buildSongs()
     // Vertical zone whose top edge is BELOW 0. Without the (0,0) coord gate,
     // `clientY(0) < rect.top(50)` would wrongly route to index 0.
-    clipsB.getBoundingClientRect = () =>
-      ({ ...CLIPS_RECT, top: 50, bottom: 90, y: 50 }) as DOMRect
+    clipsB.getBoundingClientRect = () => ({
+      ...CLIPS_RECT,
+      top: 50,
+      bottom: 90,
+      y: 50,
+    })
     const opts = {
       controlled: true,
       draggable: '.clip',
