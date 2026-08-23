@@ -10,27 +10,30 @@ import { AnimationManager } from '../../src/animation/AnimationManager.js'
  */
 function mockMovedPositions(elements: HTMLElement[]): void {
   elements.forEach((el, i) => {
-    const spy = vi.spyOn(el, 'getBoundingClientRect')
-    spy.mockReturnValueOnce({
-      top: i * 100,
-      left: i * 50,
-      width: 100,
-      height: 50,
-      right: i * 50 + 100,
-      bottom: i * 100 + 50,
-      x: i * 50,
-      y: i * 100,
-    } as DOMRect)
-    spy.mockReturnValueOnce({
-      top: (2 - i) * 100,
-      left: (2 - i) * 50,
-      width: 100,
-      height: 50,
-      right: (2 - i) * 50 + 100,
-      bottom: (2 - i) * 100 + 50,
-      x: (2 - i) * 50,
-      y: (2 - i) * 100,
-    } as DOMRect)
+    const rects = [
+      {
+        top: i * 100,
+        left: i * 50,
+        width: 100,
+        height: 50,
+        right: i * 50 + 100,
+        bottom: i * 100 + 50,
+        x: i * 50,
+        y: i * 100,
+      } as DOMRect,
+      {
+        top: (2 - i) * 100,
+        left: (2 - i) * 50,
+        width: 100,
+        height: 50,
+        right: (2 - i) * 50 + 100,
+        bottom: (2 - i) * 100 + 50,
+        x: (2 - i) * 50,
+        y: (2 - i) * 100,
+      } as DOMRect,
+    ]
+    let call = 0
+    el.getBoundingClientRect = vi.fn(() => rects[Math.min(call++, 1)])
   })
 }
 
@@ -52,16 +55,19 @@ describe('AnimationManager', () => {
 
     // Mock getBoundingClientRect
     mockElements.forEach((el, i) => {
-      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
-        top: i * 100,
-        left: i * 50,
-        width: 100,
-        height: 50,
-        right: i * 50 + 100,
-        bottom: i * 100 + 50,
-        x: i * 50,
-        y: i * 100,
-      } as DOMRect)
+      el.getBoundingClientRect = vi.fn(
+        () =>
+          ({
+            top: i * 100,
+            left: i * 50,
+            width: 100,
+            height: 50,
+            right: i * 50 + 100,
+            bottom: i * 100 + 50,
+            x: i * 50,
+            y: i * 100,
+          }) as DOMRect
+      )
     })
 
     // Mock animate method
@@ -139,27 +145,30 @@ describe('AnimationManager', () => {
 
       // Change positions after callback
       mockElements.forEach((el, i) => {
-        const spy = vi.spyOn(el, 'getBoundingClientRect')
-        spy.mockReturnValueOnce({
-          top: i * 100,
-          left: i * 50,
-          width: 100,
-          height: 50,
-          right: i * 50 + 100,
-          bottom: i * 100 + 50,
-          x: i * 50,
-          y: i * 100,
-        } as DOMRect)
-        spy.mockReturnValueOnce({
-          top: (2 - i) * 100, // Reversed positions
-          left: (2 - i) * 50,
-          width: 100,
-          height: 50,
-          right: (2 - i) * 50 + 100,
-          bottom: (2 - i) * 100 + 50,
-          x: (2 - i) * 50,
-          y: (2 - i) * 100,
-        } as DOMRect)
+        const rects = [
+          {
+            top: i * 100,
+            left: i * 50,
+            width: 100,
+            height: 50,
+            right: i * 50 + 100,
+            bottom: i * 100 + 50,
+            x: i * 50,
+            y: i * 100,
+          } as DOMRect,
+          {
+            top: (2 - i) * 100, // Reversed positions
+            left: (2 - i) * 50,
+            width: 100,
+            height: 50,
+            right: (2 - i) * 50 + 100,
+            bottom: (2 - i) * 100 + 50,
+            x: (2 - i) * 50,
+            y: (2 - i) * 100,
+          } as DOMRect,
+        ]
+        let call = 0
+        el.getBoundingClientRect = vi.fn(() => rects[Math.min(call++, 1)])
       })
 
       manager.animateReorder(mockElements, callback)
@@ -176,16 +185,19 @@ describe('AnimationManager', () => {
 
       // Same positions before and after
       mockElements.forEach((el, i) => {
-        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
-          top: i * 100,
-          left: i * 50,
-          width: 100,
-          height: 50,
-          right: i * 50 + 100,
-          bottom: i * 100 + 50,
-          x: i * 50,
-          y: i * 100,
-        } as DOMRect)
+        el.getBoundingClientRect = vi.fn(
+          () =>
+            ({
+              top: i * 100,
+              left: i * 50,
+              width: 100,
+              height: 50,
+              right: i * 50 + 100,
+              bottom: i * 100 + 50,
+              x: i * 50,
+              y: i * 100,
+            }) as DOMRect
+        )
       })
 
       manager.animateReorder(mockElements, callback)

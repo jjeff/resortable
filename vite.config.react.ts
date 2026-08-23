@@ -21,7 +21,7 @@ export default defineConfig({
     // The main build already populated dist/ — don't wipe it.
     emptyOutDir: false,
     lib: {
-      entry: resolve(__dirname, 'src/react/index.ts'),
+      entry: resolve(import.meta.dirname, 'src/react/index.ts'),
       fileName: (format) => {
         // `.cjs` because package.json's `"type": "module"` makes Node parse
         // a `.cjs.js` file as ESM, breaking require().
