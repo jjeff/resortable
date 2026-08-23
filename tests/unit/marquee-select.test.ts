@@ -89,9 +89,8 @@ function mockItemRects(
 ) {
   items.forEach((item, i) => {
     if (rects[i]) {
-      vi.spyOn(item, 'getBoundingClientRect').mockReturnValue(
+      item.getBoundingClientRect = () =>
         new DOMRect(rects[i].x, rects[i].y, rects[i].width, rects[i].height)
-      )
     }
   })
 }
@@ -1004,9 +1003,8 @@ describe('MarqueeSelectPlugin', () => {
       els.forEach((item, i) => {
         const handle = item.querySelector('.handle') as HTMLElement
         if (rects[i]) {
-          vi.spyOn(handle, 'getBoundingClientRect').mockReturnValue(
+          handle.getBoundingClientRect = () =>
             new DOMRect(rects[i].x, rects[i].y, rects[i].width, rects[i].height)
-          )
         }
       })
     }
@@ -1170,7 +1168,7 @@ describe('MarqueeSelectPlugin', () => {
       el: HTMLElement,
       rect: DOMRect
     ): ReturnType<typeof vi.fn> {
-      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(rect)
+      el.getBoundingClientRect = () => rect
       Object.defineProperty(el, 'scrollHeight', {
         value: 600,
         configurable: true,
@@ -1300,13 +1298,9 @@ describe('MarqueeSelectPlugin', () => {
       // stationary pointer; the plugin must re-hit-test to catch it.
       const itemA4 = createItems(1)[0]
       sortableA.element.appendChild(itemA4)
-      vi.spyOn(itemA4, 'getBoundingClientRect').mockReturnValue(
-        new DOMRect(10, 250, 180, 40)
-      )
+      itemA4.getBoundingClientRect = () => new DOMRect(10, 250, 180, 40)
       scrollByA.mockImplementation(() => {
-        vi.spyOn(itemA4, 'getBoundingClientRect').mockReturnValue(
-          new DOMRect(10, 150, 180, 40)
-        )
+        itemA4.getBoundingClientRect = () => new DOMRect(10, 150, 180, 40)
       })
 
       wrapper.dispatchEvent(
@@ -1358,9 +1352,7 @@ describe('MarqueeSelectPlugin', () => {
       sortable = createMockSortable(items)
       container = sortable.element
 
-      vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(
-        new DOMRect(0, 0, 300, 200)
-      )
+      container.getBoundingClientRect = () => new DOMRect(0, 0, 300, 200)
       Object.defineProperty(container, 'scrollHeight', {
         value: 600,
         configurable: true,

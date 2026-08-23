@@ -724,12 +724,8 @@ describe('stale drop-animation timer (#131)', () => {
   // there is no timer to go stale. Force that gap so both tests exercise the
   // deferred path.
   function forceDropAnimation(ghost: HTMLElement, dragEl: HTMLElement): void {
-    vi.spyOn(ghost, 'getBoundingClientRect').mockReturnValue(
-      new DOMRect(0, 0, 50, 20)
-    )
-    vi.spyOn(dragEl, 'getBoundingClientRect').mockReturnValue(
-      new DOMRect(100, 100, 50, 20)
-    )
+    ghost.getBoundingClientRect = () => new DOMRect(0, 0, 50, 20)
+    dragEl.getBoundingClientRect = () => new DOMRect(100, 100, 50, 20)
   }
 
   beforeEach(() => {

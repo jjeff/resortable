@@ -143,8 +143,8 @@
     "@types/react-dom": "^19.2.4",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@typescript-eslint/parser": "^8.67.0",
-    "@vitest/coverage-v8": "^3.2.7",
-    "@vitest/ui": "^3.2.6",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
@@ -160,9 +160,9 @@
     "tslib": "^2.8.1",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.2",
-    "vite": "^7.3.6",
+    "vite": "^8.2.2",
     "vite-plugin-dts": "^5.0.3",
-    "vitest": "^3.2.6"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "handlebars": "^4.7.9",

@@ -32,9 +32,8 @@ function stubRect(
   el: HTMLElement,
   rect: { left: number; top: number; width: number; height: number }
 ): void {
-  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(
+  el.getBoundingClientRect = () =>
     new DOMRect(rect.left, rect.top, rect.width, rect.height)
-  )
 }
 
 describe('GhostManager', () => {

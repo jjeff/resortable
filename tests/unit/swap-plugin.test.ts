@@ -72,9 +72,8 @@ function mockRect(
   el: HTMLElement,
   rect: { x: number; y: number; width: number; height: number }
 ): void {
-  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(
+  el.getBoundingClientRect = () =>
     new DOMRect(rect.x, rect.y, rect.width, rect.height)
-  )
 }
 
 function dragOver(clientX: number, clientY: number): DragEvent {
