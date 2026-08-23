@@ -356,9 +356,8 @@
 
       try {
         const { Sortable, PluginSystem } = await import('./src/index.ts')
-        const { AutoScrollPlugin } = await import(
-          './src/plugins/AutoScrollPlugin.ts'
-        )
+        const { AutoScrollPlugin } =
+          await import('./src/plugins/AutoScrollPlugin.ts')
         const { SwapPlugin } = await import('./src/plugins/SwapPlugin.ts')
 
         PluginSystem.register(AutoScrollPlugin)

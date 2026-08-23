@@ -48,9 +48,7 @@ v2 has no `dist/Sortable.min.js` UMD that auto-attaches `window.Sortable`. Impor
 
 // v2
 import { Sortable } from 'resortable'
-const sortable = new Sortable(el, {
-  /* ... */
-})
+const sortable = new Sortable(el, {/* ... */})
 ```
 
 ESM, CommonJS, and UMD bundles are published; see `package.json` `exports`. The UMD build exists for `<script>` users
@@ -76,9 +74,7 @@ import { AutoScrollPlugin, OnSpillPlugin, SwapPlugin } from 'resortable/plugins'
 
 Sortable.mount([AutoScrollPlugin.create(), OnSpillPlugin.create(), SwapPlugin.create()])
 
-const sortable = new Sortable(el, {
-  /* ... */
-})
+const sortable = new Sortable(el, {/* ... */})
 sortable.usePlugin('AutoScroll')
 sortable.usePlugin('OnSpill')
 sortable.usePlugin('Swap')

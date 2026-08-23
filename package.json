@@ -45,7 +45,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run type-check",
+    "check": "npm run lint && npm run type-check && npm run format:check",
     "clean": "rimraf dist",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",

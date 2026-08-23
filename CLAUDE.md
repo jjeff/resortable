@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL: Pre-Commit Checklist
 
-**ALWAYS run `npm run check` BEFORE EVERY commit/push.** It runs `npm run lint && npm run type-check` — the exact same
-commands CI runs in the `lint-and-typecheck` job.
+**ALWAYS run `npm run check` BEFORE EVERY commit/push.** It runs `npm run lint`, `npm run type-check` and
+`npm run format:check` — the exact same commands CI runs in the `lint-and-typecheck` job.
 
 ```
 npm run check
