@@ -4,7 +4,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Test mocks need 'any' for flexibility */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access -- Test accessing internal properties */
-/* eslint-disable @typescript-eslint/no-unsafe-return -- Test mock return values */
 /* eslint-disable @typescript-eslint/no-unsafe-argument -- Test mock arguments */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- Test mock assignments */
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- Test assertions */
@@ -71,7 +70,7 @@ function createMockSortable(items: HTMLElement[]): SortableInstance {
         return { getName: () => 'test-group' }
       },
     },
-  } as any
+  }
 }
 
 function createItems(count: number): HTMLElement[] {
@@ -143,7 +142,7 @@ function pointerEvent(
 }
 
 // Mock getComputedStyle for isVisible checks
-const originalGetComputedStyle = window.getComputedStyle
+const originalGetComputedStyle = window.getComputedStyle.bind(window)
 beforeEach(() => {
   vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => {
     // Return visible styles for sortable items
@@ -1013,9 +1012,8 @@ describe('MarqueeSelectPlugin', () => {
     }
 
     beforeEach(async () => {
-      const { registerInstance } = await import(
-        '../../src/core/InstanceRegistry.js'
-      )
+      const { registerInstance } =
+        await import('../../src/core/InstanceRegistry.js')
       wrapper = document.createElement('div')
       document.body.appendChild(wrapper)
 
@@ -1189,9 +1187,8 @@ describe('MarqueeSelectPlugin', () => {
 
     beforeEach(async () => {
       vi.useFakeTimers()
-      const { registerInstance } = await import(
-        '../../src/core/InstanceRegistry.js'
-      )
+      const { registerInstance } =
+        await import('../../src/core/InstanceRegistry.js')
 
       // Two independently-scrolling columns side by side under one
       // marquee area (the Visibox two-column use case): A spans x 0-200,

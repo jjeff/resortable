@@ -55,19 +55,18 @@ function mockLayout(
     clientHeight?: number
   }
 ): void {
-  el.getBoundingClientRect = () =>
-    ({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: 0,
-      height: 0,
-      toJSON: () => ({}),
-      ...rect,
-    }) as DOMRect
+  el.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 0,
+    height: 0,
+    toJSON: () => ({}),
+    ...rect,
+  })
   for (const [k, v] of Object.entries(metrics)) {
     Object.defineProperty(el, k, { value: v, configurable: true })
   }

@@ -46,7 +46,6 @@ import { PluginSystem } from './core/PluginSystem.js'
 import { AutoScrollPlugin } from './plugins/AutoScrollPlugin.js'
 import {
   SortableOptions,
-  type SortableInstance,
   type SortablePlugin,
   type SortableEvents,
 } from './types/index.js'
@@ -308,7 +307,7 @@ export class Sortable {
     this.options = { ...defaultOptions, ...options }
 
     // Track this instance
-    registerInstance(element, this as unknown as SortableInstance)
+    registerInstance(element, this)
 
     // Create animation manager first
     this.animationManager = new AnimationManager({
@@ -747,7 +746,7 @@ export class Sortable {
     }
 
     // Set option
-    this.options[name] = value as SortableOptions[K]
+    this.options[name] = value
 
     // Handle special cases that need immediate updates
     switch (name) {

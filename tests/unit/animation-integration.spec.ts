@@ -28,12 +28,12 @@ describe('AnimationManager Integration Tests', () => {
     )
 
     document = dom.window.document
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, no-undef
-    global.document = document as any
+    // eslint-disable-next-line no-undef
+    global.document = document
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, no-undef
     global.window = dom.window as any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, no-undef
-    global.HTMLElement = dom.window.HTMLElement as any
+    // eslint-disable-next-line no-undef
+    global.HTMLElement = dom.window.HTMLElement
 
     // Mock the animate method since JSDOM doesn't support Web Animations API
     HTMLElement.prototype.animate = vi.fn().mockReturnValue({

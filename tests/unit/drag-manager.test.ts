@@ -530,7 +530,7 @@ describe('canDropInZone', () => {
     mount(list, { animation: 0, group: 'shared', onEnd, onRemove })
 
     const dragged = list.children[0] as HTMLElement
-    hover(foreign.children[0] as HTMLElement)
+    hover(foreign.children[0])
     dragged.dispatchEvent(pointer('pointerdown'))
     document.dispatchEvent(pointer('pointermove', { x: 200, y: 60 }))
 
@@ -591,7 +591,7 @@ describe('detach during an active pointer drag', () => {
     const firstSortable = mount(first, { animation: 0 })
 
     const item1 = first.children[0] as HTMLElement
-    hover(first.children[2] as HTMLElement)
+    hover(first.children[2])
     item1.dispatchEvent(pointer('pointerdown'))
 
     firstSortable.destroy()
@@ -601,7 +601,7 @@ describe('detach during an active pointer drag', () => {
     mount(second, { animation: 0 })
     const secondBefore = ids(second)
 
-    hover(second.children[2] as HTMLElement)
+    hover(second.children[2])
     document.dispatchEvent(pointer('pointermove', { y: 60 }))
 
     expect(ids(second)).toEqual(secondBefore)
@@ -629,7 +629,7 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
     const replay = vi.spyOn(internals, 'onPointerMove')
 
     const item1 = list.children[0] as HTMLElement
-    hover(list.children[2] as HTMLElement)
+    hover(list.children[2])
     item1.dispatchEvent(pointer('pointerdown'))
 
     // Seed `lastPointerMoveEvent` — the scroll listener replays this.
@@ -663,7 +663,7 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
     const replay = vi.spyOn(internals, 'onPointerMove')
 
     const item1 = list.children[0] as HTMLElement
-    hover(list.children[2] as HTMLElement)
+    hover(list.children[2])
     item1.dispatchEvent(pointer('pointerdown'))
 
     document.dispatchEvent(pointer('pointermove', { y: 20 }))
@@ -698,7 +698,7 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
     const replay = vi.spyOn(internals, 'onPointerMove')
 
     const item1 = list.children[0] as HTMLElement
-    hover(list.children[2] as HTMLElement)
+    hover(list.children[2])
     item1.dispatchEvent(pointer('pointerdown'))
 
     document.dispatchEvent(pointer('pointermove', { y: 20 }))

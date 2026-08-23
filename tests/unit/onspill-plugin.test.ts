@@ -20,7 +20,7 @@ function createMockSortable(container: HTMLElement): SortableInstance {
     element: container,
     options: {},
     eventSystem: new EventSystem<SortableEvents>(),
-  } as unknown as SortableInstance
+  }
 }
 
 describe('OnSpillPlugin', () => {

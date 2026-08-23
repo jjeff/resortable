@@ -341,18 +341,17 @@ describe('controlled-mode parity fixes (2026-07)', () => {
       list.scrollTop = 0
 
       items = Array.from(list.children) as HTMLElement[]
-      list.getBoundingClientRect = () =>
-        ({
-          top: 0,
-          bottom: VIEWPORT_H,
-          left: 0,
-          right: 200,
-          width: 200,
-          height: VIEWPORT_H,
-          x: 0,
-          y: 0,
-          toJSON: () => ({}),
-        }) as DOMRect
+      list.getBoundingClientRect = () => ({
+        top: 0,
+        bottom: VIEWPORT_H,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: VIEWPORT_H,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      })
       items.forEach((li, i) => {
         li.getBoundingClientRect = () => {
           const top = i * ITEM_H - list.scrollTop
@@ -366,7 +365,7 @@ describe('controlled-mode parity fixes (2026-07)', () => {
             x: 0,
             y: top,
             toJSON: () => ({}),
-          } as DOMRect
+          }
         }
       })
 
@@ -462,7 +461,7 @@ describe('controlled-mode parity fixes (2026-07)', () => {
         x: 0,
         y: top,
         toJSON: () => ({}),
-      } as DOMRect
+      }
     }
 
     function stubRect(el: HTMLElement, top: number, bottom: number): void {
