@@ -79,7 +79,7 @@ next release.
      Chrome, Mobile Safari). macOS is the only leg running Apple's own WebKit rather than the Playwright-bundled build
    - `build` — library bundle (Rollup output via Vite)
    - `bundle-size` — gzipped size budgets (50 / 30 / 30 kB ESM / CJS / UMD)
-   - `cross-platform-test` — Node 18 + 20 install/build
+   - `node-version-test` — Node 20 + 22 install/build
    - `dependency-review` — high-severity vulnerabilities block PRs
 
 ## Repository layout
