@@ -56,7 +56,10 @@
             "type": "chore",
             "release": false
           }
-        ]
+        ],
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE:", "BREAKING-CHANGE:"]
+        }
       }
     ],
     [
@@ -111,6 +114,9 @@
               "hidden": true
             }
           ]
+        },
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE:", "BREAKING-CHANGE:"]
         }
       }
     ],
