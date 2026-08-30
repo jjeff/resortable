@@ -1,3 +1,35 @@
+## [3.0.0](https://github.com/jjeff/resortable/compare/v2.3.0...v3.0.0) (2026-08-30)
+
+### ⚠ BREAKING CHANGES
+
+* **release:** x   -> major
+* **release:** x   -> major
+  feat!: x             -> major
+  prose "breaking change for ..." -> no release
+
+**generateNotes crashed.** The `conventionalcommits` preset is not a
+dependency of @semantic-release/release-notes-generator; it is resolved
+from the project root, so whichever copy npm hoists is the one that runs.
+@commitlint/config-conventional 21 brought conventional-changelog-
+conventionalcommits 10, which requires conventional-changelog-writer 9 or
+newer, while the semantic-release plugins pin writer ^8. The result was
+"Missing helper" from handlebars at the generateNotes step.
+
+Declaring the preset directly at ^9 makes the release path deterministic
+instead of a side effect of commitlint's tree. commitlint keeps its own
+nested 10.x and still loads.
+
+With both fixes, the 18 commits since v2.3.0 analyse as `patch` and the
+notes render cleanly.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Pavgf7FXoZa6Vzv77JUhUt
+
+### Bug Fixes
+
+* **ci:** reformat with prettier 3.9 and cover format:check in npm run check ([13ed09d](https://github.com/jjeff/resortable/commit/13ed09d8d3b5327357e1946767c099f5c47b96e2))
+* **release:** stop a prose line triggering a major release, and pin the changelog preset ([21f8382](https://github.com/jjeff/resortable/commit/21f83825f090361f3cfa1013f99e6c156e3f74a7))
+
 ## 2.3.0 (2026-08-01)
 
 * feat(marquee): auto-scroll each scoped list's own container (#151) ([9c46f99](https://github.com/jjeff/resortable/commit/9c46f99)), closes [#151](https://github.com/jjeff/resortable/issues/151)
