@@ -1,34 +1,22 @@
 ## [3.0.0](https://github.com/jjeff/resortable/compare/v2.3.0...v3.0.0) (2026-08-30)
 
-### ⚠ BREAKING CHANGES
+**This major version contains no breaking changes.** The public API of 3.0.0 is
+identical to 2.3.0, and upgrading needs no code changes.
 
-* **release:** x   -> major
-* **release:** x   -> major
-  feat!: x             -> major
-  prose "breaking change for ..." -> no release
+The major bump was a release-tooling accident. Commit
+[21f8382](https://github.com/jjeff/resortable/commit/21f83825f090361f3cfa1013f99e6c156e3f74a7)
+listed the working breaking-change footer forms as indented examples inside its
+own message body. semantic-release parsed those example lines as real footers
+and raised the major version. The release notes it generated from them have been
+replaced by this section. The correct version for these changes was 2.3.1.
 
-**generateNotes crashed.** The `conventionalcommits` preset is not a
-dependency of @semantic-release/release-notes-generator; it is resolved
-from the project root, so whichever copy npm hoists is the one that runs.
-@commitlint/config-conventional 21 brought conventional-changelog-
-conventionalcommits 10, which requires conventional-changelog-writer 9 or
-newer, while the semantic-release plugins pin writer ^8. The result was
-"Missing helper" from handlebars at the generateNotes step.
-
-Declaring the preset directly at ^9 makes the release path deterministic
-instead of a side effect of commitlint's tree. commitlint keeps its own
-nested 10.x and still loads.
-
-With both fixes, the 18 commits since v2.3.0 analyse as `patch` and the
-notes render cleanly.
-
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01Pavgf7FXoZa6Vzv77JUhUt
+Everything between 2.3.0 and 3.0.0 is dependency upgrades, CI configuration and
+release-pipeline repair.
 
 ### Bug Fixes
 
-* **ci:** reformat with prettier 3.9 and cover format:check in npm run check ([13ed09d](https://github.com/jjeff/resortable/commit/13ed09d8d3b5327357e1946767c099f5c47b96e2))
-* **release:** stop a prose line triggering a major release, and pin the changelog preset ([21f8382](https://github.com/jjeff/resortable/commit/21f83825f090361f3cfa1013f99e6c156e3f74a7))
+- **ci:** reformat with prettier 3.9 and cover format:check in npm run check ([13ed09d](https://github.com/jjeff/resortable/commit/13ed09d8d3b5327357e1946767c099f5c47b96e2))
+- **release:** stop a prose line triggering a major release, and pin the changelog preset ([21f8382](https://github.com/jjeff/resortable/commit/21f83825f090361f3cfa1013f99e6c156e3f74a7))
 
 ## 2.3.0 (2026-08-01)
 
