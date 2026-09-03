@@ -123,6 +123,9 @@ export class DragManager implements DragManagerInterface {
   // `pointer-<id>` — so shared machinery asks `currentDragId()` rather than
   // assuming a pointer id.
   private isNativeDragging = false
+  // Consumer-set cursor for the current gesture, via `setDragCursor`. Null
+  // when the consumer has not asked for one.
+  private dragCursorOverride: string | null = null
   private _fallbackClass?: string
   // `_fallbackOnBody` chooses where the pointer-driven ghost is appended:
   // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
@@ -1091,14 +1094,16 @@ export class DragManager implements DragManagerInterface {
     // `duplicateKey` can differ from the one the drag started under — the same
     // reason `dispatchMove` re-routes.
     const sourceManager = activeDrag.fromDragManager as DragManager
-    if (sourceManager.duplicateKey) {
-      sourceManager.syncDuplicate(e)
-      // The drag cursor during a native session is the browser's, drawn from
-      // `dropEffect` — CSS `cursor` is ignored outright. This is the only
-      // copy affordance available on this pipeline.
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = activeDrag.duplicate ? 'copy' : 'move'
-      }
+    if (sourceManager.duplicateKey) sourceManager.syncDuplicate(e)
+
+    // The drag cursor during a native session is the browser's, drawn from
+    // `dropEffect` — CSS `cursor` is ignored outright, so this is the only
+    // affordance this pipeline has. A consumer's `setDragCursor` override
+    // wins; otherwise duplicate mode decides.
+    const override = sourceManager.overrideDropEffect()
+    if (e.dataTransfer && (override || sourceManager.duplicateKey)) {
+      e.dataTransfer.dropEffect =
+        override ?? (activeDrag.duplicate ? 'copy' : 'move')
     }
 
     // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
@@ -1474,6 +1479,10 @@ export class DragManager implements DragManagerInterface {
 
     document.removeEventListener('keydown', this.onDuplicateKeyChange)
     document.removeEventListener('keyup', this.onDuplicateKeyChange)
+
+    // A cursor override lives for one gesture only, so it never outlives the
+    // drag that asked for it.
+    this.setDragCursor(null)
 
     globalDragState.endDrag(dragId)
     this.isNativeDragging = false
@@ -2312,6 +2321,9 @@ export class DragManager implements DragManagerInterface {
       this.dragElement.style.cursor = this.dragElementPreviousCursor
       this.dragElementPreviousCursor = ''
     }
+    // Same reasoning for a consumer's `setDragCursor`: it is scoped to one
+    // gesture, and its document-wide rule would otherwise stick to the page.
+    this.setDragCursor(null)
 
     // A pointerup/pointercancel can land in the same frame as the last
     // autoscroll scroll tick, before the deferred scroll-replay (#134) has
@@ -2543,6 +2555,65 @@ export class DragManager implements DragManagerInterface {
    * at drop time (pointerup) is what decides duplicate vs move. No-op when
    * the feature is off or no pointer drag is active.
    */
+  /** `<style>` element carrying an active {@link setDragCursor} override. */
+  private static readonly DRAG_CURSOR_STYLE_ID = 'resortable-drag-cursor'
+
+  /**
+   * Set the cursor shown for the rest of the current drag, or clear it with
+   * `null`.
+   *
+   * Exists because a consumer cannot reach the cursor themselves. On the
+   * pointer pipeline the browser draws the cursor from the pointer-capture
+   * target — the dragged item — so styling the ghost, the placeholder, or
+   * whatever sits under the pointer has no effect; and in controlled mode
+   * that capture target is hidden with `display: none`, which has no layout
+   * box and paints no cursor at all. Any inline cursor a consumer wrote there
+   * would also be overwritten on the next pointermove by `syncDuplicate`.
+   *
+   * So the pointer pipeline gets a document-wide `!important` rule instead,
+   * which is immune to all three problems.
+   *
+   * The native pipeline cannot use CSS at all: during a native drag session
+   * the browser owns the cursor and reads it from `dropEffect`. The override
+   * is mapped onto that, which supports only four outcomes — `copy`, `move`,
+   * `link` (also `alias`), and `none` (also `no-drop` / `not-allowed`). Any
+   * other value is ignored there.
+   *
+   * @param cursor - A CSS cursor keyword, or null to restore the default.
+   */
+  public setDragCursor(cursor: string | null): void {
+    this.dragCursorOverride = cursor
+    const existing = document.getElementById(
+      DragManager.DRAG_CURSOR_STYLE_ID
+    ) as HTMLStyleElement | null
+    if (!cursor) {
+      existing?.remove()
+      return
+    }
+    const style = existing ?? document.createElement('style')
+    style.id = DragManager.DRAG_CURSOR_STYLE_ID
+    style.textContent = `*{cursor:${cursor}!important}`
+    if (!existing) document.head.appendChild(style)
+  }
+
+  /** `dropEffect` for an active cursor override, or null if it maps to none. */
+  private overrideDropEffect(): 'copy' | 'move' | 'link' | 'none' | null {
+    switch (this.dragCursorOverride) {
+      case 'copy':
+        return 'copy'
+      case 'move':
+        return 'move'
+      case 'alias':
+      case 'link':
+        return 'link'
+      case 'no-drop':
+      case 'not-allowed':
+        return 'none'
+      default:
+        return null
+    }
+  }
+
   /**
    * The `globalDragState` key for whichever pipeline is currently dragging,
    * or null when nothing is. Shared machinery (`duplicateKey`) runs on both,
@@ -2598,7 +2669,10 @@ export class DragManager implements DragManagerInterface {
     // Inline rather than a class so `duplicateKey` signals itself with no
     // stylesheet required from the consumer; restored in cleanupPointerDrag.
     // Guarded on change because syncDuplicate runs on every pointermove.
-    if (this.dragElement) {
+    // A consumer's `setDragCursor` override outranks the duplicate cursor —
+    // without this, the write below would undo it on the very next
+    // pointermove, which is the trap that made an app-side cursor impossible.
+    if (this.dragElement && this.dragCursorOverride === null) {
       const next = active ? 'copy' : this.dragElementPreviousCursor
       if (this.dragElement.style.cursor !== next) {
         this.dragElement.style.cursor = next

@@ -485,6 +485,33 @@ export class Sortable {
   }
 
   /**
+   * Set the cursor shown for the rest of the current drag, or clear it with
+   * `null`. Cleared automatically when the drag ends.
+   *
+   * @remarks
+   * Use it to signal what a drop will do when only the consumer knows — a
+   * transfer that copies rather than moves, or a region that will reject the
+   * drop. CSS alone cannot do this: mid-drag the cursor is drawn from the
+   * pointer-capture target, not from whatever sits under the pointer.
+   *
+   * On a native drag (`nativeDrag`) the browser owns the cursor and reads it
+   * from `dropEffect`, so only `copy`, `move`, `link` / `alias` and
+   * `none` / `no-drop` / `not-allowed` have any effect there.
+   *
+   * @param cursor - A CSS cursor keyword, or null to restore the default
+   *
+   * @example
+   * ```typescript
+   * sortable.setDragCursor('copy')
+   * ```
+   *
+   * @public
+   */
+  public setDragCursor(cursor: string | null): void {
+    this.dragManager.setDragCursor(cursor)
+  }
+
+  /**
    * Destroys the Sortable instance and removes all event listeners
    *
    * @remarks

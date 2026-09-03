@@ -643,3 +643,120 @@ describe('duplicateKey on the native HTML5 path', () => {
     expect(dt.effectAllowed).toBe('copyMove')
   })
 })
+
+describe('setDragCursor', () => {
+  let sortable: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    document.dispatchEvent(mkPointer('pointerup'))
+    sortable?.destroy()
+    sortable = undefined
+    document.body.innerHTML = ''
+    document.getElementById('resortable-drag-cursor')?.remove()
+    vi.restoreAllMocks()
+  })
+
+  function styleRule(): string | undefined {
+    return (
+      document.getElementById('resortable-drag-cursor')?.textContent ??
+      undefined
+    )
+  }
+
+  it('applies the cursor document-wide, where the capture target cannot reach', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', fallbackTolerance: 0 })
+
+    sortable.setDragCursor('copy')
+
+    // Document-wide and !important, because in controlled mode the capture
+    // target is display:none and paints no cursor at all.
+    expect(styleRule()).toContain('cursor:copy!important')
+  })
+
+  it('survives the pointermoves that would overwrite an inline cursor', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      fallbackTolerance: 0,
+      // duplicateKey is what makes syncDuplicate run on every pointermove and
+      // reset the cursor — the exact race an app-side fix loses.
+      duplicateKey: 'alt',
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    item.dispatchEvent(mkPointer('pointerdown'))
+    sortable.setDragCursor('copy')
+    document.dispatchEvent(mkPointer('pointermove'))
+    document.dispatchEvent(mkPointer('pointermove'))
+
+    expect(styleRule()).toContain('cursor:copy!important')
+  })
+
+  it('clears itself when the pointer drag ends', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', fallbackTolerance: 0 })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    item.dispatchEvent(mkPointer('pointerdown'))
+    sortable.setDragCursor('copy')
+    document.dispatchEvent(mkPointer('pointerup'))
+
+    expect(document.getElementById('resortable-drag-cursor')).toBeNull()
+  })
+
+  it('is cleared by null', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', fallbackTolerance: 0 })
+
+    sortable.setDragCursor('copy')
+    sortable.setDragCursor(null)
+
+    expect(document.getElementById('resortable-drag-cursor')).toBeNull()
+  })
+
+  it('maps onto dropEffect during a native drag, where CSS is ignored', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    sortable.setDragCursor('copy')
+
+    const over = mkDrag('dragover', { clientY: 10 })
+    Object.defineProperty(over, 'dataTransfer', { value: mkDataTransfer().dt })
+    items[2].dispatchEvent(over)
+
+    expect(over.dataTransfer?.dropEffect).toBe('copy')
+  })
+
+  it('leaves dropEffect alone for a cursor the native pipeline cannot express', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    sortable.setDragCursor('grabbing')
+
+    const over = mkDrag('dragover', { clientY: 10 })
+    Object.defineProperty(over, 'dataTransfer', { value: mkDataTransfer().dt })
+    items[2].dispatchEvent(over)
+
+    // 'grabbing' has no dropEffect equivalent — better to leave the browser's
+    // own answer than to invent one.
+    expect(over.dataTransfer?.dropEffect).toBe('none')
+  })
+
+  it('clears itself when the native drag ends', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    sortable.setDragCursor('copy')
+    items[0].dispatchEvent(mkDrag('dragend'))
+
+    expect(document.getElementById('resortable-drag-cursor')).toBeNull()
+  })
+})
