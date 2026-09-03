@@ -87,6 +87,13 @@ export class DragManager implements DragManagerInterface {
   // omitted: `this.ghostManager.getGhostElement()` is the single source of
   // truth for the fallback ghost.
   private _forceFallback: boolean
+  // `_nativeDrag` hands the gesture to the HTML5 listeners instead of the
+  // pointer pipeline (see `onPointerDown`). Without it those listeners are
+  // attached but unreachable: the pointer pipeline `preventDefault()`s
+  // `pointerdown`, which stops the browser ever firing `dragstart` (#165).
+  // Only a native drag session carries a `DataTransfer` out of the document,
+  // so this is the only way a drag can cross into another window or app.
+  private _nativeDrag: boolean
   private _fallbackClass?: string
   // `_fallbackOnBody` chooses where the pointer-driven ghost is appended:
   // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
@@ -225,6 +232,7 @@ export class DragManager implements DragManagerInterface {
       invertedSwapThreshold?: number
       direction?: 'vertical' | 'horizontal'
       forceFallback?: boolean
+      nativeDrag?: boolean
       fallbackClass?: string
       fallbackOnBody?: boolean
       fallbackTolerance?: number
@@ -286,6 +294,17 @@ export class DragManager implements DragManagerInterface {
 
     // Initialize fallback options (to be fully implemented)
     this._forceFallback = options?.forceFallback ?? false
+    this._nativeDrag = (options?.nativeDrag ?? false) && !this._forceFallback
+    if (options?.nativeDrag && options?.forceFallback) {
+      // Not merely redundant — contradictory. `forceFallback` unbinds the very
+      // listeners `nativeDrag` hands the gesture to, so honouring both would
+      // leave a drag with no pipeline at all. The pointer path wins.
+      console.warn(
+        '[resortable] `nativeDrag` was ignored because `forceFallback` is ' +
+          'set: forceFallback unbinds the HTML5 listeners that nativeDrag ' +
+          'needs. Set only one.'
+      )
+    }
     this._fallbackClass = options?.fallbackClass
     this._fallbackOnBody = options?.fallbackOnBody ?? false
     // Default 0 = commit on pointerdown (SortableJS parity). Apps where a
@@ -1365,6 +1384,16 @@ export class DragManager implements DragManagerInterface {
 
     // Only start drag on primary button (left mouse or primary touch)
     if (e.button !== 0) return
+
+    // The native pipeline owns this gesture. Return WITHOUT `preventDefault`,
+    // which is the whole point: every other exit from this handler either
+    // suppresses the browser's drag or starts a pointer drag that suppresses
+    // it, and that is why the HTML5 listeners were unreachable (#165).
+    //
+    // Touch deliberately falls through to the pointer pipeline below whatever
+    // `nativeDrag` says — HTML5 drag-and-drop has no mobile support, and
+    // `updateDraggableItems` never marks items draggable on a touch device.
+    if (this._nativeDrag && e.pointerType !== 'touch') return
 
     // Skip drag when modifier keys are held — these indicate selection intent
     // (Ctrl/Cmd+Click for toggle, Shift+Click for range selection)

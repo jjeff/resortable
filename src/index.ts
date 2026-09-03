@@ -452,6 +452,7 @@ export class Sortable {
       invertedSwapThreshold: this.options.invertedSwapThreshold,
       direction: this.options.direction,
       forceFallback: this.options.forceFallback,
+      nativeDrag: this.options.nativeDrag,
       fallbackClass: this.options.fallbackClass,
       fallbackOnBody: this.options.fallbackOnBody,
       fallbackTolerance: this.options.fallbackTolerance,
@@ -772,6 +773,7 @@ export class Sortable {
       case 'invertedSwapThreshold':
       case 'direction':
       case 'forceFallback':
+      case 'nativeDrag':
       case 'fallbackClass':
       case 'fallbackOnBody':
       case 'fallbackTolerance':
