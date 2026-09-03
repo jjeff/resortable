@@ -554,3 +554,92 @@ describe('nativeDrag drag image', () => {
     expect(item.classList.contains('sortable-drag')).toBe(true)
   })
 })
+
+describe('duplicateKey on the native HTML5 path', () => {
+  let sortable: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    sortable?.destroy()
+    sortable = undefined
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  function build(): { ul: HTMLElement; items: HTMLElement[] } {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      duplicateKey: 'alt',
+    })
+    return { ul, items: Array.from(ul.querySelectorAll<HTMLElement>('.item')) }
+  }
+
+  it('leaves the original at home and puts the copy in the drop slot', () => {
+    const { ul, items } = build()
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt, { altKey: true }))
+    items[3].dispatchEvent(mkDrag('dragover', { altKey: true, clientY: 10 }))
+    items[3].dispatchEvent(mkDrag('drop', { altKey: true }))
+
+    // Item 1 stays first; a copy of it lands where the drop happened.
+    const order = ids(ul)
+    expect(order).toHaveLength(5)
+    expect(order[0]).toBe('1')
+    expect(order.filter((id) => id === '1')).toHaveLength(2)
+  })
+
+  it('moves rather than duplicates when the modifier is released before the drop', () => {
+    const { ul, items } = build()
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt, { altKey: true }))
+    items[3].dispatchEvent(mkDrag('dragover', { altKey: true, clientY: 10 }))
+    // Released: the drop is an ordinary move again.
+    items[3].dispatchEvent(mkDrag('dragover', { clientY: 10 }))
+    items[3].dispatchEvent(mkDrag('drop'))
+
+    expect(ids(ul)).toHaveLength(4)
+  })
+
+  it('never duplicates on a drag that ends without a drop', () => {
+    const { ul, items } = build()
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt, { altKey: true }))
+    items[3].dispatchEvent(mkDrag('dragover', { altKey: true, clientY: 10 }))
+    // Released outside every zone — dragend arrives, drop never does.
+    ul.dispatchEvent(mkDrag('dragend'))
+
+    expect(ids(ul)).toEqual(['1', '2', '3', '4'])
+  })
+
+  it('reports copy or move to the OS through dropEffect', () => {
+    const { items } = build()
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt, { altKey: true }))
+
+    const armed = mkDrag('dragover', { altKey: true, clientY: 10 })
+    Object.defineProperty(armed, 'dataTransfer', {
+      value: mkDataTransfer().dt,
+    })
+    items[3].dispatchEvent(armed)
+    expect(armed.dataTransfer?.dropEffect).toBe('copy')
+
+    const released = mkDrag('dragover', { clientY: 10 })
+    Object.defineProperty(released, 'dataTransfer', {
+      value: mkDataTransfer().dt,
+    })
+    items[3].dispatchEvent(released)
+    expect(released.dataTransfer?.dropEffect).toBe('move')
+  })
+
+  it('advertises copyMove on dragstart so the browser can offer both', () => {
+    const { items } = build()
+    const { dt } = mkDataTransfer()
+
+    items[0].dispatchEvent(mkDragStart(dt))
+
+    expect(dt.effectAllowed).toBe('copyMove')
+  })
+})

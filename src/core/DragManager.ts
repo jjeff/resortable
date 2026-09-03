@@ -118,6 +118,11 @@ export class DragManager implements DragManagerInterface {
   // `pointerType` of the most recent press on this zone, so the native path
   // can tell a touch gesture from a merely touch-capable device.
   private lastPointerDownType = ''
+  // True between `dragstart` and `dragend` on the native pipeline. The two
+  // pipelines key `globalDragState` differently — `'html5-drag'` versus
+  // `pointer-<id>` — so shared machinery asks `currentDragId()` rather than
+  // assuming a pointer id.
+  private isNativeDragging = false
   private _fallbackClass?: string
   // `_fallbackOnBody` chooses where the pointer-driven ghost is appended:
   // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
@@ -575,6 +580,9 @@ export class DragManager implements DragManagerInterface {
 
     // Register with global drag state using HTML5 drag API as ID
     const dragId = 'html5-drag'
+    // Set before anything can ask `currentDragId()` — `syncDuplicate` below
+    // reads it to decide which pipeline's key to use.
+    this.isNativeDragging = true
     globalDragState.startDrag(
       dragId,
       this.draggedItems,
@@ -636,7 +644,10 @@ export class DragManager implements DragManagerInterface {
       } else {
         e.dataTransfer.setData('text/plain', '')
       }
-      e.dataTransfer.effectAllowed = 'move'
+      // `copyMove` is what lets the browser show a copy affordance when the
+      // duplicate modifier goes down mid-drag; `dropEffect` on each `dragover`
+      // then picks between the two.
+      e.dataTransfer.effectAllowed = this.duplicateKey ? 'copyMove' : 'move'
 
       // Optional call on purpose: `setDragImage` is absent from the
       // `DataTransfer` stubs the unit suite dispatches with, and on a real
@@ -656,6 +667,16 @@ export class DragManager implements DragManagerInterface {
 
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())
+    }
+
+    // Live-track the configured duplicateKey for the rest of this drag, the
+    // same way the pointer pipeline does. `dragover` carries modifier flags on
+    // its own, but only while the pointer moves — the key listeners are what
+    // make a press or release register with the cursor held still.
+    if (this.duplicateKey) {
+      document.addEventListener('keydown', this.onDuplicateKeyChange)
+      document.addEventListener('keyup', this.onDuplicateKeyChange)
+      this.syncDuplicate(e)
     }
 
     // Then emit start event
@@ -1065,6 +1086,21 @@ export class DragManager implements DragManagerInterface {
     // opted into nested-sortable propagation via `dragoverBubble: true`.
     if (!this._dragoverBubble) e.stopPropagation()
 
+    // Keep duplicate mode live, and report it to the OS. Routed through the
+    // SOURCE manager: `this` may be the zone being dragged over, whose own
+    // `duplicateKey` can differ from the one the drag started under — the same
+    // reason `dispatchMove` re-routes.
+    const sourceManager = activeDrag.fromDragManager as DragManager
+    if (sourceManager.duplicateKey) {
+      sourceManager.syncDuplicate(e)
+      // The drag cursor during a native session is the browser's, drawn from
+      // `dropEffect` — CSS `cursor` is ignored outright. This is the only
+      // copy affordance available on this pipeline.
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = activeDrag.duplicate ? 'copy' : 'move'
+      }
+    }
+
     // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
     const isDifferentZone =
       activeDrag.items[0].parentElement !== this.zone.element
@@ -1311,14 +1347,17 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDrop = (e: DragEvent): void => {
+    // Ownership first, exactly as in `onDragOver` — a drop this library did
+    // not start belongs to the consumer, and claiming it would stop their own
+    // handler ever seeing the payload.
+    const dragId = 'html5-drag'
+    const activeDrag = globalDragState.getActiveDrag(dragId)
+    if (!activeDrag) return
+
     e.preventDefault()
     // Stop the event from bubbling to ancestor sortables unless the user
     // opted into nested-sortable propagation via `dropBubble: true`.
     if (!this._dropBubble) e.stopPropagation()
-
-    const dragId = 'html5-drag'
-    const activeDrag = globalDragState.getActiveDrag(dragId)
-    if (!activeDrag) return
 
     if (this.controlled) {
       // Commit the intent: record the placeholder's final position. DOM
@@ -1402,6 +1441,16 @@ export class DragManager implements DragManagerInterface {
         }
       }
     }
+
+    // A duplicate drop leaves the originals where they started and puts the
+    // copy in the drop slot. This runs AFTER the move above, which is what
+    // puts the item in that slot for the clone to take — the pointer pipeline
+    // reaches the same state by moving during the drag instead. No-ops unless
+    // the modifier was held. Routed through the source manager, which owns the
+    // zone the originals must return to.
+    ;(activeDrag.fromDragManager as DragManager).materializeDuplicate(
+      activeDrag.items[0]
+    )
   }
 
   private onDragEnd = (): void => {
@@ -1423,7 +1472,11 @@ export class DragManager implements DragManagerInterface {
     }
     this.draggedItems = []
 
+    document.removeEventListener('keydown', this.onDuplicateKeyChange)
+    document.removeEventListener('keyup', this.onDuplicateKeyChange)
+
     globalDragState.endDrag(dragId)
+    this.isNativeDragging = false
     this.startIndex = -1
     this.html5GrabOrigin = null
   }
@@ -2490,14 +2543,25 @@ export class DragManager implements DragManagerInterface {
    * at drop time (pointerup) is what decides duplicate vs move. No-op when
    * the feature is off or no pointer drag is active.
    */
-  private syncDuplicate(e: PointerEvent | KeyboardEvent): void {
-    if (!this.duplicateKey || this.activePointerId === null) return
+  /**
+   * The `globalDragState` key for whichever pipeline is currently dragging,
+   * or null when nothing is. Shared machinery (`duplicateKey`) runs on both,
+   * and only the key differs.
+   */
+  private currentDragId(): string | null {
+    if (this.isNativeDragging) return 'html5-drag'
+    if (this.activePointerId !== null) return `pointer-${this.activePointerId}`
+    return null
+  }
+
+  private syncDuplicate(e: PointerEvent | KeyboardEvent | DragEvent): void {
+    const dragId = this.currentDragId()
+    if (!this.duplicateKey || dragId === null) return
     // A scroll-replay re-runs onPointerMove with a stale event whose
     // modifier flags predate any keydown/keyup handled since — never let it
     // overwrite the live duplicate state.
     if (this.isReplayingScroll) return
     const active = isModifierHeld(e, this.duplicateKey)
-    const dragId = `pointer-${this.activePointerId}`
     globalDragState.setDuplicate(dragId, active)
     this.ghostManager
       .getGhostElement()
@@ -2551,9 +2615,9 @@ export class DragManager implements DragManagerInterface {
    * step (or null when nothing was materialized), since the original no
    * longer sits at the drop position once this returns.
    */
-  private materializeDuplicate(): DOMRect | null {
-    if (this.activePointerId === null) return null
-    const dragId = `pointer-${this.activePointerId}`
+  private materializeDuplicate(anchor?: HTMLElement): DOMRect | null {
+    const dragId = this.currentDragId()
+    if (dragId === null) return null
     const activeDrag = globalDragState.getActiveDrag(dragId)
     // Anti-double-clone: a cross-zone group `pull: 'clone'` drag already
     // created `clones` in `setPutTarget` — don't clone again here.
@@ -2596,8 +2660,10 @@ export class DragManager implements DragManagerInterface {
 
     globalDragState.applyDuplicate(dragId, clones)
 
+    // `dragElement` is the pointer pipeline's anchor and is null on the
+    // native one, which passes its anchor in instead.
     const anchorIndex = activeDrag.items.indexOf(
-      this.dragElement as HTMLElement
+      anchor ?? (this.dragElement as HTMLElement)
     )
     const anchorClone = clones[anchorIndex] ?? clones[0]
     return anchorClone?.getBoundingClientRect() ?? null
