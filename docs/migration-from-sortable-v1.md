@@ -143,8 +143,12 @@ These v1 options work the same in v2 (same name, same shape, same semantics):
 
 `group`, `sort`, `disabled`, `store`, `handle`, `delay`, `delayOnTouchOnly`, `swapThreshold`, `invertSwap`,
 `invertedSwapThreshold`, `dataIdAttr`, `ghostClass`, `chosenClass`, `dragClass`, `forceFallback`, `fallbackClass`,
-`fallbackOnBody`, `fallbackTolerance`, `dragoverBubble`, `dropBubble`, `emptyInsertThreshold`, `preventOnFilter`,
-`setData`.
+`fallbackOnBody`, `fallbackTolerance`, `dragoverBubble`, `dropBubble`, `emptyInsertThreshold`, `preventOnFilter`.
+
+`setData` also works the same, with one condition worth knowing when migrating: it runs only on the native HTML5
+pipeline, which v2 does not use by default. Add `nativeDrag: true` to the same options object and it behaves as it did
+in v1. Without it the callback is simply never reached — v2 drives drags with Pointer Events, where there is no
+`DataTransfer` to write to.
 
 ## Deprecated and removed callbacks
 

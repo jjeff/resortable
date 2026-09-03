@@ -28,10 +28,12 @@ export async function waitForAnimations(page: Page): Promise<void> {
 /**
  * Perform drag and drop with animation wait.
  *
- * Uses `page.dragAndDrop`, which drives the native HTML5 pipeline on desktop.
- * On touch-capable projects DragManager sets `draggable = false` and uses its
- * pointer pipeline instead, so no native drag occurs; Playwright's mouse
- * events still reach it via engine-synthesized `pointer*` events.
+ * Uses `page.dragAndDrop`, which reaches the POINTER pipeline, not the native
+ * HTML5 one — on every project, desktop included. `DragManager.onPointerDown`
+ * calls `preventDefault()` on a drag-eligible press, which stops the browser
+ * ever firing `dragstart`, so the native handlers are unreachable unless the
+ * fixture opts in with `nativeDrag: true` (#165). Playwright's mouse events
+ * reach the pointer pipeline via engine-synthesized `pointer*` events.
  *
  * ponytail: routing touch projects through `mouseDragAndDrop` instead was
  * tried and is WORSE — its straight-line stepped path transits the
