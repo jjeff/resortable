@@ -607,12 +607,29 @@ export class DragManager implements DragManagerInterface {
 
     // Apply chosen class to the dragged element
     target.classList.add(this.ghostManager.getChosenClass())
-    const ghost = this.ghostManager.createGhost(target, e)
+    // A multi-item drag gets the stacked visual — layered shadow plus a count
+    // badge — the same one the pointer pipeline has always drawn. Handing it
+    // to `setDragImage` below is what makes it survive into a native drag,
+    // where the browser, not this library, paints the moving visual.
+    const ghost =
+      this.draggedItems.length > 1
+        ? this.ghostManager.createStackedGhost(
+            target,
+            this.draggedItems.length,
+            e
+          )
+        : this.ghostManager.createGhost(target, e)
 
-    // For HTML5 drag API, we can optionally set the drag image
     if (e.dataTransfer && ghost) {
-      // Hide the ghost since browser will show its own drag image
-      ghost.style.display = 'none'
+      // The browser snapshots the drag image synchronously here, and it will
+      // not snapshot a `display: none`, `visibility: hidden`, or detached
+      // element — which is why the ghost used to be hidden and the browser
+      // left to draw the item itself. Park it offscreen instead: still
+      // rendered, still in the document, never visible. `createGhost` already
+      // positions it `fixed`, so moving it is a single write.
+      ghost.style.left = '-10000px'
+      ghost.style.top = '0px'
+
       // Set drag data — use custom setData if provided, otherwise default
       if (this._setData) {
         this._setData(e.dataTransfer, target)
@@ -620,6 +637,23 @@ export class DragManager implements DragManagerInterface {
         e.dataTransfer.setData('text/plain', '')
       }
       e.dataTransfer.effectAllowed = 'move'
+
+      // Optional call on purpose: `setDragImage` is absent from the
+      // `DataTransfer` stubs the unit suite dispatches with, and on a real
+      // `DataTransfer` it is always present.
+      const origin = this.html5GrabOrigin
+      e.dataTransfer.setDragImage?.(
+        ghost,
+        origin ? origin.grabX : ghost.offsetWidth / 2,
+        origin ? origin.grabY : ghost.offsetHeight / 2
+      )
+
+      // The snapshot is taken during this handler, so the ghost has done its
+      // job the moment we return. Drop it on the next tick — passing no
+      // element, because `destroyGhost(target)` would strip the chosen and
+      // drag classes that must stay on until `dragend`.
+      window.setTimeout(() => this.ghostManager.destroyGhost(), 0)
+
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())
     }

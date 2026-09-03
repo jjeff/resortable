@@ -425,3 +425,132 @@ describe('nativeDrag and drags this library did not start', () => {
     }
   })
 })
+
+/**
+ * A DataTransfer stub rich enough for the drag-image path, returned alongside
+ * its `setDragImage` spy so tests never have to read the method back off the
+ * object (which trips `unbound-method`).
+ */
+function mkDataTransfer(withSetDragImage = true): {
+  dt: DataTransfer
+  setDragImage: ReturnType<typeof vi.fn>
+} {
+  const setDragImage = vi.fn()
+  const dt: Record<string, unknown> = {
+    setData: vi.fn(),
+    getData: vi.fn(),
+    effectAllowed: 'none',
+    dropEffect: 'none',
+  }
+  if (withSetDragImage) dt.setDragImage = setDragImage
+  return { dt: dt as unknown as DataTransfer, setDragImage }
+}
+
+/** A dragstart carrying a DataTransfer, which jsdom's DragEvent will not. */
+function mkDragStart(dt: DataTransfer, init: MouseEventInit = {}): DragEvent {
+  const ev = mkDrag('dragstart', init)
+  Object.defineProperty(ev, 'dataTransfer', { value: dt })
+  return ev
+}
+
+describe('nativeDrag drag image', () => {
+  let sortable: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    sortable?.destroy()
+    sortable = undefined
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('hands the browser a stacked ghost for a multi-item drag', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+
+    const { dt, setDragImage } = mkDataTransfer()
+    items[0].dispatchEvent(mkDragStart(dt))
+
+    expect(setDragImage).toHaveBeenCalledTimes(1)
+    const ghost = setDragImage.mock.calls[0][0] as HTMLElement
+    expect(ghost.classList.contains('sortable-ghost-stacked')).toBe(true)
+    expect(ghost.querySelector('.sortable-drag-count')?.textContent).toBe('2')
+  })
+
+  it('hands the browser a plain ghost for a single-item drag', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    const { dt, setDragImage } = mkDataTransfer()
+    item.dispatchEvent(mkDragStart(dt))
+
+    expect(setDragImage).toHaveBeenCalledTimes(1)
+    const ghost = setDragImage.mock.calls[0][0] as HTMLElement
+    expect(ghost.classList.contains('sortable-ghost-stacked')).toBe(false)
+  })
+
+  it('parks the ghost offscreen rather than hiding it, so it can be snapshotted', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    const { dt, setDragImage } = mkDataTransfer()
+    item.dispatchEvent(mkDragStart(dt))
+
+    const ghost = setDragImage.mock.calls[0][0] as HTMLElement
+    // No engine snapshots a display:none / visibility:hidden element.
+    expect(ghost.style.display).not.toBe('none')
+    expect(ghost.style.visibility).not.toBe('hidden')
+    expect(ghost.style.left).toBe('-10000px')
+    expect(ghost.isConnected).toBe(true)
+  })
+
+  it('does not throw when the DataTransfer has no setDragImage', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    expect(() =>
+      item.dispatchEvent(mkDragStart(mkDataTransfer(false).dt))
+    ).not.toThrow()
+  })
+
+  it('keeps the chosen and drag classes on the item after dropping the ghost', async () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+    item.dispatchEvent(mkDragStart(mkDataTransfer().dt))
+
+    // The ghost is removed a tick after the snapshot; the classes must not go
+    // with it, or the item loses its dragging styling for the whole drag.
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+    expect(document.querySelector('[data-resortable-ghost]')).toBeNull()
+    expect(item.classList.contains('sortable-chosen')).toBe(true)
+    expect(item.classList.contains('sortable-drag')).toBe(true)
+  })
+})
