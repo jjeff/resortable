@@ -584,11 +584,10 @@ describe('duplicateKey on the native HTML5 path', () => {
     items[3].dispatchEvent(mkDrag('dragover', { altKey: true, clientY: 10 }))
     items[3].dispatchEvent(mkDrag('drop', { altKey: true }))
 
-    // Item 1 stays first; a copy of it lands where the drop happened.
-    const order = ids(ul)
-    expect(order).toHaveLength(5)
-    expect(order[0]).toBe('1')
-    expect(order.filter((id) => id === '1')).toHaveLength(2)
+    // The original stays at home and the copy lands in the drop slot. Asserted
+    // as a whole order: a count plus a first-element check would also pass if
+    // the copy landed somewhere else entirely.
+    expect(ids(ul)).toEqual(['1', '2', '3', '4', '1'])
   })
 
   it('moves rather than duplicates when the modifier is released before the drop', () => {
@@ -600,7 +599,9 @@ describe('duplicateKey on the native HTML5 path', () => {
     items[3].dispatchEvent(mkDrag('dragover', { clientY: 10 }))
     items[3].dispatchEvent(mkDrag('drop'))
 
-    expect(ids(ul)).toHaveLength(4)
+    // An ordinary move to the drop slot. Length alone would also pass for a
+    // move that landed in the wrong place.
+    expect(ids(ul)).toEqual(['2', '3', '4', '1'])
   })
 
   it('never duplicates on a drag that ends without a drop', () => {
@@ -740,12 +741,17 @@ describe('setDragCursor', () => {
     sortable.setDragCursor('grabbing')
 
     const over = mkDrag('dragover', { clientY: 10 })
-    Object.defineProperty(over, 'dataTransfer', { value: mkDataTransfer().dt })
+    const seeded = mkDataTransfer().dt
+    // Seeded to something the code would never choose, so "left alone" is
+    // distinguishable from "explicitly set to none" — which is what
+    // no-drop/not-allowed genuinely map to.
+    seeded.dropEffect = 'link'
+    Object.defineProperty(over, 'dataTransfer', { value: seeded })
     items[2].dispatchEvent(over)
 
     // 'grabbing' has no dropEffect equivalent — better to leave the browser's
     // own answer than to invent one.
-    expect(over.dataTransfer?.dropEffect).toBe('none')
+    expect(over.dataTransfer?.dropEffect).toBe('link')
   })
 
   it('clears itself when the native drag ends', () => {
@@ -758,5 +764,304 @@ describe('setDragCursor', () => {
     items[0].dispatchEvent(mkDrag('dragend'))
 
     expect(document.getElementById('resortable-drag-cursor')).toBeNull()
+  })
+})
+
+describe('nativeDrag teardown and edge cases', () => {
+  let sortable: Sortable | undefined
+  let other: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    sortable?.destroy()
+    other?.destroy()
+    sortable = undefined
+    other = undefined
+    document.body.innerHTML = ''
+    document.getElementById('resortable-drag-cursor')?.remove()
+    vi.restoreAllMocks()
+  })
+
+  it('ends an in-flight native drag when the instance is destroyed', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    sortable.setDragCursor('copy')
+    // A React unmount, or any option() that rebuilds the manager. `destroy`
+    // removes the dragend listener, so nothing else will ever end this drag.
+    sortable.destroy()
+    sortable = undefined
+
+    // A stuck cursor rule would apply to the whole page forever.
+    expect(document.getElementById('resortable-drag-cursor')).toBeNull()
+
+    // And a surviving 'html5-drag' entry would make the next FOREIGN drag
+    // over a same-group zone get claimed — the exact bug the ownership
+    // checks exist to prevent.
+    const ul2 = makeList(3)
+    other = new Sortable(ul2, { draggable: '.item', nativeDrag: true })
+    const foreign = mkDrag('dragover', { clientX: 5, clientY: 5 })
+    ul2.dispatchEvent(foreign)
+    expect(foreign.defaultPrevented).toBe(false)
+  })
+
+  it('clears the drag styling off the item that was actually grabbed', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+    ctrlClick(items[2])
+
+    // Grab the LAST of the selection, so the grabbed item is not items[0].
+    items[2].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    expect(items[2].classList.contains('sortable-chosen')).toBe(true)
+
+    items[2].dispatchEvent(mkDrag('dragend'))
+    expect(items[2].classList.contains('sortable-chosen')).toBe(false)
+    expect(items[2].classList.contains('sortable-drag')).toBe(false)
+  })
+
+  it('leaves no ghost behind when the dragstart carries no dataTransfer', async () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    // jsdom's DragEvent has a null dataTransfer. Without cleanup outside that
+    // branch, a visible clone parks at the grab point for the whole drag.
+    items[0].dispatchEvent(mkDrag('dragstart'))
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+
+    expect(document.querySelector('[data-resortable-ghost]')).toBeNull()
+  })
+
+  it('refuses a dragstart on a draggable child that is not one of its items', () => {
+    const ul = makeList(3)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const img = document.createElement('img')
+    img.draggable = true
+    ul.appendChild(img)
+
+    // Otherwise the browser starts a real drag session with no data and no
+    // library state, which nothing can then accept.
+    const ev = mkDrag('dragstart')
+    img.dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(true)
+  })
+
+  it('honours a cursor set on the zone being dragged over, not just the source', () => {
+    const ulA = makeList(3)
+    const ulB = makeList(3)
+    sortable = new Sortable(ulA, {
+      draggable: '.item',
+      group: 'shared',
+      nativeDrag: true,
+    })
+    other = new Sortable(ulB, {
+      draggable: '.item',
+      group: 'shared',
+      nativeDrag: true,
+    })
+    const aItems = Array.from(ulA.querySelectorAll<HTMLElement>('.item'))
+    const bItems = Array.from(ulB.querySelectorAll<HTMLElement>('.item'))
+
+    aItems[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    // The zone being entered is the one that knows it will refuse the drop.
+    other.setDragCursor('not-allowed')
+
+    const over = mkDrag('dragover', { clientX: 5, clientY: 5 })
+    Object.defineProperty(over, 'dataTransfer', { value: mkDataTransfer().dt })
+    bItems[0].dispatchEvent(over)
+
+    expect(over.dataTransfer?.dropEffect).toBe('none')
+  })
+})
+
+describe('nativeDrag across two zones', () => {
+  let a: Sortable | undefined
+  let b: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    a?.destroy()
+    b?.destroy()
+    a = undefined
+    b = undefined
+    document.body.innerHTML = ''
+    document.getElementById('resortable-drag-cursor')?.remove()
+    vi.restoreAllMocks()
+  })
+
+  function pair(): {
+    ulA: HTMLElement
+    ulB: HTMLElement
+    aItems: HTMLElement[]
+    bItems: HTMLElement[]
+  } {
+    const ulA = makeList(3)
+    const ulB = makeList(3)
+    // Distinguish the two lists' ids so an assertion can tell them apart.
+    Array.from(ulB.querySelectorAll<HTMLElement>('.item')).forEach((el, i) => {
+      el.dataset.id = `b${i + 1}`
+    })
+    a = new Sortable(ulA, {
+      draggable: '.item',
+      animation: 0,
+      group: 'shared',
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    b = new Sortable(ulB, {
+      draggable: '.item',
+      animation: 0,
+      group: 'shared',
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    return {
+      ulA,
+      ulB,
+      aItems: Array.from(ulA.querySelectorAll<HTMLElement>('.item')),
+      bItems: Array.from(ulB.querySelectorAll<HTMLElement>('.item')),
+    }
+  }
+
+  it('lands a cross-zone drop where the pointer was, not at the end', () => {
+    const { ulB, aItems, bItems } = pair()
+
+    aItems[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    // Enter B over its FIRST item, and drop there.
+    bItems[0].dispatchEvent(mkDrag('dragover', { clientX: 5, clientY: 5 }))
+    bItems[0].dispatchEvent(mkDrag('drop'))
+
+    // The placeholder lives on the SOURCE manager; reading the target's gave
+    // null, skipped the placement block, and left the item wherever the
+    // cross-zone entry appended it — always the end.
+    expect(ids(ulB)).not.toEqual(['b1', 'b2', 'b3', '1'])
+    expect(ids(ulB)).toContain('1')
+  })
+
+  it('takes the whole selection across, not just the grabbed item', () => {
+    const { ulA, ulB, aItems, bItems } = pair()
+
+    ctrlClick(aItems[0])
+    ctrlClick(aItems[1])
+    aItems[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    bItems[0].dispatchEvent(mkDrag('dragover', { clientX: 5, clientY: 5 }))
+
+    // Both selected items must leave A and arrive in B. Inserting only the
+    // anchor stranded the rest while the end events still reported all of
+    // them, so a consumer's model and the DOM diverged.
+    expect(ids(ulB)).toContain('1')
+    expect(ids(ulB)).toContain('2')
+    expect(ids(ulA)).not.toContain('1')
+    expect(ids(ulA)).not.toContain('2')
+  })
+
+  it('cleans up the SOURCE zone when the drag ends in the target', () => {
+    const { ulA, aItems, bItems } = pair()
+
+    ctrlClick(aItems[0])
+    ctrlClick(aItems[1])
+    aItems[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    bItems[0].dispatchEvent(mkDrag('dragover', { clientX: 5, clientY: 5 }))
+    // `dragend` fires on the moved element, which now lives in B — so it
+    // reaches B's listener and never A's. The teardown has to be routed back
+    // to whichever manager started the drag.
+    aItems[0].dispatchEvent(mkDrag('dragend'))
+
+    // The source placeholder must not be left behind in A. It carries the
+    // item class, so it would match `draggable` and act as a drop target.
+    expect(ulA.querySelector('.sortable-ghost')).toBeNull()
+    expect(aItems[1].classList.contains('sortable-multi-drag-source')).toBe(
+      false
+    )
+  })
+
+  it('stops claiming foreign drags once a cross-zone drag has ended', () => {
+    const { ulA, aItems, bItems } = pair()
+
+    aItems[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    bItems[0].dispatchEvent(mkDrag('dragover', { clientX: 5, clientY: 5 }))
+    aItems[0].dispatchEvent(mkDrag('dragend'))
+
+    // A stuck 'html5-drag' entry would make every later foreign drag over a
+    // same-group zone get claimed, and run the move path against stale items.
+    const foreign = mkDrag('dragover', { clientX: 5, clientY: 5 })
+    ulA.dispatchEvent(foreign)
+    expect(foreign.defaultPrevented).toBe(false)
+  })
+})
+
+describe('nativeDrag with nested sortables', () => {
+  let outer: Sortable | undefined
+  let inner: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    inner?.destroy()
+    outer?.destroy()
+    inner = undefined
+    outer = undefined
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('does not let an outer zone cancel a drag an inner zone started', () => {
+    // Both zones use the same `draggable` selector — the self-similar tree
+    // pattern. `dragstart` bubbles, so the outer manager sees an event whose
+    // target belongs to the inner list.
+    const outerUl = document.createElement('ul')
+    const host = document.createElement('li')
+    host.className = 'item'
+    host.dataset.id = 'host'
+    const innerUl = document.createElement('ul')
+    for (const id of ['i1', 'i2']) {
+      const li = document.createElement('li')
+      li.className = 'item'
+      li.dataset.id = id
+      innerUl.appendChild(li)
+    }
+    host.appendChild(innerUl)
+    outerUl.appendChild(host)
+    document.body.appendChild(outerUl)
+
+    outer = new Sortable(outerUl, { draggable: '.item', nativeDrag: true })
+    inner = new Sortable(innerUl, { draggable: '.item', nativeDrag: true })
+
+    const innerItem = innerUl.querySelector<HTMLElement>('.item')!
+    const ev = mkDragStart(mkDataTransfer().dt)
+    innerItem.dispatchEvent(ev)
+
+    // Cancelling here aborts the whole drag, and a cancelled dragstart fires
+    // no dragend — so the inner zone would keep its placeholder and drag
+    // classes for good.
+    expect(ev.defaultPrevented).toBe(false)
+    expect(innerItem.classList.contains('sortable-chosen')).toBe(true)
+
+    innerItem.dispatchEvent(mkDrag('dragend'))
+    expect(innerItem.classList.contains('sortable-chosen')).toBe(false)
+  })
+
+  it('recovers when a second dragstart arrives with one still in flight', () => {
+    const ul = makeList(3)
+    outer = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+    // No dragend in between — the first drag was cancelled by something else.
+    items[1].dispatchEvent(mkDragStart(mkDataTransfer().dt))
+
+    // The abandoned drag's marks must not be stranded on the first item.
+    expect(items[0].classList.contains('sortable-chosen')).toBe(false)
+    expect(items[1].classList.contains('sortable-chosen')).toBe(true)
   })
 })
