@@ -6,15 +6,15 @@
   "main": "dist/sortable.cjs",
   "module": "dist/sortable.esm.js",
   "unpkg": "dist/sortable.umd.js",
-  "types": "dist/types/index.d.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/sortable.esm.js",
       "require": "./dist/sortable.cjs"
     },
     "./react": {
-      "types": "./dist/types/react/index.d.ts",
+      "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.esm.js",
       "require": "./dist/react/index.cjs"
     }
@@ -22,10 +22,10 @@
   "typesVersions": {
     "*": {
       "react": [
-        "./dist/types/react/index.d.ts"
+        "./dist/react/index.d.ts"
       ],
       "*": [
-        "./dist/types/index.d.ts"
+        "./dist/index.d.ts"
       ]
     }
   },
@@ -38,6 +38,7 @@
     "build": "tsc && vite build && vite build --config vite.config.react.ts",
     "build:debug": "NODE_OPTIONS='--inspect-brk' npm run build",
     "build:rollup": "rollup -c",
+    "check:exports": "node scripts/check-package-exports.mjs",
     "build:examples": "vite build --config vite.config.examples.ts",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",

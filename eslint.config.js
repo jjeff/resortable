@@ -63,6 +63,17 @@ export default [
     },
   },
   {
+    // Node scripts run by npm — not shipped, not type-checked by the project
+    // tsconfig, and they need Node globals the browser block above omits.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     ignores: [
       'dist/**',
       'docs/**',

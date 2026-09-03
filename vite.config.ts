@@ -4,10 +4,16 @@ import dts from 'vite-plugin-dts'
 
 export default defineConfig({
   plugins: [
+    // Declarations mirror `src/` at the dist root: `src/index.ts` becomes
+    // `dist/index.d.ts`, `src/react/index.ts` becomes
+    // `dist/react/index.d.ts`. package.json's `types` and `exports` point
+    // there, and `npm run check:exports` fails the build if they ever drift
+    // apart again — 3.0.0 shipped with them pointing at a `dist/types/`
+    // layout this plugin had stopped producing. An explicit
+    // `outDir: 'dist/types'` used to sit here and was silently ignored.
     dts({
       include: ['src/**/*'],
       exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
-      outDir: 'dist/types',
     }),
   ],
   build: {
