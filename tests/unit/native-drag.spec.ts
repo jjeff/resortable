@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { Sortable } from '../../src/index'
+import type { SortableEvent } from '../../src/types/index'
 
 /**
  * Unit coverage for #165 — the `nativeDrag` option.
@@ -162,5 +163,265 @@ describe('nativeDrag', () => {
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('`nativeDrag` was ignored')
     )
+  })
+})
+
+/**
+ * Parity coverage for #165 — the native pipeline used to be single-item and
+ * to abort on any modifier. Both are gestures the pointer pipeline already
+ * served, so a consumer that switched to `nativeDrag` silently lost them.
+ *
+ * Driven through HTML5 `dragstart` / `drop`, which jsdom dispatches
+ * synchronously (same technique as swap-threshold-html5.spec.ts).
+ */
+
+// Some jsdom builds lack the DragEvent constructor — fall back to a plain
+// MouseEvent cast, same pattern as swap-threshold-html5.spec.ts.
+function mkDrag(type: string, init: MouseEventInit = {}): DragEvent {
+  const full = { bubbles: true, cancelable: true, ...init }
+  try {
+    return new DragEvent(type, full)
+  } catch {
+    return new MouseEvent(type, full) as unknown as DragEvent
+  }
+}
+
+function ctrlClick(el: HTMLElement): void {
+  el.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })
+  )
+}
+
+function ids(list: HTMLElement): (string | undefined)[] {
+  return Array.from(list.querySelectorAll<HTMLElement>('.item')).map(
+    (el) => el.dataset.id
+  )
+}
+
+/**
+ * Finish any in-flight native drag so `globalDragState` does not carry a stale
+ * `'html5-drag'` entry into the next test. Dispatched on each zone, not on
+ * `document.body` — an event dispatched on body never reaches its descendants,
+ * so a body-level dragend silently cleans up nothing.
+ */
+function endAnyDrag(): void {
+  document.querySelectorAll('ul').forEach((ul) => {
+    ul.dispatchEvent(new Event('dragend', { bubbles: true, cancelable: true }))
+  })
+}
+
+describe('nativeDrag parity with the pointer pipeline', () => {
+  let sortable: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    sortable?.destroy()
+    sortable = undefined
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('drags the whole selection when the grabbed item is selected', () => {
+    const ul = makeList(4)
+    const onStart = vi.fn<(evt: SortableEvent) => void>()
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+      onStart,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+
+    items[0].dispatchEvent(mkDrag('dragstart'))
+
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(onStart.mock.calls[0][0].items).toHaveLength(2)
+  })
+
+  it('drags only the grabbed item when it is not selected', () => {
+    const ul = makeList(4)
+    const onStart = vi.fn<(evt: SortableEvent) => void>()
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+      onStart,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+
+    // Grabbing an unselected item must not sweep the selection along, and
+    // must not silently change the selection either.
+    items[3].dispatchEvent(mkDrag('dragstart'))
+
+    expect(onStart.mock.calls[0][0].items).toEqual([items[3]])
+  })
+
+  it('marks the non-anchor items while dragging and clears them on dragend', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+    items[0].dispatchEvent(mkDrag('dragstart'))
+
+    expect(items[0].classList.contains('sortable-multi-drag-source')).toBe(
+      false
+    )
+    expect(items[1].classList.contains('sortable-multi-drag-source')).toBe(true)
+
+    items[0].dispatchEvent(mkDrag('dragend'))
+    expect(items[1].classList.contains('sortable-multi-drag-source')).toBe(
+      false
+    )
+  })
+
+  it('moves the whole run on drop, preserving its order', () => {
+    const ul = makeList(4)
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      multiDrag: true,
+    })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+    expect(ids(ul)).toEqual(['1', '2', '3', '4'])
+
+    ctrlClick(items[0])
+    ctrlClick(items[1])
+    items[0].dispatchEvent(mkDrag('dragstart'))
+    items[3].dispatchEvent(mkDrag('dragover', { clientX: 0, clientY: 0 }))
+    items[3].dispatchEvent(mkDrag('drop'))
+
+    // 1 and 2 travel together and keep their relative order. Before the fix
+    // only the anchor moved and 2 was stranded, giving ['2','3','4','1'].
+    expect(ids(ul)).toEqual(['3', '4', '1', '2'])
+  })
+
+  it('lets a configured duplicateKey start a drag instead of reading as selection', () => {
+    const ul = makeList(4)
+    const onStart = vi.fn()
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      duplicateKey: 'ctrl',
+      onStart,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    // With `duplicateKey: 'ctrl'`, ctrl means "duplicate on drop", not
+    // "toggle selection" — so it must not abort the drag.
+    const ev = mkDrag('dragstart', { ctrlKey: true })
+    item.dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(false)
+    expect(onStart).toHaveBeenCalledTimes(1)
+  })
+
+  it('still aborts on a selection modifier that is not the duplicateKey', () => {
+    const ul = makeList(4)
+    const onStart = vi.fn()
+    sortable = new Sortable(ul, {
+      draggable: '.item',
+      animation: 0,
+      nativeDrag: true,
+      duplicateKey: 'alt',
+      onStart,
+    })
+    const item = ul.querySelector<HTMLElement>('.item')!
+
+    const ev = mkDrag('dragstart', { shiftKey: true })
+    item.dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(true)
+    expect(onStart).not.toHaveBeenCalled()
+  })
+})
+
+describe('nativeDrag and drags this library did not start', () => {
+  let sortable: Sortable | undefined
+
+  afterEach(() => {
+    endAnyDrag()
+    sortable?.destroy()
+    sortable = undefined
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('leaves a foreign dragover alone, so the page can be its own drop target', () => {
+    const ul = makeList(3)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+
+    // No resortable drag is in flight — this is a file from the desktop, or a
+    // drag from another window. Claiming it (preventDefault marks a valid drop
+    // target, stopPropagation hides it from the page) would swallow exactly
+    // the cross-window drop nativeDrag exists to enable.
+    const ev = mkDrag('dragover', { clientX: 10, clientY: 10 })
+    ul.dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(false)
+  })
+
+  it('leaves a foreign dragenter alone for the same reason', () => {
+    const ul = makeList(3)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+
+    const ev = mkDrag('dragenter', { clientX: 10, clientY: 10 })
+    ul.dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(false)
+  })
+
+  it('still claims a dragover belonging to its own drag', () => {
+    const ul = makeList(3)
+    sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+    const items = Array.from(ul.querySelectorAll<HTMLElement>('.item'))
+
+    items[0].dispatchEvent(mkDrag('dragstart'))
+    const ev = mkDrag('dragover', { clientX: 10, clientY: 10 })
+    items[2].dispatchEvent(ev)
+
+    expect(ev.defaultPrevented).toBe(true)
+    ul.dispatchEvent(mkDrag('dragend'))
+  })
+
+  it('keeps items draggable on a touch-capable device when nativeDrag is set', () => {
+    const original = Object.getOwnPropertyDescriptor(
+      Navigator.prototype,
+      'maxTouchPoints'
+    )
+    // A laptop with a touchscreen. Without this, `draggable` stays false and
+    // the mouse loses the native path along with the touchscreen.
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      value: 5,
+      configurable: true,
+    })
+    try {
+      const ul = makeList(3)
+      sortable = new Sortable(ul, { draggable: '.item', nativeDrag: true })
+      const item = ul.querySelector<HTMLElement>('.item')!
+      expect(item.draggable).toBe(true)
+
+      sortable.destroy()
+      const ul2 = makeList(3)
+      sortable = new Sortable(ul2, { draggable: '.item' })
+      expect(ul2.querySelector<HTMLElement>('.item')!.draggable).toBe(false)
+    } finally {
+      if (original) Object.defineProperty(navigator, 'maxTouchPoints', original)
+      else
+        delete (navigator as unknown as Record<string, unknown>).maxTouchPoints
+    }
   })
 })
