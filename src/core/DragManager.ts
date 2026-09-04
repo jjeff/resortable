@@ -25,6 +25,62 @@ import { GroupManager } from './GroupManager.js'
 const dragManagerRegistry = new Map<HTMLElement, DragManager>()
 
 /**
+ * Whether an event carries pointer coordinates worth trusting.
+ *
+ * `(0, 0)` is read as "no coordinates" for SYNTHETIC events only. jsdom
+ * defaults `clientX`/`clientY` to 0, and Firefox under Playwright delivers
+ * pointermove with coordinates frozen at the pointerdown position — both look
+ * exactly like a drag pinned to the viewport's top-left corner, and acting on
+ * them misplaces every insertion.
+ *
+ * A TRUSTED event is taken at face value, corner included. That distinction
+ * only started to matter with `nativeDrag` (#165): before it, no real HTML5
+ * drag could ever reach these gates, so the sentinel cost nothing. Now a user
+ * who genuinely drags into the top-left corner would otherwise be read as
+ * coordless — which drops `html5GrabOrigin`, makes `html5DragRect` return
+ * null, and freezes sorting for any `swapThreshold > 0` (#130 re-armed).
+ */
+/**
+ * Cursor override for the current gesture, set through `setDragCursor`.
+ *
+ * Module-level, not per instance, and deliberately so: a document has one
+ * drag and one cursor at a time, and the rule it installs is document-wide.
+ * Per-instance state gets this wrong in both directions — the zone being
+ * dragged OVER is the one that knows a drop will be refused, but only the
+ * SOURCE zone is consulted when mapping to `dropEffect`; and whichever
+ * instance ends its drag removes the shared rule while the other instance's
+ * override stays set, silently forcing its `dropEffect` for the rest of the
+ * page's life.
+ */
+let dragCursorOverride: string | null = null
+
+/** `<style>` element id carrying an active {@link DragManager.setDragCursor}. */
+const DRAG_CURSOR_STYLE_ID = 'resortable-drag-cursor'
+
+/** `dropEffect` for the active cursor override, or null if it maps to none. */
+function overrideDropEffect(): 'copy' | 'move' | 'link' | 'none' | null {
+  switch (dragCursorOverride) {
+    case 'copy':
+      return 'copy'
+    case 'move':
+      return 'move'
+    case 'alias':
+    case 'link':
+      return 'link'
+    case 'no-drop':
+    case 'not-allowed':
+      return 'none'
+    default:
+      return null
+  }
+}
+
+function hasUsableCoords(e: MouseEvent): boolean {
+  if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return false
+  return e.isTrusted || e.clientX !== 0 || e.clientY !== 0
+}
+
+/**
  * Handles drag and drop interactions with accessibility support
  * @internal
  */
@@ -87,6 +143,25 @@ export class DragManager implements DragManagerInterface {
   // omitted: `this.ghostManager.getGhostElement()` is the single source of
   // truth for the fallback ghost.
   private _forceFallback: boolean
+  // `_nativeDrag` hands the gesture to the HTML5 listeners instead of the
+  // pointer pipeline (see `onPointerDown`). Without it those listeners are
+  // attached but unreachable: the pointer pipeline `preventDefault()`s
+  // `pointerdown`, which stops the browser ever firing `dragstart` (#165).
+  // Only a native drag session carries a `DataTransfer` out of the document,
+  // so this is the only way a drag can cross into another window or app.
+  private _nativeDrag: boolean
+  // `pointerType` of the most recent press on this zone, so the native path
+  // can tell a touch gesture from a merely touch-capable device.
+  private lastPointerDownType = ''
+  // True between `dragstart` and `dragend` on the native pipeline. The two
+  // pipelines key `globalDragState` differently — `'html5-drag'` versus
+  // `pointer-<id>` — so shared machinery asks `currentDragId()` rather than
+  // assuming a pointer id.
+  private isNativeDragging = false
+  // The item actually grabbed to start a native drag, which is not
+  // `items[0]` — that is the selection in DOM order. The grabbed item is the
+  // one carrying the chosen/drag classes.
+  private nativeDragAnchor: HTMLElement | null = null
   private _fallbackClass?: string
   // `_fallbackOnBody` chooses where the pointer-driven ghost is appended:
   // `true` → `document.body` (legacy `fallbackOnBody: true`); `false`
@@ -225,6 +300,7 @@ export class DragManager implements DragManagerInterface {
       invertedSwapThreshold?: number
       direction?: 'vertical' | 'horizontal'
       forceFallback?: boolean
+      nativeDrag?: boolean
       fallbackClass?: string
       fallbackOnBody?: boolean
       fallbackTolerance?: number
@@ -286,6 +362,17 @@ export class DragManager implements DragManagerInterface {
 
     // Initialize fallback options (to be fully implemented)
     this._forceFallback = options?.forceFallback ?? false
+    this._nativeDrag = (options?.nativeDrag ?? false) && !this._forceFallback
+    if (options?.nativeDrag && options?.forceFallback) {
+      // Not merely redundant — contradictory. `forceFallback` unbinds the very
+      // listeners `nativeDrag` hands the gesture to, so honouring both would
+      // leave a drag with no pipeline at all. The pointer path wins.
+      console.warn(
+        '[resortable] `nativeDrag` was ignored because `forceFallback` is ' +
+          'set: forceFallback unbinds the HTML5 listeners that nativeDrag ' +
+          'needs. Set only one.'
+      )
+    }
     this._fallbackClass = options?.fallbackClass
     this._fallbackOnBody = options?.fallbackOnBody ?? false
     // Default 0 = commit on pointerdown (SortableJS parity). Apps where a
@@ -427,6 +514,14 @@ export class DragManager implements DragManagerInterface {
       this.cleanupPointerDrag()
     }
 
+    // The native pipeline needs the same treatment, and the `dragend`
+    // listener has just been removed above — so nothing else will ever end
+    // this drag. Detaching mid-native-drag happens routinely: a React
+    // unmount, `destroy()`, or any `option()` call that rebuilds the manager.
+    if (this.isNativeDragging) {
+      this.cleanupNativeDrag()
+    }
+
     // Cancel any pending drag delay
     this.cancelDragDelay()
     document.removeEventListener('pointermove', this.onPointerMoveBeforeDrag)
@@ -450,8 +545,33 @@ export class DragManager implements DragManagerInterface {
       return
     }
 
-    // On touch-capable devices, always prevent HTML5 drag — use pointer events instead
-    if (navigator.maxTouchPoints > 0) {
+    // A second `dragstart` with one already in flight means the first never
+    // ended — a drag some other listener cancelled fires no `dragend`. Tear it
+    // down rather than clobbering its state below, which would strand its
+    // placeholder, its chosen/drag classes and its multi-drag marks with
+    // nothing left pointing at them. Self-healing on purpose: refusing the new
+    // drag instead would wedge the instance for good if the flag ever leaked.
+    if (this.isNativeDragging) this.cleanupNativeDrag()
+
+    // Touch must use the pointer pipeline — HTML5 drag-and-drop has no mobile
+    // support at all.
+    //
+    // Without `nativeDrag` the test is the crude one: any touch-CAPABLE device
+    // refuses native drags. Under `nativeDrag` that is too blunt — a laptop
+    // with a touchscreen reports `maxTouchPoints > 0` and would silently lose
+    // the native path for its mouse too. Ask what actually started this
+    // gesture instead, and fall back to the capability test when nothing has
+    // pressed yet (a drag begun from the keyboard, or a synthetic dispatch).
+    const touchInitiated = this._nativeDrag
+      ? this.lastPointerDownType === 'touch' ||
+        // Nothing has pressed this zone: a programmatic dispatch, or a child
+        // that swallowed `pointerdown`. Fall back to the capability test —
+        // on a touch device that is the only safe answer, and letting it
+        // through would start a native drag on a platform with no HTML5 DnD
+        // and usually no `dragend` to end it.
+        (this.lastPointerDownType === '' && navigator.maxTouchPoints > 0)
+      : navigator.maxTouchPoints > 0
+    if (touchInitiated) {
       e.preventDefault()
       return
     }
@@ -461,7 +581,22 @@ export class DragManager implements DragManagerInterface {
     const target = (e.target as HTMLElement)?.closest(
       draggableSelector
     ) as HTMLElement
-    if (!target || target.parentElement !== this.zone.element) return
+    if (!target || target.parentElement !== this.zone.element) {
+      // A natively draggable child that belongs to no sortable — an <img>, an
+      // <a href> — would otherwise start a real drag session carrying no data
+      // and no library state, which `onDragOver` then declines everywhere: the
+      // user drags a browser-drawn ghost around the page and nothing can
+      // accept it. So cancel that.
+      //
+      // But cancel ONLY then. `dragstart` bubbles, and nested zones run
+      // inner-listener-first, so an inner sortable that legitimately owns this
+      // drag has already registered it by the time the event reaches an outer
+      // one. Cancelling here would abort that drag outright — and because a
+      // cancelled `dragstart` fires no `dragend`, the inner zone would be left
+      // with its placeholder and drag classes stuck on for good.
+      if (!globalDragState.getActiveDrag('html5-drag')) e.preventDefault()
+      return
+    }
 
     // Check if the element is draggable
     if (!this.isDraggable(target)) {
@@ -475,13 +610,32 @@ export class DragManager implements DragManagerInterface {
       return
     }
 
-    // Skip drag when modifier keys are held — these indicate selection intent
-    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+    // Skip drag when modifier keys are held — these indicate selection intent.
+    // Routed through the same predicate the pointer pipeline uses rather than
+    // a raw ctrl/meta/shift test, so a configured `duplicateKey` is excluded:
+    // with `duplicateKey: 'ctrl'`, ctrl is a duplicate gesture and must be
+    // allowed to start a drag, not read as a selection click.
+    if (this.isSelectionModifierHeld(e)) {
       e.preventDefault()
       return
     }
 
     this.startIndex = this.zone.getIndex(target)
+
+    // Multi-drag, matching `startPointerDrag`: dragging an already-selected
+    // item drags the whole selection; dragging an unselected one drags just
+    // it and leaves the selection alone, because selecting is an explicit
+    // gesture and not a side effect of dragging. DOM order, not click order,
+    // so a block selected out of visual order still lands in visual order.
+    this.draggedItems = [target]
+    if (this._selectionManager.isSelected(target)) {
+      this.draggedItems = this._selectionManager
+        .getSelected()
+        .sort((a, b) => this.zone.getIndex(a) - this.zone.getIndex(b))
+    }
+    for (const item of this.draggedItems) {
+      if (item !== target) item.classList.add('sortable-multi-drag-source')
+    }
 
     // Where within the item the user grabbed it, plus the item's size at
     // dragstart (its live rect later reflects cross-zone parking). Feeds the
@@ -491,34 +645,35 @@ export class DragManager implements DragManagerInterface {
     // freeze the gate for the whole drag; leaving it null makes the gate
     // fall back to the item-rect measurement instead.
     const startRect = target.getBoundingClientRect()
-    this.html5GrabOrigin =
-      Number.isFinite(e.clientX) &&
-      Number.isFinite(e.clientY) &&
-      (e.clientX !== 0 || e.clientY !== 0)
-        ? {
-            grabX: e.clientX - startRect.left,
-            grabY: e.clientY - startRect.top,
-            width: startRect.width,
-            height: startRect.height,
-          }
-        : null
+    this.html5GrabOrigin = hasUsableCoords(e)
+      ? {
+          grabX: e.clientX - startRect.left,
+          grabY: e.clientY - startRect.top,
+          width: startRect.width,
+          height: startRect.height,
+        }
+      : null
 
     // Register with global drag state using HTML5 drag API as ID
     const dragId = 'html5-drag'
+    // Set before anything can ask `currentDragId()` — `syncDuplicate` below
+    // reads it to decide which pipeline's key to use.
+    this.isNativeDragging = true
+    this.nativeDragAnchor = target
     globalDragState.startDrag(
       dragId,
-      target,
+      this.draggedItems,
       this.zone.element,
       this,
       this.groupManager.getName(),
-      this.startIndex,
+      this.draggedItems.map((item) => this.zone.getIndex(item)),
       this.events,
       this.controlled
     )
 
     const evt: SortableEvent = {
       item: target,
-      items: [target],
+      items: this.draggedItems,
       from: this.zone.element,
       to: this.zone.element,
       oldIndex: this.startIndex,
@@ -537,21 +692,71 @@ export class DragManager implements DragManagerInterface {
 
     // Apply chosen class to the dragged element
     target.classList.add(this.ghostManager.getChosenClass())
-    const ghost = this.ghostManager.createGhost(target, e)
+    // A multi-item drag gets the stacked visual — layered shadow plus a count
+    // badge — the same one the pointer pipeline has always drawn. Handing it
+    // to `setDragImage` below is what makes it survive into a native drag,
+    // where the browser, not this library, paints the moving visual.
+    const ghost =
+      this.draggedItems.length > 1
+        ? this.ghostManager.createStackedGhost(
+            target,
+            this.draggedItems.length,
+            e
+          )
+        : this.ghostManager.createGhost(target, e)
 
-    // For HTML5 drag API, we can optionally set the drag image
+    // Unconditional, and outside the `dataTransfer` branch on purpose: the
+    // ghost exists only to be snapshotted, so it must be dropped even on the
+    // paths that never get as far as snapshotting it. Left inside, a
+    // `dragstart` with no `dataTransfer` parked a visible clone at the grab
+    // point for the length of the drag. Passing no element, because
+    // `destroyGhost(target)` would strip the chosen and drag classes that
+    // must stay on until `dragend`.
+    window.setTimeout(() => this.ghostManager.destroyGhost(), 0)
+
     if (e.dataTransfer && ghost) {
-      // Hide the ghost since browser will show its own drag image
-      ghost.style.display = 'none'
+      // The browser snapshots the drag image synchronously here, and it will
+      // not snapshot a `display: none`, `visibility: hidden`, or detached
+      // element — which is why the ghost used to be hidden and the browser
+      // left to draw the item itself. Park it offscreen instead: still
+      // rendered, still in the document, never visible. `createGhost` already
+      // positions it `fixed`, so moving it is a single write.
+      ghost.style.left = '-10000px'
+      ghost.style.top = '0px'
+
       // Set drag data — use custom setData if provided, otherwise default
       if (this._setData) {
         this._setData(e.dataTransfer, target)
       } else {
         e.dataTransfer.setData('text/plain', '')
       }
-      e.dataTransfer.effectAllowed = 'move'
+      // `copyMove` is what lets the browser show a copy affordance when the
+      // duplicate modifier goes down mid-drag; `dropEffect` on each `dragover`
+      // then picks between the two.
+      e.dataTransfer.effectAllowed = this.duplicateKey ? 'copyMove' : 'move'
+
+      // Optional call on purpose: `setDragImage` is absent from the
+      // `DataTransfer` stubs the unit suite dispatches with, and on a real
+      // `DataTransfer` it is always present.
+      const origin = this.html5GrabOrigin
+      e.dataTransfer.setDragImage?.(
+        ghost,
+        origin ? origin.grabX : ghost.offsetWidth / 2,
+        origin ? origin.grabY : ghost.offsetHeight / 2
+      )
+
       // Apply drag class to the original element
       target.classList.add(this.ghostManager.getDragClass())
+    }
+
+    // Live-track the configured duplicateKey for the rest of this drag, the
+    // same way the pointer pipeline does. `dragover` carries modifier flags on
+    // its own, but only while the pointer moves — the key listeners are what
+    // make a press or release register with the cursor held still.
+    if (this.duplicateKey) {
+      document.addEventListener('keydown', this.onDuplicateKeyChange)
+      document.addEventListener('keyup', this.onDuplicateKeyChange)
+      this.syncDuplicate(e)
     }
 
     // Then emit start event
@@ -637,13 +842,11 @@ export class DragManager implements DragManagerInterface {
     const origin = (activeDrag.fromDragManager as DragManager).html5GrabOrigin
     if (!origin) return null
     const pt = e as MouseEvent
-    if (
-      !Number.isFinite(pt.clientX) ||
-      !Number.isFinite(pt.clientY) ||
-      (pt.clientX === 0 && pt.clientY === 0)
-    ) {
-      return null
-    }
+    // The fourth site sharing the (0,0) sentinel, and the one the helper's
+    // own comment names as the harm — a trusted corner drag losing its
+    // synthesized rect here is exactly what freezes sorting under
+    // `swapThreshold`.
+    if (!hasUsableCoords(pt)) return null
     return new DOMRect(
       pt.clientX - origin.grabX,
       pt.clientY - origin.grabY,
@@ -701,9 +904,7 @@ export class DragManager implements DragManagerInterface {
     visible: HTMLElement[]
   ): boolean {
     const pt = e as MouseEvent
-    const hasCoords =
-      typeof pt.clientX === 'number' && (pt.clientX !== 0 || pt.clientY !== 0)
-    if (hasCoords) {
+    if (hasUsableCoords(pt)) {
       const rect = over.getBoundingClientRect()
       if (rect.width > 0 || rect.height > 0) {
         return this.detectHorizontalLayout(visible)
@@ -751,14 +952,9 @@ export class DragManager implements DragManagerInterface {
     visible: HTMLElement[]
   ): boolean {
     const pt = e as MouseEvent
-    // Same coordinate gate as `controlledInsertAfter`: need real coords, and
-    // treat (0,0) as "no usable coords" (synthetic events) — otherwise a
-    // vertical zone would read an undefined/0 `clientY` and misplace.
-    const hasCoords =
-      typeof pt.clientX === 'number' &&
-      typeof pt.clientY === 'number' &&
-      (pt.clientX !== 0 || pt.clientY !== 0)
-    if (!hasCoords) return false
+    // Same coordinate gate as `controlledInsertAfter` — otherwise a vertical
+    // zone would read an undefined/0 `clientY` and misplace.
+    if (!hasUsableCoords(pt)) return false
     const rect = zoneEl.getBoundingClientRect()
     return this.detectHorizontalLayout(visible)
       ? pt.clientX < rect.left
@@ -943,12 +1139,18 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDragOver = (e: DragEvent): void => {
-    e.preventDefault()
-    // Stop the event from bubbling to ancestor sortables unless the user
-    // opted into nested-sortable propagation via `dragoverBubble: true`.
-    if (!this._dragoverBubble) e.stopPropagation()
-
-    // Check if we can accept the current drag (HTML5 drag events don't have pointer IDs)
+    // Claim the event only for a drag this library actually started.
+    //
+    // `preventDefault` on `dragover` is what marks an element as a valid drop
+    // target, and `stopPropagation` hides the event from everything above.
+    // Doing either unconditionally means a sortable zone swallows every
+    // foreign drag that crosses it — a file dragged in from the desktop, a
+    // drag from another window, a drag from a plain `draggable` element the
+    // consumer owns — and the consumer's own `drop` handler never fires.
+    //
+    // That was invisible while the native pipeline was unreachable. With
+    // `nativeDrag` (#165) the cross-window and drop-from-OS cases are the
+    // whole point, so the ownership test has to come first.
     const dragId = 'html5-drag'
     if (!globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
       return
@@ -956,6 +1158,28 @@ export class DragManager implements DragManagerInterface {
 
     const activeDrag = globalDragState.getActiveDrag(dragId)
     if (!activeDrag) return
+
+    e.preventDefault()
+    // Stop the event from bubbling to ancestor sortables unless the user
+    // opted into nested-sortable propagation via `dragoverBubble: true`.
+    if (!this._dragoverBubble) e.stopPropagation()
+
+    // Keep duplicate mode live, and report it to the OS. Routed through the
+    // SOURCE manager: `this` may be the zone being dragged over, whose own
+    // `duplicateKey` can differ from the one the drag started under — the same
+    // reason `dispatchMove` re-routes.
+    const sourceManager = activeDrag.fromDragManager as DragManager
+    if (sourceManager.duplicateKey) sourceManager.syncDuplicate(e)
+
+    // The drag cursor during a native session is the browser's, drawn from
+    // `dropEffect` — CSS `cursor` is ignored outright, so this is the only
+    // affordance this pipeline has. A consumer's `setDragCursor` override
+    // wins; otherwise duplicate mode decides.
+    const override = overrideDropEffect()
+    if (e.dataTransfer && (override || sourceManager.duplicateKey)) {
+      e.dataTransfer.dropEffect =
+        override ?? (activeDrag.duplicate ? 'copy' : 'move')
+    }
 
     // Ensure put target is set for cross-zone operations (in case onDragEnter wasn't called)
     const isDifferentZone =
@@ -998,9 +1222,16 @@ export class DragManager implements DragManagerInterface {
     if (originalItem.parentElement !== this.zone.element) {
       // Check if this is a clone operation
       let itemToInsert = originalItem
+      // Everything travelling with this drag, not just the anchor. A
+      // multi-item cross-zone drag used to insert the anchor alone and strand
+      // the rest in the source list, while the end events still reported all
+      // of them — so a consumer syncing off those events moved N items in
+      // their model and one in the DOM.
+      let itemsToInsert: HTMLElement[] = activeDrag.items
       if (activeDrag.pullMode === 'clone' && activeDrag.clones?.[0]) {
         // Use the clone for display in the target zone
         itemToInsert = activeDrag.clones[0]
+        itemsToInsert = activeDrag.clones
         dragItem = itemToInsert // Update reference for subsequent operations
       }
 
@@ -1081,15 +1312,20 @@ export class DragManager implements DragManagerInterface {
           return
         }
 
-        // `-1` / `1` override: place itemToInsert before / after the sibling
+        // `-1` / `1` override: place the items before / after the sibling
         // when there is one. With no sibling (related === container) the
         // override has no meaningful side, so we fall through to appendChild.
-        if (hasSibling && moveResult === -1) {
-          this.zone.element.insertBefore(itemToInsert, over)
-        } else if (hasSibling && moveResult === 1) {
-          this.zone.element.insertBefore(itemToInsert, over.nextSibling)
-        } else {
-          this.zone.element.appendChild(itemToInsert)
+        // Inserted in order against a fixed anchor, which preserves the run's
+        // relative order for a multi-item drag.
+        const anchor =
+          hasSibling && moveResult === -1
+            ? over
+            : hasSibling && moveResult === 1
+              ? over.nextSibling
+              : null
+        for (const item of itemsToInsert) {
+          if (anchor) this.zone.element.insertBefore(item, anchor)
+          else this.zone.element.appendChild(item)
         }
       }
     }
@@ -1157,7 +1393,15 @@ export class DragManager implements DragManagerInterface {
     // Update placeholder position to reflect the (possibly overridden)
     // insertion point. Hoisted to AFTER dispatchMove so cancellation is
     // observable (no DOM mutation when onMove returns false).
-    const placeholder = this.ghostManager.getPlaceholderElement()
+    //
+    // Read off the SOURCE manager: `GhostManager` is per instance and the
+    // placeholder was created by whichever zone the drag started in, so
+    // `this.ghostManager` has none whenever the pointer is over a different
+    // zone — the placeholder would simply stop tracking on every cross-zone
+    // drag. Only reachable now that native drags can run.
+    const placeholder = (
+      activeDrag.fromDragManager as DragManager
+    ).ghostManager.getPlaceholderElement()
     if (placeholder) {
       if (insertAfter) {
         over.parentElement?.insertBefore(placeholder, over.nextSibling)
@@ -1203,14 +1447,22 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onDrop = (e: DragEvent): void => {
+    // Ownership first, exactly as in `onDragOver` — a drop this library did
+    // not start belongs to the consumer, and claiming it would stop their own
+    // handler ever seeing the payload. Group-aware, like its siblings: a drop
+    // that bubbles to a group-INCOMPATIBLE ancestor sortable must not run the
+    // move path there just because some resortable drag is in flight.
+    const dragId = 'html5-drag'
+    if (!globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
+      return
+    }
+    const activeDrag = globalDragState.getActiveDrag(dragId)
+    if (!activeDrag) return
+
     e.preventDefault()
     // Stop the event from bubbling to ancestor sortables unless the user
     // opted into nested-sortable propagation via `dropBubble: true`.
     if (!this._dropBubble) e.stopPropagation()
-
-    const dragId = 'html5-drag'
-    const activeDrag = globalDragState.getActiveDrag(dragId)
-    if (!activeDrag) return
 
     if (this.controlled) {
       // Commit the intent: record the placeholder's final position. DOM
@@ -1227,7 +1479,14 @@ export class DragManager implements DragManagerInterface {
     }
 
     const originalItem = activeDrag.items[0]
-    const placeholder = this.ghostManager.getPlaceholderElement()
+    // Source manager's placeholder, for the same reason as in `onDragOver`:
+    // `onDrop` runs on the zone dropped INTO, which owns no placeholder on a
+    // cross-zone drag. Reading `this.ghostManager` there returned null and
+    // skipped the whole placement block, so a cross-zone drop landed wherever
+    // the pointer first crossed the boundary and never refined.
+    const placeholder = (
+      activeDrag.fromDragManager as DragManager
+    ).ghostManager.getPlaceholderElement()
 
     if (placeholder && placeholder.parentElement === this.zone.element) {
       // Get the target index based on placeholder position
@@ -1255,19 +1514,33 @@ export class DragManager implements DragManagerInterface {
       const currentIndex = items.indexOf(itemToPlace)
       let targetIndex = 0
 
-      // Count how many draggable items come before the placeholder position
+      // Count how many draggable items come before the placeholder position.
+      // Every item travelling with this drag is excluded, not just the anchor:
+      // the native pipeline leaves all of them in the DOM, so counting the
+      // other N-1 would land the run N-1 slots too far down.
+      const travelling =
+        itemToPlace === originalItem ? activeDrag.items : [itemToPlace]
       const children = Array.from(this.zone.element.children)
       for (let i = 0; i < placeholderIndex && i < children.length; i++) {
         if (
           children[i].matches(this.draggable) &&
-          children[i] !== itemToPlace
+          !travelling.includes(children[i] as HTMLElement)
         ) {
           targetIndex++
         }
       }
 
+      // A multi-item drag moves the whole run as one, preserving relative
+      // order — `move` on the anchor alone would strand the rest at their
+      // original indices. Clones keep the single-item path: cross-zone clone
+      // pulls materialize one clone per drag today.
+      const multiple =
+        activeDrag.items.length > 1 && itemToPlace === originalItem
+
       // Perform the actual placement with animation
-      if (currentIndex !== targetIndex || itemToPlace !== originalItem) {
+      if (multiple) {
+        this.zone.moveMultiple(activeDrag.items, targetIndex)
+      } else if (currentIndex !== targetIndex || itemToPlace !== originalItem) {
         // For clone operations, we need to handle positioning differently
         if (itemToPlace === activeDrag.clones?.[0]) {
           // For clones, use the zone's move method to position correctly
@@ -1280,27 +1553,84 @@ export class DragManager implements DragManagerInterface {
         }
       }
     }
+
+    // A duplicate drop leaves the originals where they started and puts the
+    // copy in the drop slot. This runs AFTER the move above, which is what
+    // puts the item in that slot for the clone to take — the pointer pipeline
+    // reaches the same state by moving during the drag instead. No-ops unless
+    // the modifier was held. Routed through the source manager, which owns the
+    // zone the originals must return to.
+    ;(activeDrag.fromDragManager as DragManager).materializeDuplicate(
+      activeDrag.items[0]
+    )
   }
 
   private onDragEnd = (): void => {
-    // Global drag state handles the end event and cleanup
+    // `dragend` fires on the dragged ELEMENT and bubbles. A cross-zone drag
+    // has already reparented that element into the target zone, so the event
+    // reaches the TARGET manager's listener and never the source's — and
+    // every piece of state below is source-scoped. Left unrouted, a
+    // cross-zone drag permanently stranded the source's placeholder in its
+    // list, its keydown/keyup listeners on `document`, and `isNativeDragging`
+    // stuck true.
+    const activeDrag = globalDragState.getActiveDrag('html5-drag')
+    const owner =
+      (activeDrag?.fromDragManager as DragManager | undefined) ?? this
+    owner.cleanupNativeDrag()
+  }
+
+  /**
+   * Tear down a native drag: classes, listeners, cursor and global state.
+   *
+   * Shared with `detach()`, which must be able to end a drag that is still in
+   * flight. Every one of these outlives the manager otherwise — and the
+   * `'html5-drag'` entry in particular is worse than a leak: the ownership
+   * checks in `onDragOver`/`onDrop` would go on matching it, so the next
+   * FOREIGN drag over any same-group zone gets claimed and run against
+   * detached items. That is exactly what those checks exist to prevent.
+   */
+  private cleanupNativeDrag(): void {
     const dragId = 'html5-drag'
     const activeDrag = globalDragState.getActiveDrag(dragId)
 
-    // Clean up ghost elements
+    // Clean up ghost elements. The classes go on the GRABBED item, which is
+    // not `items[0]` — `items` is the selection in DOM order, so grabbing the
+    // last of three would otherwise strip the classes off the first and leave
+    // the grabbed one styled as dragging forever.
     if (activeDrag) {
-      this.ghostManager.destroy(activeDrag.items[0])
+      this.ghostManager.destroy(this.nativeDragAnchor ?? activeDrag.items[0])
     }
 
+    // Drop the dimming applied to the non-anchor items of a multi-drag.
+    // Read off `draggedItems` rather than `activeDrag`, so the marks still
+    // come off when the drag ended without ever registering (a `dragstart`
+    // the browser cancelled).
+    for (const item of this.draggedItems) {
+      item.classList.remove('sortable-multi-drag-source')
+    }
+    this.draggedItems = []
+
+    document.removeEventListener('keydown', this.onDuplicateKeyChange)
+    document.removeEventListener('keyup', this.onDuplicateKeyChange)
+
+    // A cursor override lives for one gesture only, so it never outlives the
+    // drag that asked for it.
+    this.setDragCursor(null)
+
     globalDragState.endDrag(dragId)
+    this.isNativeDragging = false
+    this.nativeDragAnchor = null
     this.startIndex = -1
     this.html5GrabOrigin = null
   }
 
   private onDragEnter = (e: DragEvent): void => {
-    e.preventDefault()
+    // Same ownership-first rule as `onDragOver`: claiming a foreign drag here
+    // would make this zone a drop target for files and cross-window drags the
+    // consumer meant to handle itself.
     const dragId = 'html5-drag'
     if (globalDragState.canAcceptDrop(dragId, this.groupManager.getName())) {
+      e.preventDefault()
       globalDragState.setPutTarget(
         dragId,
         this.zone.element,
@@ -1332,7 +1662,10 @@ export class DragManager implements DragManagerInterface {
    * shift stay selection gestures unconditionally, since they're needed
    * for toggle/range selection there.
    */
-  private isSelectionModifierHeld(e: PointerEvent): boolean {
+  // Takes a `MouseEvent` rather than a `PointerEvent` so both pipelines can
+  // ask the same question — `DragEvent` extends `MouseEvent`, and only the
+  // modifier flags are read.
+  private isSelectionModifierHeld(e: MouseEvent): boolean {
     if (this.multiSelect) {
       return e.ctrlKey || e.metaKey || e.shiftKey
     }
@@ -1343,6 +1676,11 @@ export class DragManager implements DragManagerInterface {
   }
 
   private onPointerDown = (e: PointerEvent): void => {
+    // Recorded before any guard, so `onDragStart` can ask what input actually
+    // began the gesture rather than what the device is capable of. `pointerdown`
+    // always precedes `dragstart`.
+    this.lastPointerDownType = e.pointerType
+
     // Find the closest draggable item
     const draggableSelector = this.draggable || '.sortable-item'
     const target = (e.target as HTMLElement)?.closest(
@@ -1365,6 +1703,19 @@ export class DragManager implements DragManagerInterface {
 
     // Only start drag on primary button (left mouse or primary touch)
     if (e.button !== 0) return
+
+    // The native pipeline owns this gesture. Return WITHOUT `preventDefault`,
+    // which is the whole point: every other exit from this handler either
+    // suppresses the browser's drag or starts a pointer drag that suppresses
+    // it, and that is why the HTML5 listeners were unreachable (#165).
+    //
+    // Touch deliberately falls through to the pointer pipeline below whatever
+    // `nativeDrag` says — HTML5 drag-and-drop has no mobile support. Under
+    // `nativeDrag`, `updateDraggableItems` DOES mark items draggable on a
+    // touch-capable device (a laptop with a touchscreen would otherwise lose
+    // the native path for its mouse), so this yield and the touch-initiated
+    // bail in `onDragStart` are what keep touch on the pointer pipeline.
+    if (this._nativeDrag && e.pointerType !== 'touch') return
 
     // Skip drag when modifier keys are held — these indicate selection intent
     // (Ctrl/Cmd+Click for toggle, Shift+Click for range selection)
@@ -2107,6 +2458,9 @@ export class DragManager implements DragManagerInterface {
       this.dragElement.style.cursor = this.dragElementPreviousCursor
       this.dragElementPreviousCursor = ''
     }
+    // Same reasoning for a consumer's `setDragCursor`: it is scoped to one
+    // gesture, and its document-wide rule would otherwise stick to the page.
+    this.setDragCursor(null)
 
     // A pointerup/pointercancel can land in the same frame as the last
     // autoscroll scroll tick, before the deferred scroll-replay (#134) has
@@ -2338,14 +2692,71 @@ export class DragManager implements DragManagerInterface {
    * at drop time (pointerup) is what decides duplicate vs move. No-op when
    * the feature is off or no pointer drag is active.
    */
-  private syncDuplicate(e: PointerEvent | KeyboardEvent): void {
-    if (!this.duplicateKey || this.activePointerId === null) return
+  /**
+   * Set the cursor shown for the rest of the current drag, or clear it with
+   * `null`.
+   *
+   * Exists because a consumer cannot reach the cursor themselves. On the
+   * pointer pipeline the browser draws the cursor from the pointer-capture
+   * target — the dragged item — so styling the ghost, the placeholder, or
+   * whatever sits under the pointer has no effect; and in controlled mode
+   * that capture target is hidden with `display: none`, which has no layout
+   * box and paints no cursor at all. Any inline cursor a consumer wrote there
+   * would also be overwritten on the next pointermove by `syncDuplicate`.
+   *
+   * So the pointer pipeline gets a document-wide `!important` rule instead,
+   * which is immune to all three problems.
+   *
+   * The native pipeline cannot use CSS at all: during a native drag session
+   * the browser owns the cursor and reads it from `dropEffect`. The override
+   * is mapped onto that, which supports only four outcomes — `copy`, `move`,
+   * `link` (also `alias`), and `none` (also `no-drop` / `not-allowed`). Any
+   * other value is ignored there.
+   *
+   * @param cursor - A CSS cursor keyword, or null to restore the default.
+   */
+  public setDragCursor(cursor: string | null): void {
+    dragCursorOverride = cursor
+    const existing = document.getElementById(
+      DRAG_CURSOR_STYLE_ID
+    ) as HTMLStyleElement | null
+    if (!cursor) {
+      existing?.remove()
+      return
+    }
+    const style = existing ?? document.createElement('style')
+    style.id = DRAG_CURSOR_STYLE_ID
+    style.textContent = `*{cursor:${cursor}!important}`
+    if (!existing) document.head.appendChild(style)
+  }
+
+  /**
+   * The `globalDragState` key for whichever pipeline is currently dragging,
+   * or null when nothing is. Shared machinery (`duplicateKey`) runs on both,
+   * and only the key differs.
+   */
+  private currentDragId(): string | null {
+    // The live pointer drag wins. Both flags can be set at once — touch falls
+    // through to the pointer pipeline even under `nativeDrag` — and answering
+    // `'html5-drag'` there would point `syncDuplicate` and
+    // `materializeDuplicate` at a different drag entirely, cloning and
+    // reinserting its items mid-gesture.
+    if (this.isPointerDragging && this.activePointerId !== null) {
+      return `pointer-${this.activePointerId}`
+    }
+    if (this.isNativeDragging) return 'html5-drag'
+    if (this.activePointerId !== null) return `pointer-${this.activePointerId}`
+    return null
+  }
+
+  private syncDuplicate(e: PointerEvent | KeyboardEvent | DragEvent): void {
+    const dragId = this.currentDragId()
+    if (!this.duplicateKey || dragId === null) return
     // A scroll-replay re-runs onPointerMove with a stale event whose
     // modifier flags predate any keydown/keyup handled since — never let it
     // overwrite the live duplicate state.
     if (this.isReplayingScroll) return
     const active = isModifierHeld(e, this.duplicateKey)
-    const dragId = `pointer-${this.activePointerId}`
     globalDragState.setDuplicate(dragId, active)
     this.ghostManager
       .getGhostElement()
@@ -2382,7 +2793,10 @@ export class DragManager implements DragManagerInterface {
     // Inline rather than a class so `duplicateKey` signals itself with no
     // stylesheet required from the consumer; restored in cleanupPointerDrag.
     // Guarded on change because syncDuplicate runs on every pointermove.
-    if (this.dragElement) {
+    // A consumer's `setDragCursor` override outranks the duplicate cursor —
+    // without this, the write below would undo it on the very next
+    // pointermove, which is the trap that made an app-side cursor impossible.
+    if (this.dragElement && dragCursorOverride === null) {
       const next = active ? 'copy' : this.dragElementPreviousCursor
       if (this.dragElement.style.cursor !== next) {
         this.dragElement.style.cursor = next
@@ -2399,9 +2813,9 @@ export class DragManager implements DragManagerInterface {
    * step (or null when nothing was materialized), since the original no
    * longer sits at the drop position once this returns.
    */
-  private materializeDuplicate(): DOMRect | null {
-    if (this.activePointerId === null) return null
-    const dragId = `pointer-${this.activePointerId}`
+  private materializeDuplicate(anchor?: HTMLElement): DOMRect | null {
+    const dragId = this.currentDragId()
+    if (dragId === null) return null
     const activeDrag = globalDragState.getActiveDrag(dragId)
     // Anti-double-clone: a cross-zone group `pull: 'clone'` drag already
     // created `clones` in `setPutTarget` — don't clone again here.
@@ -2444,8 +2858,10 @@ export class DragManager implements DragManagerInterface {
 
     globalDragState.applyDuplicate(dragId, clones)
 
+    // `dragElement` is the pointer pipeline's anchor and is null on the
+    // native one, which passes its anchor in instead.
     const anchorIndex = activeDrag.items.indexOf(
-      this.dragElement as HTMLElement
+      anchor ?? (this.dragElement as HTMLElement)
     )
     const anchorClone = clones[anchorIndex] ?? clones[0]
     return anchorClone?.getBoundingClientRect() ?? null
@@ -2724,9 +3140,14 @@ export class DragManager implements DragManagerInterface {
         item.parentElement === this.zone.element
       ) {
         // Don't set draggable=true on touch devices — it triggers HTML5 DnD
-        // which has zero mobile browser support and interferes with pointer events
+        // which has zero mobile browser support and interferes with pointer
+        // events. `nativeDrag` opts back in: without `draggable` there is no
+        // `dragstart` at all, so a touchscreen laptop would lose the native
+        // path for its mouse. Touch gestures are still routed to the pointer
+        // pipeline, by the yield in `onPointerDown` and the touch-initiated
+        // bail in `onDragStart`.
         const isTouchDevice = navigator.maxTouchPoints > 0
-        item.draggable = !isTouchDevice
+        item.draggable = this._nativeDrag || !isTouchDevice
 
         // Set touch-action on draggable items / handles.
         // When a touch delay is configured, use 'manipulation' (allows scroll/tap

@@ -472,16 +472,62 @@ export interface SortableOptions {
   direction?: 'vertical' | 'horizontal'
 
   /**
-   * Enable fallback for browsers without native drag support
-   * @defaultValue true
+   * Never attach the native HTML5 drag listeners at all, leaving the
+   * pointer-event pipeline as the only path.
+   *
+   * The name is inherited from Sortable.js and reads backwards. `false` — the
+   * default — does **not** mean native drag runs. It means the native
+   * listeners are attached; they still never fire, because the pointer
+   * pipeline calls `preventDefault()` on `pointerdown`, which suppresses the
+   * browser's drag before `dragstart` can happen. Use {@link nativeDrag} to
+   * actually hand the gesture to the native pipeline.
+   *
+   * @defaultValue false
    *
    * @example
    * ```typescript
-   * // Disable fallback to use native HTML5 drag only
-   * { forceFallback: false }
+   * // Pointer pipeline only; no HTML5 listeners bound.
+   * { forceFallback: true }
    * ```
    */
   forceFallback?: boolean
+
+  /**
+   * Hand the gesture to the browser's native HTML5 drag-and-drop instead of
+   * the pointer pipeline.
+   *
+   * Set this when a drag has to leave the document — across OS windows, or
+   * out to the desktop — because only a native drag session carries a
+   * `DataTransfer` over that boundary. It is also what makes {@link setData}
+   * reachable.
+   *
+   * **This is the sending side only.** Resortable cannot reorder across
+   * documents: its drag state is per JS realm, so a drag arriving from
+   * another window has no entry here and no zone will accept it as a sort
+   * target. Handle the receiving side yourself, with your own `drop` listener
+   * reading the payload `setData` wrote. The fix to foreign-drag handling in
+   * this release is what makes that listener reachable.
+   *
+   * Touch always falls back to the pointer pipeline whatever this is set to,
+   * since HTML5 drag-and-drop has no mobile support.
+   *
+   * Four options go inert on this pipeline for non-touch input, because the
+   * browser owns the gesture's start: {@link delay}, {@link delayOnTouchOnly},
+   * {@link touchStartThreshold} and {@link fallbackTolerance}.
+   *
+   * Mutually exclusive with {@link forceFallback}, which unbinds the very
+   * listeners this option relies on; setting both leaves the pointer pipeline
+   * in charge and warns in development.
+   *
+   * @defaultValue false
+   *
+   * @example
+   * ```typescript
+   * // Drags can carry a payload to another window.
+   * { nativeDrag: true, setData: (dt, el) => dt.setData('text/plain', el.id) }
+   * ```
+   */
+  nativeDrag?: boolean
 
   /**
    * CSS class for fallback ghost element
@@ -639,7 +685,11 @@ export interface SortableOptions {
   removeOnSpill?: boolean
 
   /**
-   * Custom function to set data on the DataTransfer object during drag start
+   * Custom function to set data on the DataTransfer object during drag start.
+   *
+   * Runs only on the native HTML5 pipeline, so it needs {@link nativeDrag}.
+   * The pointer pipeline has no `DataTransfer` to write to and never calls
+   * this.
    *
    * @param dataTransfer - The DataTransfer object from the drag event
    * @param dragEl - The element being dragged
