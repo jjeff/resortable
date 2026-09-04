@@ -73,6 +73,40 @@ async function setOption(
   )
 }
 
+/** An element carrying the animations `recordAnimations` captured for it. */
+type RecordedElement = Element & { __recordedAnimations?: Animation[] }
+
+/**
+ * Record every WAAPI animation on the element that creates it.
+ *
+ * `getAnimations()` only reports animations that are still running, so
+ * reading it after `page.dragAndDrop()` returns races the animation it is
+ * inspecting: at the default 150ms the FLIP can finish before the
+ * `page.evaluate` round-trip lands, and the call comes back empty. That is
+ * load-dependent, so all three Playwright retries fail together on a slow
+ * runner and it reads as a hard failure (WebKit, run 33324767753).
+ *
+ * Patching `Element.prototype.animate` stores each `Animation` on its element
+ * the moment it is created, so the assertions below read a record that
+ * outlives the animation instead of racing a live list. Must be installed
+ * before the page's own scripts run, hence `addInitScript` ahead of `goto`.
+ */
+async function recordAnimations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- reapplied against `this` below
+    const nativeAnimate = Element.prototype.animate
+    Element.prototype.animate = function (
+      this: RecordedElement,
+      ...args: Parameters<Element['animate']>
+    ): Animation {
+      const animation = nativeAnimate.apply(this, args)
+      this.__recordedAnimations ??= []
+      this.__recordedAnimations.push(animation)
+      return animation
+    }
+  })
+}
+
 /** Timing + keyframes of the first WAAPI animation on `selector`, or null. */
 async function flipInfo(
   page: Page,
@@ -84,8 +118,8 @@ async function flipInfo(
   to: string
 } | null> {
   return page.evaluate((sel) => {
-    const el = document.querySelector(sel)
-    const anim = el?.getAnimations()[0]
+    const el = document.querySelector<RecordedElement>(sel)
+    const anim = el?.__recordedAnimations?.[0]
     const effect = anim?.effect as KeyframeEffect | undefined
     if (!effect) return null
     const timing = effect.getTiming()
@@ -99,16 +133,18 @@ async function flipInfo(
   }, selector)
 }
 
-/** Count of `.sortable-item` elements in `listSelector` with an active/finished WAAPI animation. */
+/** Count of `.sortable-item` elements in `listSelector` that ran a WAAPI animation. */
 async function animatingCount(
   page: Page,
   listSelector: string
 ): Promise<number> {
   return page.evaluate((sel) => {
     const items = Array.from(
-      document.querySelectorAll(`${sel} .sortable-item:not(.sortable-ghost)`)
+      document.querySelectorAll<RecordedElement>(
+        `${sel} .sortable-item:not(.sortable-ghost)`
+      )
     )
-    return items.filter((el) => (el as HTMLElement).getAnimations().length > 0)
+    return items.filter((el) => (el.__recordedAnimations?.length ?? 0) > 0)
       .length
   }, listSelector)
 }
@@ -125,6 +161,7 @@ async function center(
 
 test.describe('Animation System - Full Integration (#79)', () => {
   test.beforeEach(async ({ page }) => {
+    await recordAnimations(page)
     await page.goto('/playground.html')
     await page.waitForFunction(() => window.resortableLoaded === true)
     await expect(page.locator(`${BASIC_LIST} .sortable-item`)).toHaveCount(4)
@@ -270,15 +307,6 @@ test.describe('Animation System - Full Integration (#79)', () => {
   })
 
   test('should animate items affected by reordering', async ({ page }) => {
-    // `animatingCount` samples `getAnimations()` AFTER the drag returns, so it
-    // races the animations it is counting: at the default ~150ms every FLIP
-    // can finish before the `page.evaluate` round-trip lands, and the count
-    // comes back 0 — all four at once, never a partial number. Widen the
-    // window the same way 'should respect animation duration option' above
-    // does; 500ms is slack, not a behavior change, since this test asserts
-    // WHICH items animate, not for how long.
-    await setOption(page, 'basic-list', 'animation', 500)
-
     // Drag basic-1 (index 0) to the last slot — basic-2/3/4 all shift up
     // one row, so all four items should receive a FLIP animation, not just
     // the dragged one.
