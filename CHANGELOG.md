@@ -1,3 +1,9 @@
+## [3.0.1](https://github.com/jjeff/resortable/compare/v3.0.0...v3.0.1) (2026-09-04)
+
+### Bug Fixes
+
+* **build:** restore the react subpath types, and check the published paths ([d68a2e8](https://github.com/jjeff/resortable/commit/d68a2e8af26dfee1c335d06afcfdcccd19b66fbb))
+
 ## [3.0.0](https://github.com/jjeff/resortable/compare/v2.3.0...v3.0.0) (2026-08-30)
 
 **This major version contains no breaking changes.** The public API of 3.0.0 is
