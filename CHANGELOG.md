@@ -1,3 +1,17 @@
+## [3.1.0](https://github.com/jjeff/resortable/compare/v3.0.1...v3.1.0) (2026-09-04)
+
+### Features
+
+* **core:** add nativeDrag to reach the HTML5 drag pipeline ([a6455c5](https://github.com/jjeff/resortable/commit/a6455c55193c48ee43ce5b8f2cfa7a8ae8924412)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+* **core:** duplicateKey on the native HTML5 path ([b01298f](https://github.com/jjeff/resortable/commit/b01298fcfa10692224b69ed8ebeadd9f591dec55)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+* **core:** multi-select and modifier drags on the native HTML5 path ([974a3a8](https://github.com/jjeff/resortable/commit/974a3a8ad1b96644d57a1fd84bbaa436b4f48176)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+* **core:** setDragCursor to signal what a drop will do ([6ec4819](https://github.com/jjeff/resortable/commit/6ec4819a00da0802f26b6becab819a797cb78c4e)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+* **core:** stacked drag image for multi-item native drags ([3811156](https://github.com/jjeff/resortable/commit/3811156e926520e0d4e63114c507a5cc6ec7054b)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+
+### Bug Fixes
+
+* **core:** cross-zone native drags land correctly and clean up after themselves ([40e286d](https://github.com/jjeff/resortable/commit/40e286d40f4e68fe7060c0b70fc59dec2e840f03)), closes [#165](https://github.com/jjeff/resortable/issues/165)
+
 ## [3.0.1](https://github.com/jjeff/resortable/compare/v3.0.0...v3.0.1) (2026-09-04)
 
 ### Bug Fixes
