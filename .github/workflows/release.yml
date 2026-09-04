@@ -10,6 +10,16 @@ on:
 permissions:
   contents: read # for checkout
 
+# semantic-release tags, pushes and publishes. Two of these running at once —
+# which is what merging a second PR before the first release finishes gives you
+# — race on all three, and one of them loses. Serialize per branch.
+#
+# cancel-in-progress stays false on purpose: a queued release must still run
+# after the one ahead of it, or the commits merged second never get published.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Release
