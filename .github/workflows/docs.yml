@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -49,14 +49,18 @@ jobs:
           sed -i "s|<span class=\"version\">v[^<]*</span>|<span class=\"version\">v${VERSION}</span>|" docs/index.html
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
         if: github.ref == 'refs/heads/main'
 
+      # upload-pages-artifact stopped including dotfiles in v4. TypeDoc writes
+      # a .nojekyll into docs/api, and without it Pages runs the site through
+      # Jekyll. Keep hidden files in the artifact.
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         if: github.ref == 'refs/heads/main'
         with:
           path: ./docs
+          include-hidden-files: true
 
   # Deploy to GitHub Pages (only on main branch)
   deploy:
@@ -69,4 +73,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
