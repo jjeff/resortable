@@ -263,6 +263,13 @@ jobs:
       - name: Build with Rollup
         run: npm run build:rollup
 
+      # The published artifact is the one thing no other job loads: unit and
+      # e2e run against src/, and bundle-size only weighs the bundles. 3.0.0
+      # shipped with its React subpath types pointing at a file the build no
+      # longer produced, and every check here was green.
+      - name: Verify package exports resolve
+        run: npm run check:exports
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:

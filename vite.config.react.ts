@@ -12,9 +12,10 @@ import dts from 'vite-plugin-dts'
  */
 export default defineConfig({
   plugins: [
+    // Emits `dist/react/index.d.ts`, which is where package.json's
+    // `exports["./react"].types` points. See the note in vite.config.ts.
     dts({
       include: ['src/react/**/*'],
-      outDir: 'dist/types',
     }),
   ],
   build: {
