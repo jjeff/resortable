@@ -41,8 +41,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The attestation half of this check pulls TUF metadata from
+      # tuf-repo-cdn.sigstore.dev. That CDN intermittently returns an HTTP
+      # error ("npm error Failed to download"), which failed the whole release.
+      # Retry before treating it as a real verification failure.
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
-        run: npm audit signatures
+        run: |
+          for attempt in 1 2 3; do
+            if npm audit signatures; then
+              exit 0
+            fi
+            echo "npm audit signatures failed (attempt $attempt of 3)" >&2
+            sleep 20
+          done
+          exit 1
 
       # E2E is gated on PRs by ci.yml; release only needs unit tests
       - name: Run unit tests
