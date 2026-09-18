@@ -94,6 +94,55 @@ describe('KeyboardManager', () => {
     })
   })
 
+  describe('Items changed by the host (not by this manager)', () => {
+    // A framework re-render adds, removes or reorders items directly; the
+    // ARIA position attributes must follow (MutationObserver → microtask).
+    const flush = () => Promise.resolve()
+    const positions = () =>
+      Array.from(container.children).map((el) => [
+        el.getAttribute('data-id'),
+        el.getAttribute('aria-posinset'),
+        el.getAttribute('aria-setsize'),
+      ])
+
+    it('recomputes aria-posinset/aria-setsize after an add, a remove and a reorder', async () => {
+      keyboardManager.attach()
+
+      const added = document.createElement('div')
+      added.className = 'sortable-item'
+      added.setAttribute('data-id', 'item-new')
+      container.insertBefore(added, items[0])
+      await flush()
+      expect(added.getAttribute('role')).toBe('option')
+      expect(positions()[0]).toEqual(['item-new', '1', '6'])
+      expect(positions()[5]).toEqual(['item-4', '6', '6'])
+
+      items[2].remove()
+      await flush()
+      expect(positions()).toEqual([
+        ['item-new', '1', '5'],
+        ['item-0', '2', '5'],
+        ['item-1', '3', '5'],
+        ['item-3', '4', '5'],
+        ['item-4', '5', '5'],
+      ])
+
+      container.appendChild(added)
+      await flush()
+      expect(positions()[0]).toEqual(['item-0', '1', '5'])
+      expect(positions()[4]).toEqual(['item-new', '5', '5'])
+    })
+
+    it('stops tracking after detach', async () => {
+      keyboardManager.attach()
+      keyboardManager.detach()
+      items[0].remove()
+      await flush()
+      expect(items[1].getAttribute('aria-posinset')).toBe('2')
+      container.insertBefore(items[0], items[1]) // restore for afterEach
+    })
+  })
+
   describe('Arrow Key Navigation', () => {
     beforeEach(() => {
       keyboardManager.attach()

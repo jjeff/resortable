@@ -31,6 +31,11 @@ export class KeyboardManager {
   private handle: string | null
   private dataIdAttr: string
   private onDocumentClick: ((e: MouseEvent) => void) | null = null
+  // Recomputes item ARIA/tabindex whenever the container's children change —
+  // a framework (React) adding, removing or reordering items, or a drop
+  // moving them. Without it `aria-posinset`/`aria-setsize` went stale after
+  // any change this manager didn't make itself.
+  private itemObserver: MutationObserver | null = null
 
   // Controlled mode (see the `controlled` option): grabbed items are hidden
   // in place and the placeholder is what arrow keys move; endDrag emits the
@@ -89,8 +94,13 @@ export class KeyboardManager {
       'Sortable list. Use arrow keys to navigate, space to select, and enter to move items.'
     )
 
-    // Mark sortable items
+    // Mark sortable items, and keep them marked as the list changes.
+    // `childList` only: attribute writes don't retrigger it, and nested
+    // lists are their own manager's concern.
     this.updateItemAttributes()
+    this.itemObserver?.disconnect()
+    this.itemObserver = new MutationObserver(() => this.updateItemAttributes())
+    this.itemObserver.observe(this.container, { childList: true })
 
     // Click outside to deselect (yielded to MarqueeSelectPlugin when active)
     if (this.deselectOnClickOutside) {
@@ -112,6 +122,8 @@ export class KeyboardManager {
     this.container.removeEventListener('keydown', this.onKeyDown)
     this.container.removeEventListener('click', this.onClick)
     this.container.removeEventListener('focus', this.onFocus, true)
+    this.itemObserver?.disconnect()
+    this.itemObserver = null
 
     if (this.onDocumentClick) {
       document.removeEventListener('click', this.onDocumentClick)
