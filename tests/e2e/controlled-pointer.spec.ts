@@ -13,8 +13,8 @@ import { expect, test, Page } from '@playwright/test'
  * hit test (legacy parity: Sortable.js `_hideGhostForTarget`).
  */
 
-async function buildControlledList(page: Page): Promise<void> {
-  await page.evaluate(() => {
+async function buildControlledList(page: Page, animation = 0): Promise<void> {
+  await page.evaluate((animation) => {
     document.getElementById('ctl-pointer-list')?.remove()
     const ul = document.createElement('ul')
     ul.id = 'ctl-pointer-list'
@@ -45,7 +45,7 @@ async function buildControlledList(page: Page): Promise<void> {
       controlled: true,
       draggable: '.cp-item',
       dataIdAttr: 'id',
-      animation: 0,
+      animation,
       onEnd: (evt) => {
         win.__cpIntents?.push({
           oldIndexes: evt.oldIndexes,
@@ -53,7 +53,31 @@ async function buildControlledList(page: Page): Promise<void> {
         })
       },
     })
-  })
+  }, animation)
+}
+
+/** Child order of the controlled list, placeholder as 'PH', ghost dropped. */
+function childOrder(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.getElementById('ctl-pointer-list')?.children ?? [])
+      .filter((el) => !el.hasAttribute('data-resortable-ghost'))
+      .map((el) =>
+        el.hasAttribute('data-resortable-placeholder') ? 'PH' : el.id
+      )
+  )
+}
+
+function intents(
+  page: Page
+): Promise<Array<{ oldIndexes?: number[]; newIndexes?: number[] }>> {
+  return page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __cpIntents: Array<{ oldIndexes?: number[]; newIndexes?: number[] }>
+        }
+      ).__cpIntents
+  )
 }
 
 test.describe('controlled pointer drags with pointer-events:auto descendants', () => {
@@ -120,5 +144,56 @@ test.describe('controlled pointer drags with pointer-events:auto descendants', (
     expect(intents.length).toBe(1)
     expect(intents[0].oldIndexes).toEqual([0])
     expect(intents[0].newIndexes).toEqual([2])
+  })
+
+  // A running reorder animation defers pointer moves (hit-testing items
+  // mid-flight made the target oscillate). Deferring used to mean DROPPING:
+  // a fast drag across several items landed short of the release point, and
+  // holding still afterwards never caught up because no further pointermove
+  // arrived.
+  test.describe('with a slow reorder animation', () => {
+    test('a fast drag lands where it is released, even mid-animation', async ({
+      page,
+    }) => {
+      await buildControlledList(page, 400)
+      const from = await page.locator('#cp-3').boundingBox()
+      const to = await page.locator('#cp-0').boundingBox()
+      if (!from || !to) throw new Error('missing boxes')
+
+      await page.mouse.move(from.x + 25, from.y + 25)
+      await page.mouse.down()
+      // Left of cp-0's midpoint → insert BEFORE it. Back-to-back steps land
+      // well inside the first swap's 400ms animation.
+      await page.mouse.move(to.x + 10, to.y + 25, { steps: 10 })
+      await page.mouse.up()
+
+      await expect.poll(async () => (await intents(page)).length).toBe(1)
+      expect((await intents(page))[0]).toEqual({
+        oldIndexes: [3],
+        newIndexes: [0],
+      })
+    })
+
+    test('holding still after a fast drag catches up once the animation ends', async ({
+      page,
+    }) => {
+      await buildControlledList(page, 400)
+      const from = await page.locator('#cp-3').boundingBox()
+      const to = await page.locator('#cp-0').boundingBox()
+      if (!from || !to) throw new Error('missing boxes')
+
+      await page.mouse.move(from.x + 25, from.y + 25)
+      await page.mouse.down()
+      await page.mouse.move(to.x + 10, to.y + 25, { steps: 10 })
+
+      // No further pointermove: the deferred move must replay by itself.
+      await expect
+        .poll(() => childOrder(page), { timeout: 3000 })
+        .toEqual(['PH', 'cp-0', 'cp-1', 'cp-2', 'cp-3'])
+
+      await page.mouse.up()
+      await expect.poll(async () => (await intents(page)).length).toBe(1)
+      expect((await intents(page))[0].newIndexes).toEqual([0])
+    })
   })
 })

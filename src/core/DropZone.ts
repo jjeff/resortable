@@ -26,6 +26,11 @@ export class DropZone {
     return this.animationManager?.isAnimating ?? false
   }
 
+  /** Jump running FLIP animations to their end state */
+  public finishAnimations(): void {
+    this.animationManager?.finishAll()
+  }
+
   /**
    * Get sortable items (only elements matching the draggable selector).
    * The placeholder and the ghost are clones of a real item, so they match

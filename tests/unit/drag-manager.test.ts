@@ -717,6 +717,115 @@ describe('scroll-replay coalescing during autoscroll (#134)', () => {
   })
 })
 
+describe('moves deferred by the FLIP-animation gate', () => {
+  // While a zone's reorder animation runs, a pointer move is not applied —
+  // elementFromPoint would hit items at their mid-flight positions and the
+  // target would oscillate. That gate used to DROP the move outright, so a
+  // fast drag, or one that stopped moving before the animation ended, landed
+  // short of where it was released. The move is now replayed once the zone
+  // settles, and flushed against the finished layout at drop.
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** Make `sortable`'s zone report a running animation until released. */
+  function stubAnimating(sortable: Sortable): {
+    setAnimating: (v: boolean) => void
+    finish: ReturnType<typeof vi.fn>
+  } {
+    let animating = true
+    const zone = sortable.dragManager.zone
+    Object.defineProperty(zone, 'isAnimating', { get: () => animating })
+    const finish = vi.fn(() => {
+      animating = false
+    })
+    zone.finishAnimations = finish
+    return { setAnimating: (v) => (animating = v), finish }
+  }
+
+  it('pointer: holds the move while animating, applies it once settled — no further pointermove', () => {
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const { setAnimating } = stubAnimating(sortable)
+
+    hover(list.children[2])
+    ;(list.children[0] as HTMLElement).dispatchEvent(pointer('pointerdown'))
+    document.dispatchEvent(pointer('pointermove', { y: 60 }))
+    expect(ids(list)).toEqual(['list-1', 'list-2', 'list-3', 'list-4'])
+
+    // Still animating a frame later: the gate keeps protecting the hit-test.
+    vi.advanceTimersByTime(16)
+    expect(ids(list)).toEqual(['list-1', 'list-2', 'list-3', 'list-4'])
+
+    // Animation ends under a stationary pointer: the deferred move lands.
+    setAnimating(false)
+    vi.advanceTimersByTime(16)
+    expect(ids(list)).toEqual(['list-2', 'list-3', 'list-1', 'list-4'])
+  })
+
+  it('controlled: releasing mid-animation finishes it and drops at the pointer', () => {
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const onEnd = vi.fn<(evt: SortableEvent) => void>()
+    const sortable = mount(list, { animation: 0, controlled: true, onEnd })
+    const { finish } = stubAnimating(sortable)
+
+    hover(list.children[2])
+    ;(list.children[0] as HTMLElement).dispatchEvent(pointer('pointerdown'))
+    document.dispatchEvent(pointer('pointermove', { y: 60 }))
+    document.dispatchEvent(pointer('pointerup', { y: 60 }))
+
+    expect(finish).toHaveBeenCalledTimes(1)
+    const evt = onEnd.mock.calls[0][0]
+    expect(evt.oldIndex).toBe(0)
+    expect(evt.newIndex).toBe(2)
+  })
+
+  it('does not re-resolve a point that already swapped (no swap-back after settle)', () => {
+    // The swap just made is what is animating. Re-resolving the SAME pointer
+    // position against the settled layout can hit the neighbour that moved
+    // under it and swap straight back — e.g. an autoscroll replay of the
+    // last pointermove, gated mid-animation, then flushed at drop.
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0 })
+    const { setAnimating, finish } = stubAnimating(sortable)
+    setAnimating(false)
+
+    hover(list.children[2])
+    ;(list.children[0] as HTMLElement).dispatchEvent(pointer('pointerdown'))
+    document.dispatchEvent(pointer('pointermove', { y: 60 }))
+    expect(ids(list)).toEqual(['list-2', 'list-3', 'list-1', 'list-4'])
+
+    setAnimating(true)
+    hover(list.children[1]) // the settled layout under the unmoved pointer
+    document.dispatchEvent(new Event('scroll'))
+    vi.advanceTimersByTime(16) // replay at the same point: gated, not deferred
+    document.dispatchEvent(pointer('pointerup', { y: 60 }))
+
+    expect(finish).not.toHaveBeenCalled()
+    expect(ids(list)).toEqual(['list-2', 'list-3', 'list-1', 'list-4'])
+  })
+
+  it('a release with no deferred move does not finish running animations', () => {
+    vi.useFakeTimers()
+    const list = makeList('list')
+    const sortable = mount(list, { animation: 0, controlled: true })
+    const { setAnimating, finish } = stubAnimating(sortable)
+    setAnimating(false)
+
+    hover(list.children[2])
+    ;(list.children[0] as HTMLElement).dispatchEvent(pointer('pointerdown'))
+    document.dispatchEvent(pointer('pointermove', { y: 60 }))
+    setAnimating(true)
+    document.dispatchEvent(pointer('pointerup', { y: 60 }))
+
+    expect(finish).not.toHaveBeenCalled()
+  })
+})
+
 describe('stale drop-animation timer (#131)', () => {
   // The ghost drop-settle cleanup in `cleanupPointerDrag` only defers to a
   // transitionend/timeout pair when the ghost and the drag element disagree
