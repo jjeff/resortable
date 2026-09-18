@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/jjeff/resortable/compare/v3.1.0...v3.1.1) (2026-09-18)
+
+### Bug Fixes
+
+* **a11y:** keep aria-posinset and aria-setsize current as items change ([5af78f8](https://github.com/jjeff/resortable/commit/5af78f803262bcaf7ad9db653e4ed44ac55a5f5a))
+* **core:** fast drags land where the pointer is released ([c06b6bf](https://github.com/jjeff/resortable/commit/c06b6bf4fba857d1ac794c19c29e39a5e13d1125))
+
 ## [3.1.0](https://github.com/jjeff/resortable/compare/v3.0.1...v3.1.0) (2026-09-04)
 
 ### Features
