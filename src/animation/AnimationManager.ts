@@ -196,6 +196,16 @@ export class AnimationManager {
   }
 
   /**
+   * Jump all active animations to their end state. Unlike `cancelAll` the
+   * elements land where the reorder put them; unlike waiting for `finish`,
+   * `isAnimating` is false as soon as this returns.
+   */
+  public finishAll(): void {
+    this.activeAnimations.forEach((animation) => animation.finish())
+    this.activeAnimations.clear()
+  }
+
+  /**
    * Cancel all active animations
    */
   public cancelAll(): void {

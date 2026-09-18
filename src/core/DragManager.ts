@@ -252,18 +252,29 @@ export class DragManager implements DragManagerInterface {
   // relevant when multiSelect is off (see that method for why).
   private multiSelect: boolean
 
-  // rAF handle for a pending scroll-replay (#134). Autoscroll's rAF loop
-  // fires `scrollBy` every frame, so the `scroll` listener below would
-  // otherwise pay a full `onPointerMove` (hit-test + rect math) per frame.
-  // Coalescing to one replay per animation frame is enough to keep the drop
-  // target fresh without redoing that work on every scroll tick. Null when
-  // no replay is scheduled.
-  private scrollReplayFrame: number | null = null
-  // True while a scroll-replay re-runs onPointerMove with a STALE pointer
-  // event. syncDuplicate must ignore that event's modifier flags — a keyup
-  // handled between the real move and the replay would otherwise be
-  // clobbered by the old event's held-modifier state.
-  private isReplayingScroll = false
+  // rAF handle for a pending replay of `lastPointerMoveEvent`. Two things
+  // schedule one: an autoscroll `scroll` tick (#134 — coalesced to one
+  // replay per frame so autoscroll's per-frame `scrollBy` doesn't pay a full
+  // hit-test each), and a move that the FLIP-animation gate deferred (see
+  // `settlingZone`). Null when no replay is scheduled.
+  private replayFrame: number | null = null
+  // True while a replay re-runs onPointerMove with a STALE pointer event.
+  // syncDuplicate must ignore that event's modifier flags — a keyup handled
+  // between the real move and the replay would otherwise be clobbered by the
+  // old event's held-modifier state.
+  private isReplaying = false
+  // Zone whose running FLIP animation made the last pointer move bail out.
+  // The gate exists because elementFromPoint hits items at their mid-flight
+  // transformed positions, which made the target oscillate — but a bare
+  // early-return also DROPS the move, so a fast drag (or one that stops
+  // before the animation ends) landed short of the release point. Instead
+  // the move is replayed each frame until the zone settles, and at drop the
+  // zone's animations are finished so the replay resolves against the final
+  // layout. Null when no move is waiting on an animation.
+  private settlingZone: DropZone | null = null
+  // Last pointer position that got past the animation gate (see
+  // `deferUntilSettled`). Null outside a pointer drag.
+  private resolvedPoint: { x: number; y: number } | null = null
 
   private groupManager: GroupManager
 
@@ -507,9 +518,9 @@ export class DragManager implements DragManagerInterface {
       // Drop any pending scroll-replay frame (#134) BEFORE cleanup: the
       // flush in cleanupPointerDrag re-resolves the drop target and moves
       // DOM, which teardown must not do.
-      if (this.scrollReplayFrame !== null) {
-        window.cancelAnimationFrame(this.scrollReplayFrame)
-        this.scrollReplayFrame = null
+      if (this.replayFrame !== null) {
+        window.cancelAnimationFrame(this.replayFrame)
+        this.replayFrame = null
       }
       this.cleanupPointerDrag()
     }
@@ -974,7 +985,11 @@ export class DragManager implements DragManagerInterface {
 
     const targetZone = targetManager.zone
     const targetZoneElement = targetZone.element
-    if (targetZone.isAnimating) return
+    if (targetZone.isAnimating) {
+      this.deferUntilSettled(targetZone, e)
+      return
+    }
+    this.markResolved(e)
 
     const items = activeDrag.items
     const overIsValid =
@@ -2269,9 +2284,14 @@ export class DragManager implements DragManagerInterface {
         const targetDragManager = this.findDragManagerForZone(targetZoneElement)
         const targetZone = targetDragManager?.zone ?? this.zone
 
-        // Skip move if FLIP animations are still in progress — prevents oscillation
-        // caused by elementFromPoint detecting elements at their animated positions
-        if (targetZone.isAnimating) return
+        // Defer the move while FLIP animations are in progress — prevents
+        // oscillation caused by elementFromPoint detecting elements at their
+        // animated positions. Deferred, not dropped: see `settlingZone`.
+        if (targetZone.isAnimating) {
+          this.deferUntilSettled(targetZone, e)
+          return
+        }
+        this.markResolved(e)
 
         // `sort: false` on the zone currently holding the item blocks further
         // repositioning inside it (#75). Use the MANAGER THAT OWNS
@@ -2417,16 +2437,50 @@ export class DragManager implements DragManagerInterface {
   // index (#124). Capture phase so it catches scroll on any ancestor, since
   // `scroll` doesn't bubble.
   private onDocumentScrollDuringDrag = (): void => {
+    this.scheduleReplay()
+  }
+
+  /** A pointer position that got past the animation gate. */
+  private markResolved(e: Event): void {
+    if (!this.isPointerDragging) return
+    const { clientX: x, clientY: y } = e as MouseEvent
+    this.resolvedPoint = { x, y }
+  }
+
+  /**
+   * Pointer pipeline only: retry a gated move once `zone` settles. Skipped
+   * when the pointer is still where the last resolved move put it — that
+   * position already produced the swap now animating, and re-resolving it
+   * against the settled layout can swap straight back (items of unequal
+   * size), which is the oscillation the gate exists to prevent.
+   */
+  private deferUntilSettled(zone: DropZone, e: Event): void {
+    if (!this.isPointerDragging) return
+    const { clientX, clientY } = e as MouseEvent
+    if (this.resolvedPoint?.x === clientX && this.resolvedPoint.y === clientY) {
+      return
+    }
+    this.settlingZone = zone
+    this.scheduleReplay()
+  }
+
+  /**
+   * Replay `lastPointerMoveEvent` on the next animation frame (at most one
+   * pending). A replay that hits a still-animating zone defers again, so this
+   * polls once per frame until the animation ends.
+   */
+  private scheduleReplay(): void {
     if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
-    if (this.scrollReplayFrame !== null) return
-    this.scrollReplayFrame = window.requestAnimationFrame(() => {
-      this.scrollReplayFrame = null
+    if (this.replayFrame !== null) return
+    this.replayFrame = window.requestAnimationFrame(() => {
+      this.replayFrame = null
+      this.settlingZone = null
       if (!this.isPointerDragging || !this.lastPointerMoveEvent) return
-      this.isReplayingScroll = true
+      this.isReplaying = true
       try {
         this.onPointerMove(this.lastPointerMoveEvent)
       } finally {
-        this.isReplayingScroll = false
+        this.isReplaying = false
       }
     })
   }
@@ -2464,23 +2518,24 @@ export class DragManager implements DragManagerInterface {
 
     // A pointerup/pointercancel can land in the same frame as the last
     // autoscroll scroll tick, before the deferred scroll-replay (#134) has
-    // run. Flush it synchronously here, before any other teardown, while
-    // drag state is still fully live — identical timing to the old
-    // synchronous replay. Otherwise the drop resolves against a placeholder
+    // run — or while a move is still deferred behind a FLIP animation. Flush
+    // it synchronously here, before any other teardown, while drag state is
+    // still fully live — identical timing to the old synchronous replay. Otherwise the drop resolves against a placeholder
     // that's one scroll tick stale, resurrecting #124. Skipped on revert:
     // a cancelled drag doesn't need its last target re-resolved.
-    if (
-      !revert &&
-      this.scrollReplayFrame !== null &&
-      this.lastPointerMoveEvent
-    ) {
-      window.cancelAnimationFrame(this.scrollReplayFrame)
-      this.scrollReplayFrame = null
-      this.isReplayingScroll = true
+    if (!revert && this.replayFrame !== null && this.lastPointerMoveEvent) {
+      window.cancelAnimationFrame(this.replayFrame)
+      this.replayFrame = null
+      // A move deferred by the animation gate: jump the zone's animations to
+      // their end so the replay hit-tests the settled layout instead of
+      // being gated (and dropped) one last time.
+      this.settlingZone?.finishAnimations()
+      this.settlingZone = null
+      this.isReplaying = true
       try {
         this.onPointerMove(this.lastPointerMoveEvent)
       } finally {
-        this.isReplayingScroll = false
+        this.isReplaying = false
       }
     }
 
@@ -2508,10 +2563,12 @@ export class DragManager implements DragManagerInterface {
     })
     document.removeEventListener('keydown', this.onDuplicateKeyChange)
     document.removeEventListener('keyup', this.onDuplicateKeyChange)
-    if (this.scrollReplayFrame !== null) {
-      window.cancelAnimationFrame(this.scrollReplayFrame)
-      this.scrollReplayFrame = null
+    if (this.replayFrame !== null) {
+      window.cancelAnimationFrame(this.replayFrame)
+      this.replayFrame = null
     }
+    this.settlingZone = null
+    this.resolvedPoint = null
     this.lastPointerMoveEvent = null
 
     // Controlled mode: restore the consumer's DOM BEFORE endDrag emits the
@@ -2755,7 +2812,7 @@ export class DragManager implements DragManagerInterface {
     // A scroll-replay re-runs onPointerMove with a stale event whose
     // modifier flags predate any keydown/keyup handled since — never let it
     // overwrite the live duplicate state.
-    if (this.isReplayingScroll) return
+    if (this.isReplaying) return
     const active = isModifierHeld(e, this.duplicateKey)
     globalDragState.setDuplicate(dragId, active)
     this.ghostManager
