@@ -1034,7 +1034,8 @@ export class MarqueeSelectPlugin extends BasePlugin {
     const wantsScroll =
       Boolean(anchoredDirection()) ||
       state.scopeScrollTargets.some(
-        (target) => this.scopeAutoScrollDirection(state, target) !== false
+        (target) =>
+          this.scopeAutoScrollDirection(sortable, state, target) !== false
       )
     if (!wantsScroll) return
 
@@ -1062,7 +1063,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
       }
 
       for (const target of state.scopeScrollTargets) {
-        const dir = this.scopeAutoScrollDirection(state, target)
+        const dir = this.scopeAutoScrollDirection(sortable, state, target)
         if (dir) {
           scrolledAny = true
           target.scrollBy(0, dir === 'up' ? -delta : delta)
@@ -1096,21 +1097,24 @@ export class MarqueeSelectPlugin extends BasePlugin {
 
   /**
    * Edge test for an auto-resolved per-instance container: same up/down
-   * logic as the anchored `scrollContainer`, gated on the pointer being
-   * horizontally over THIS container. Side-by-side columns share a
-   * vertical band near the top/bottom of the marquee area — without the
-   * horizontal gate, being near one column's edge would scroll ALL of
-   * them. The anchored `scrollContainer` never needed this (there's only
-   * ever one), so it's intentionally NOT applied there.
+   * logic as the anchored `scrollContainer`, gated on the MARQUEE RECTANGLE
+   * (not the pointer) overlapping this container. Side-by-side columns
+   * share a vertical band near the top/bottom of the marquee area, and a
+   * marquee can span both — gating on the pointer's own position meant a
+   * spanning marquee could never auto-scroll the column the pointer wasn't
+   * currently over. The anchored `scrollContainer` never needed this
+   * (there's only ever one), so it's intentionally NOT applied there.
    */
   private scopeAutoScrollDirection(
+    sortable: SortableInstance,
     state: MarqueeState,
     target: HTMLElement
   ): 'up' | 'down' | false {
     const rect = target.getBoundingClientRect()
-    if (state.lastClientX < rect.left || state.lastClientX > rect.right) {
+    if (
+      !PluginUtils.rectsOverlap(this.marqueeViewportRect(sortable, state), rect)
+    )
       return false
-    }
     return this.scrollDirection(state.lastClientY, target, target.scrollHeight)
   }
 
