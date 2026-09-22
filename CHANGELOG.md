@@ -1,3 +1,9 @@
+## [3.1.2](https://github.com/jjeff/resortable/compare/v3.1.1...v3.1.2) (2026-09-22)
+
+### Bug Fixes
+
+* **marquee:** auto-scroll every column a spanning marquee touches ([4f99e97](https://github.com/jjeff/resortable/commit/4f99e97028e42ae89e2351e7b8439b15e40d1608)), closes [spaceagetv/missioncontrol#5962](https://github.com/spaceagetv/missioncontrol/issues/5962)
+
 ## [3.1.1](https://github.com/jjeff/resortable/compare/v3.1.0...v3.1.1) (2026-09-18)
 
 ### Bug Fixes
