@@ -1291,6 +1291,25 @@ describe('MarqueeSelectPlugin', () => {
       expect(scrollByA).not.toHaveBeenCalled()
     })
 
+    it('auto-scrolls a column the marquee spans even when the pointer sits over the other column', () => {
+      // Drag starts over column B (x=300) and ends over column A (x=5), near
+      // the shared bottom edge. The marquee rectangle (x 5-300) spans both
+      // columns even though the pointer ends up over A only — B must still
+      // auto-scroll (issue: only the column nearest the pointer scrolled).
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 300, clientY: 5 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 5, clientY: 185 })
+      )
+
+      vi.advanceTimersByTime(16)
+      vi.advanceTimersByTime(16)
+
+      expect(scrollByA).toHaveBeenCalled()
+      expect(scrollByB).toHaveBeenCalled()
+    })
+
     it('re-runs hit-testing as a scoped column scrolls, selecting items the scroll reveals', () => {
       // A 4th item in column A starts below the marquee's reach (y=250) —
       // not selected yet. The scrollBy mock simulates it scrolling into
