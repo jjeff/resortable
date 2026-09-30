@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "entries": [],
+  "claims": {
+    "Jeffs-M2-MBP-85144:fix/marquee-autoscroll-spanning-columns": {
+      "branch": "fix/marquee-autoscroll-spanning-columns",
+      "on": "Jeffs-M2-MBP-85144",
+      "issue": null,
+      "intent": null,
+      "since": "2026-09-30T01:49:18.600Z",
+      "heartbeat": "2026-09-30T01:49:18.600Z"
+    }
+  }
+}
