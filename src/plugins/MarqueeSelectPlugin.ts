@@ -149,6 +149,15 @@ interface MarqueeState {
    * of (and in addition to) the explicit `scrollContainer` anchor.
    */
   scopeScrollTargets: HTMLElement[]
+  /**
+   * Scroll offset, captured when the marquee activates, of every scrolling
+   * ancestor of each participating list (below the anchored
+   * `scrollContainer`). The hit test anchors the marquee's start corner to
+   * each of these containers' content, so items a nested row or column
+   * scrolls out from under the rectangle stay selected — the way the
+   * anchored `scrollContainer` already behaves, and the way Finder does.
+   */
+  innerScrollStart: Map<HTMLElement, { left: number; top: number }>
   scrollRaf: number | null
   /**
    * Scroll container's content size captured at marquee start. The marquee
@@ -206,6 +215,7 @@ function createDefaultState(): MarqueeState {
     subtractive: false,
     lockedKind: null,
     scopeScrollTargets: [],
+    innerScrollStart: new Map(),
     scrollRaf: null,
     contentLimit: null,
     holdTimer: null,
@@ -213,7 +223,9 @@ function createDefaultState(): MarqueeState {
   }
 }
 
-function getMarqueeRect(state: MarqueeState): DOMRect {
+function getMarqueeRect(
+  state: Pick<MarqueeState, 'startX' | 'startY' | 'currentX' | 'currentY'>
+): DOMRect {
   const x = Math.min(state.startX, state.currentX)
   const y = Math.min(state.startY, state.currentY)
   const w = Math.abs(state.currentX - state.startX)
@@ -267,6 +279,7 @@ export class MarqueeSelectPlugin extends BasePlugin {
     (e: PointerEvent) => void
   >()
   private scrollElement = new WeakMap<SortableInstance, HTMLElement>()
+  private scrollWatchers = new WeakMap<SortableInstance, () => void>()
   private savedUserSelect = new WeakMap<SortableInstance, string>()
   private touchDocumentHandlers = new WeakMap<
     SortableInstance,
@@ -909,6 +922,13 @@ export class MarqueeSelectPlugin extends BasePlugin {
       } else {
         document.body.appendChild(state.marqueeEl)
       }
+      state.innerScrollStart = this.captureInnerScroll(sortable, state)
+      // Any container scrolling under the marquee — edge auto-scroll, the
+      // host app's own scrolling, a trackpad — moves items relative to the
+      // rectangle without a pointermove, so re-run the hit test on scroll.
+      const onScroll = () => this.onContainerScroll(sortable)
+      this.scrollWatchers.set(sortable, onScroll)
+      document.addEventListener('scroll', onScroll, true)
       sortable.eventSystem.emit('marqueeStart')
     }
 
@@ -933,6 +953,10 @@ export class MarqueeSelectPlugin extends BasePlugin {
     if (!state.active && this.shouldDeselectOnClick(e, sortable)) {
       this.clearScopedSelections(sortable)
     }
+
+    // The throttled hit test can drop the last scroll or move before
+    // release; settle the selection on where the marquee actually ended.
+    if (state.active) this.updateSelection(sortable, state)
 
     this.endMarquee(sortable)
   }
@@ -971,6 +995,12 @@ export class MarqueeSelectPlugin extends BasePlugin {
       document.removeEventListener('pointermove', handlers.moveHandler)
       document.removeEventListener('pointerup', handlers.upHandler)
       this.documentHandlers.delete(sortable)
+    }
+
+    const onScroll = this.scrollWatchers.get(sortable)
+    if (onScroll) {
+      document.removeEventListener('scroll', onScroll, true)
+      this.scrollWatchers.delete(sortable)
     }
 
     // Remove touch document handlers (touch-initiated marquee)
@@ -1174,18 +1204,86 @@ export class MarqueeSelectPlugin extends BasePlugin {
    */
   private marqueeViewportRect(
     sortable: SortableInstance,
-    state: MarqueeState
+    state: MarqueeState,
+    startShift: { x: number; y: number } = { x: 0, y: 0 }
   ): DOMRect {
-    const rect = getMarqueeRect(state)
+    let ox = 0
+    let oy = 0
     const scroll = this.scrollElement.get(sortable)
-    if (!scroll) return rect
-    const c = scroll.getBoundingClientRect()
-    return new DOMRect(
-      rect.x + c.left - scroll.scrollLeft,
-      rect.y + c.top - scroll.scrollTop,
-      rect.width,
-      rect.height
-    )
+    if (scroll) {
+      const c = scroll.getBoundingClientRect()
+      ox = c.left - scroll.scrollLeft
+      oy = c.top - scroll.scrollTop
+    }
+    return getMarqueeRect({
+      startX: state.startX + ox - startShift.x,
+      startY: state.startY + oy - startShift.y,
+      currentX: state.currentX + ox,
+      currentY: state.currentY + oy,
+    })
+  }
+
+  /**
+   * Scroll offsets of every scrolling ancestor of each participating list,
+   * from the list element up to (not including) the anchored
+   * `scrollContainer` or the document. See `MarqueeState.innerScrollStart`.
+   */
+  private captureInnerScroll(
+    sortable: SortableInstance,
+    state: MarqueeState
+  ): Map<HTMLElement, { left: number; top: number }> {
+    const anchored = this.scrollElement.get(sortable)
+    const out = new Map<HTMLElement, { left: number; top: number }>()
+    for (const instance of state.snapshot.keys()) {
+      let el: HTMLElement | null = instance.element
+      while (
+        el &&
+        el !== anchored &&
+        el !== document.body &&
+        el !== document.documentElement
+      ) {
+        if (
+          !out.has(el) &&
+          (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)
+        ) {
+          out.set(el, { left: el.scrollLeft, top: el.scrollTop })
+        }
+        el = el.parentElement
+      }
+    }
+    return out
+  }
+
+  /** How far `instance`'s scrolling ancestors moved since activation. */
+  private innerScrollShift(
+    instance: SortableInstance,
+    state: MarqueeState
+  ): { x: number; y: number } {
+    const shift = { x: 0, y: 0 }
+    for (const [el, start] of state.innerScrollStart) {
+      if (!el.contains(instance.element)) continue
+      shift.x += el.scrollLeft - start.left
+      shift.y += el.scrollTop - start.top
+    }
+    return shift
+  }
+
+  private onContainerScroll(sortable: SortableInstance): void {
+    const state = this.getState<MarqueeState>(sortable)
+    if (!state?.active) return
+    // The anchored container moved under a stationary pointer: the
+    // rectangle's live corner follows the pointer, not the content.
+    if (this.scrollElement.get(sortable)) {
+      const point = this.toMarqueePoint(
+        sortable,
+        state.lastClientX,
+        state.lastClientY
+      )
+      state.currentX = point.x
+      state.currentY = point.y
+      this.updateMarqueeVisual(state)
+    }
+    this.throttledUpdateSelection.get(sortable)?.(sortable, state)
   }
 
   private updateSelection(
@@ -1196,6 +1294,21 @@ export class MarqueeSelectPlugin extends BasePlugin {
     if (!state.active) return
 
     const marqueeRect = this.marqueeViewportRect(sortable, state)
+    // One rect per list whose scrolling ancestors moved since activation.
+    const shiftedRects = new Map<SortableInstance, DOMRect>()
+    const rectFor = (instance: SortableInstance): DOMRect => {
+      if (state.innerScrollStart.size === 0) return marqueeRect
+      let rect = shiftedRects.get(instance)
+      if (!rect) {
+        const shift = this.innerScrollShift(instance, state)
+        rect =
+          shift.x === 0 && shift.y === 0
+            ? marqueeRect
+            : this.marqueeViewportRect(sortable, state, shift)
+        shiftedRects.set(instance, rect)
+      }
+      return rect
+    }
 
     const entries = this.scopeEntries(sortable)
     const items = this.collectScopedItems(sortable)
@@ -1206,7 +1319,10 @@ export class MarqueeSelectPlugin extends BasePlugin {
         ? item.el.querySelector<HTMLElement>(hitSelector)
         : item.el
       if (!hitEl) return false
-      return PluginUtils.rectsOverlap(marqueeRect, PluginUtils.getRect(hitEl))
+      return PluginUtils.rectsOverlap(
+        rectFor(item.instance),
+        PluginUtils.getRect(hitEl)
+      )
     })
 
     // Mode locking: the first kind the marquee touches wins; other kinds
