@@ -1099,6 +1099,65 @@ describe('MarqueeSelectPlugin', () => {
       expect(smB.selectedElements.has(clipsB[1])).toBe(true)
     })
 
+    it('keeps clips a nested row scrolls out from under the marquee, and picks up clips it scrolls in', () => {
+      vi.useFakeTimers()
+      // Song 1's clip row scrolls horizontally (300px viewport, 600px of
+      // clips). A 4th clip starts off the right edge of the marquee.
+      const row = sortableA.element
+      Object.defineProperty(row, 'scrollWidth', {
+        value: 600,
+        configurable: true,
+      })
+      Object.defineProperty(row, 'clientWidth', {
+        value: 300,
+        configurable: true,
+      })
+      let scrollLeft = 0
+      Object.defineProperty(row, 'scrollLeft', {
+        get: () => scrollLeft,
+        configurable: true,
+      })
+      const extra = scopedItems(1, 'clip')[0]
+      row.appendChild(extra)
+      const layout = (dx: number) =>
+        mockItemRects(
+          [...clipsA, extra],
+          [50, 160, 270, 480].map((x) => ({
+            x: x - dx,
+            y: 50,
+            width: 100,
+            height: 40,
+          }))
+        )
+      layout(0)
+
+      // Marquee (40,40)→(380,100) covers clips A1–A3, not the 4th.
+      wrapper.dispatchEvent(
+        pointerEvent('pointerdown', { clientX: 40, clientY: 40 })
+      )
+      document.dispatchEvent(
+        pointerEvent('pointermove', { clientX: 380, clientY: 100 })
+      )
+      const smA = sortableA.dragManager!.selectionManager
+      expect(smA.selectedElements.has(extra)).toBe(false)
+
+      // The row scrolls 230px right under a stationary pointer: A1 and A2
+      // leave the rectangle on screen, the 4th clip enters it.
+      vi.advanceTimersByTime(20)
+      scrollLeft = 230
+      layout(230)
+      row.dispatchEvent(new Event('scroll'))
+
+      for (const clip of [...clipsA, extra]) {
+        expect(smA.selectedElements.has(clip)).toBe(true)
+      }
+      document.dispatchEvent(
+        pointerEvent('pointerup', { clientX: 380, clientY: 100 })
+      )
+      expect(smA.selectedElements.size).toBe(4)
+      vi.useRealTimers()
+    })
+
     it('locks the mode to the first intersected kind', () => {
       // First hit only song 1's handle (x 0..20) → mode locks to songs.
       wrapper.dispatchEvent(
