@@ -1,3 +1,9 @@
+## [3.1.3](https://github.com/jjeff/resortable/compare/v3.1.2...v3.1.3) (2026-10-16)
+
+### Bug Fixes
+
+* **marquee:** keep items a nested container scrolls under the marquee ([bedb6de](https://github.com/jjeff/resortable/commit/bedb6de50ef7b153ad319f3f9b78d80f87258900))
+
 ## [3.1.2](https://github.com/jjeff/resortable/compare/v3.1.1...v3.1.2) (2026-09-22)
 
 ### Bug Fixes
