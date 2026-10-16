@@ -2,13 +2,18 @@
   "version": 1,
   "entries": [],
   "claims": {
-    "Jeffs-M2-MBP-85144:fix/marquee-autoscroll-spanning-columns": {
-      "branch": "fix/marquee-autoscroll-spanning-columns",
-      "on": "Jeffs-M2-MBP-85144",
+    "ci-m2-mbp-1:fix/marquee-scroll-anchor": {
+      "branch": "fix/marquee-scroll-anchor",
+      "on": "ci-m2-mbp-1",
       "issue": null,
+      "pr": null,
       "intent": null,
-      "since": "2026-09-30T01:49:18.600Z",
-      "heartbeat": "2026-09-30T01:49:18.600Z"
+      "session": "96bd6139-31c0-4940-8274-4d348c6794ca",
+      "pid": "72677",
+      "name": "missioncontrol-a7",
+      "url": "https://claude.ai/code/session_01QDbbek2QUUuGkzLwsSXrSv",
+      "since": "2026-10-16T16:19:27.589Z",
+      "heartbeat": "2026-10-16T16:19:27.589Z"
     }
   }
 }
