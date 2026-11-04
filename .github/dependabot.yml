@@ -26,3 +26,7 @@ updates:
           - '*'
         update-types:
           - major
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
