@@ -191,5 +191,8 @@
     "react": {
       "optional": true
     }
+  },
+  "allowScripts": {
+    "fsevents": false
   }
 }
